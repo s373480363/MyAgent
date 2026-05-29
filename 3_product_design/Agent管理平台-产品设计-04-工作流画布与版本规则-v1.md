@@ -120,6 +120,7 @@ AGENT_CALL 节点额外字段：
 | 正式调用使用当前发布版本 | API 默认调用 `currentPublishedWorkflowVersionId`。 |
 | 调试允许运行草稿 | 草稿可用于页面调试，但不能作为正式 API 调用版本。 |
 | 运行记录绑定版本 | AgentRun 必须保存 `workflowVersionId`。 |
+| 调试运行先固化定义 | 调试运行如果基于草稿发起，系统必须先固化本次运行对应的不可变工作流定义，再写入 AgentRun；后续草稿编辑不得影响历史运行。 |
 
 ## 8. 发布流程
 

@@ -15,8 +15,8 @@ SchemaDefinition 是平台唯一跨层结构契约。前端表单、工作流节
 | jsonSchema | 完整 JSON Schema 内容 |
 | javaType | 可选 Java 类型全限定名 |
 | createdFrom | USER_CREATED、JAVA_METHOD_SCAN、TOOL_DEFINITION、SYSTEM_BUILTIN、AGENT_INPUT、AGENT_OUTPUT |
-| status | DRAFT、LOCKED、ARCHIVED |
-| locked | 是否被发布工作流引用并锁定 |
+| status | DRAFT、ACTIVE、ARCHIVED |
+| locked | 是否被发布工作流引用并锁定，由系统根据发布引用关系派生 |
 
 ## 3. 版本规则
 
@@ -24,6 +24,9 @@ SchemaDefinition 是平台唯一跨层结构契约。前端表单、工作流节
 - Schema 结构变更创建新版本。
 - Schema 版本号使用整数递增，从 1 开始。
 - 同一 schemaKey 下 version 唯一。
+- `status` 只表达生命周期：DRAFT 表示草稿，ACTIVE 表示可引用的正式版本，ARCHIVED 表示归档版本。
+- `locked` 只表达是否被已发布工作流引用锁定，不允许人工接口直接改写。
+- 只有 `status=DRAFT` 且 `locked=false` 的 Schema 版本允许更新结构。
 - 草稿工作流可以切换到新 Schema 版本。
 - 历史运行记录必须能追溯当时使用的 Schema 版本。
 - Java POJO 不作为跨层契约，只在执行边界使用。

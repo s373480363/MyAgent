@@ -130,7 +130,8 @@ EvalRun 是一次验收执行。
 - 复制节点输入为用例输入。
 - 复制节点输出为参考答案。
 - 用户补充断言规则。
-- 状态默认为 AI_DRAFT_PENDING 或待确认状态。
+- 状态统一默认为 `AI_DRAFT_PENDING`。
+- 自动生成的 EvalCase 必须记录来源信息：`agentRunId`、`nodeRunId`、`workflowVersionId`、`nodeId`。
 - 用户确认后才进入正式验收集。
 
 ## 10. AI 辅助边界

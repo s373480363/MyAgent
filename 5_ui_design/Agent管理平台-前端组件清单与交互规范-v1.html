@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent 管理平台 - 前端组件清单与交互规范 v1</title>
+  <style>
+    :root {
+      --bg: #f3efe7;
+      --bg-alt: #edf2f8;
+      --surface: rgba(255, 255, 255, 0.9);
+      --surface-strong: #ffffff;
+      --surface-dark: #0c1422;
+      --surface-dark-2: #111c2f;
+      --text: #132338;
+      --text-strong: #09121f;
+      --muted: #5d6b7d;
+      --line: rgba(19, 35, 56, 0.12);
+      --line-strong: rgba(19, 35, 56, 0.18);
+      --primary: #176bff;
+      --primary-2: #17c6c8;
+      --accent: #f5a038;
+      --success: #1f9d57;
+      --warning: #d67b08;
+      --danger: #e35757;
+      --shadow-lg: 0 28px 68px rgba(10, 21, 38, 0.14);
+      --shadow-md: 0 18px 38px rgba(10, 21, 38, 0.10);
+      --shadow-sm: 0 8px 18px rgba(10, 21, 38, 0.07);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --container: 1520px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", sans-serif;
+      background:
+        radial-gradient(circle at 10% 8%, rgba(23, 107, 255, 0.10), transparent 22%),
+        radial-gradient(circle at 88% 16%, rgba(23, 198, 200, 0.11), transparent 24%),
+        radial-gradient(circle at 78% 82%, rgba(245, 160, 56, 0.08), transparent 18%),
+        linear-gradient(180deg, #faf8f3 0%, var(--bg) 40%, var(--bg-alt) 100%);
+      line-height: 1.75;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(19, 35, 56, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(19, 35, 56, 0.025) 1px, transparent 1px);
+      background-size: 30px 30px;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.2), transparent 58%);
+      z-index: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: rgba(23, 107, 255, 0.08);
+      color: #0f4fc0;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.92em;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(var(--container), calc(100vw - 40px));
+      margin: 24px auto 54px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 34px;
+      border-radius: 34px;
+      color: #fff;
+      background: linear-gradient(140deg, rgba(10, 19, 32, 0.98) 0%, rgba(15, 31, 53, 0.96) 48%, rgba(10, 16, 28, 0.98) 100%);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(10px);
+      pointer-events: none;
+    }
+
+    .hero::before {
+      left: -100px;
+      top: -130px;
+      width: 330px;
+      height: 330px;
+      background: radial-gradient(circle, rgba(23, 198, 200, 0.24), transparent 64%);
+    }
+
+    .hero::after {
+      right: -90px;
+      bottom: -110px;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(245, 160, 56, 0.22), transparent 66%);
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    h1 {
+      margin: 18px 0 14px;
+      font-family: "Source Han Serif SC", "Songti SC", "Noto Serif SC", serif;
+      font-size: clamp(40px, 5.1vw, 68px);
+      line-height: 1.02;
+      letter-spacing: 0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 17px;
+      line-height: 1.95;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 0 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .pill-blue {
+      color: #d7e6ff;
+      background: rgba(23, 107, 255, 0.14);
+      border-color: rgba(23, 107, 255, 0.26);
+    }
+
+    .pill-cyan {
+      color: #cbfffb;
+      background: rgba(23, 198, 200, 0.14);
+      border-color: rgba(23, 198, 200, 0.24);
+    }
+
+    .pill-amber {
+      color: #ffe7c4;
+      background: rgba(245, 160, 56, 0.14);
+      border-color: rgba(245, 160, 56, 0.24);
+    }
+
+    .hero-aside {
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero-card {
+      padding: 20px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      color: #fff;
+    }
+
+    .hero-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 14px;
+    }
+
+    .hero-card li + li {
+      margin-top: 6px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 24px;
+      margin-top: 24px;
+      align-items: start;
+    }
+
+    .toc {
+      position: sticky;
+      top: 24px;
+      padding: 20px;
+      border-radius: var(--radius-xl);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(14px);
+    }
+
+    .toc h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      color: var(--text-strong);
+    }
+
+    .toc nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .toc a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 40px;
+      padding: 0 12px;
+      border-radius: 14px;
+      color: var(--muted);
+      transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .toc a:hover {
+      background: rgba(23, 107, 255, 0.08);
+      color: var(--text);
+      transform: translateX(2px);
+    }
+
+    .toc a span {
+      font-size: 12px;
+      color: rgba(19, 35, 56, 0.45);
+    }
+
+    .main {
+      display: grid;
+      gap: 20px;
+    }
+
+    .section {
+      padding: 26px;
+      border-radius: var(--radius-xl);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(14px);
+    }
+
+    .section h2 {
+      margin: 0 0 10px;
+      color: var(--text-strong);
+      font-family: "Source Han Serif SC", "Songti SC", "Noto Serif SC", serif;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .section > .lead {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .section h3 {
+      margin: 0 0 12px;
+      font-size: 19px;
+      line-height: 1.35;
+      color: var(--text-strong);
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+      padding: 20px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(247, 250, 255, 0.96) 100%);
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 22px rgba(10, 21, 38, 0.05);
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      opacity: 0.72;
+      background: linear-gradient(90deg, var(--primary), var(--primary-2), var(--accent));
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.85;
+    }
+
+    .card ul {
+      margin: 12px 0 0;
+      padding-left: 18px;
+    }
+
+    .card li + li {
+      margin-top: 6px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      min-width: 920px;
+    }
+
+    th,
+    td {
+      padding: 14px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    th {
+      background: rgba(23, 107, 255, 0.06);
+      color: var(--text-strong);
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      background: rgba(23, 107, 255, 0.08);
+      border: 1px solid rgba(23, 107, 255, 0.14);
+    }
+
+    .chip.success {
+      color: #17653b;
+      background: rgba(31, 157, 87, 0.10);
+      border-color: rgba(31, 157, 87, 0.18);
+    }
+
+    .chip.warning {
+      color: #8c4d04;
+      background: rgba(214, 123, 8, 0.10);
+      border-color: rgba(214, 123, 8, 0.18);
+    }
+
+    .chip.danger {
+      color: #a33434;
+      background: rgba(227, 87, 87, 0.10);
+      border-color: rgba(227, 87, 87, 0.18);
+    }
+
+    .process {
+      display: grid;
+      gap: 12px;
+    }
+
+    .process-item {
+      display: grid;
+      grid-template-columns: 14px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .process-item .dot {
+      width: 14px;
+      height: 14px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 0 0 4px rgba(23, 107, 255, 0.08);
+    }
+
+    .process-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text-strong);
+      font-size: 15px;
+    }
+
+    .process-item p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .dark-panel {
+      padding: 18px;
+      border-radius: 26px;
+      color: #e4eefc;
+      background:
+        linear-gradient(145deg, #0c1422 0%, #111c2f 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .dark-panel h3 {
+      color: #fff;
+    }
+
+    .dark-panel p,
+    .dark-panel li {
+      color: rgba(228, 238, 252, 0.8);
+    }
+
+    .dark-grid {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr) 300px;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .dark-cell {
+      min-height: 220px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .dark-cell h4 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .dark-cell p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .token-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .token-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .token-list li::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-top: 8px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      flex: 0 0 auto;
+    }
+
+    .callout {
+      padding: 20px;
+      border-radius: 24px;
+      color: #fff;
+      background: linear-gradient(135deg, rgba(23, 107, 255, 0.98) 0%, rgba(23, 198, 200, 0.98) 100%);
+      box-shadow: 0 16px 30px rgba(23, 107, 255, 0.18);
+    }
+
+    .callout h3 {
+      margin: 0 0 10px;
+      color: #fff;
+    }
+
+    .callout p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 14px;
+      line-height: 1.85;
+    }
+
+    .footer-note {
+      margin: 18px 0 0;
+      text-align: center;
+      color: rgba(19, 35, 56, 0.58);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1280px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1080px) {
+      .grid-2,
+      .grid-3,
+      .dark-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100vw - 18px, 100%);
+        margin: 10px auto 30px;
+      }
+
+      .hero,
+      .section,
+      .toc {
+        padding: 18px;
+        border-radius: 22px;
+      }
+
+      h1 {
+        font-size: clamp(34px, 11vw, 50px);
+      }
+
+      .section h2 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">HTML 组件文档 · v1</div>
+          <h1>Agent 管理平台<br />前端组件清单与交互规范</h1>
+          <p>
+            本文档把前端设计方案进一步下沉到可实现层，明确哪些组件应进入共享层，
+            哪些组件应归属业务模块，以及每类组件的状态、交互、错误反馈和复用边界。
+            目标不是罗列控件名，而是建立一套能支撑工作流设计、运行调试、Trace 复盘和节点验收的组件体系。
+          </p>
+          <div class="hero-tags">
+            <span class="pill pill-blue">共享组件优先</span>
+            <span class="pill pill-cyan">业务组件分层</span>
+            <span class="pill pill-amber">交互规则统一</span>
+          </div>
+        </div>
+        <div class="hero-aside">
+          <div class="hero-card">
+            <h3>适用范围</h3>
+            <ul>
+              <li>React 管理台整体壳层</li>
+              <li>工作流设计器与节点配置</li>
+              <li>运行详情、Trace、节点验收</li>
+            </ul>
+          </div>
+          <div class="hero-card">
+            <h3>落地原则</h3>
+            <ul>
+              <li>共性进入 <code>shared/components</code></li>
+              <li>复杂业务组件进入对应 <code>features/*</code></li>
+              <li>中文文案、中文错误、明确状态</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <aside class="toc">
+        <h2>目录</h2>
+        <nav>
+          <a href="#architecture">01 组件分层 <span>Layers</span></a>
+          <a href="#inventory">02 组件清单 <span>Inventory</span></a>
+          <a href="#global">03 全局交互 <span>Global</span></a>
+          <a href="#workflow">04 工作流交互 <span>Workflow</span></a>
+          <a href="#runtime">05 运行与 Trace <span>Runtime</span></a>
+          <a href="#schema">06 Schema 与表单 <span>Schema</span></a>
+          <a href="#eval">07 节点验收 <span>Evals</span></a>
+          <a href="#feedback">08 反馈与异常 <span>Feedback</span></a>
+          <a href="#implementation">09 实现建议 <span>Implement</span></a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <section class="section" id="architecture">
+          <h2>组件分层</h2>
+          <p class="lead">组件分层的核心目标是避免共享层沦为杂物间，也避免业务层重复造轮子。所有组件先判断是否跨模块复用，再决定归属。</p>
+
+          <div class="grid-3">
+            <article class="card">
+              <h3>壳层组件</h3>
+              <p>承载全局导航、顶部操作区、页面标题、筛选栏、内容容器，不绑定具体业务字段。</p>
+              <div class="chip-row">
+                <span class="chip">AppShell</span>
+                <span class="chip">SideNav</span>
+                <span class="chip">TopBar</span>
+                <span class="chip">PageHeader</span>
+              </div>
+            </article>
+            <article class="card">
+              <h3>共享基础组件</h3>
+              <p>所有业务模块都可能使用，视觉和交互必须统一，不允许同类控件出现多套行为。</p>
+              <div class="chip-row">
+                <span class="chip">Button</span>
+                <span class="chip">Tag</span>
+                <span class="chip">Card</span>
+                <span class="chip">Table</span>
+                <span class="chip">Drawer</span>
+              </div>
+            </article>
+            <article class="card">
+              <h3>业务场景组件</h3>
+              <p>依赖特定领域模型，例如 NodeDefinition、AgentRun、SchemaDefinition，不进入共享层。</p>
+              <div class="chip-row">
+                <span class="chip warning">WorkflowCanvas</span>
+                <span class="chip warning">TraceTimeline</span>
+                <span class="chip warning">EvalRunSummary</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="callout" style="margin-top: 16px;">
+            <h3>组件归属判定规则</h3>
+            <p>
+              若一个组件的输入输出完全脱离具体业务对象，且至少会在两个以上模块复用，应进入 <code>shared/components</code>。
+              若组件内部直接依赖节点类型、运行状态、Schema 版本、验收状态等业务语义，应进入对应 <code>features/*</code>。
+            </p>
+          </div>
+        </section>
+
+        <section class="section" id="inventory">
+          <h2>组件清单</h2>
+          <p class="lead">组件清单按优先级组织。P0 为首批必须稳定落地的组件，P1 为增强组件，P2 为后续优化组件。</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 16%;">组件名</th>
+                  <th style="width: 12%;">归属建议</th>
+                  <th style="width: 10%;">优先级</th>
+                  <th style="width: 24%;">职责</th>
+                  <th>关键状态与交互</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>AppShell</strong></td>
+                  <td><code>shared/components</code></td>
+                  <td>P0</td>
+                  <td>统一左导航、顶部栏、内容容器、全局反馈入口。</td>
+                  <td>支持导航折叠、当前路由高亮、全局 loading、全局错误提示挂载。</td>
+                </tr>
+                <tr>
+                  <td><strong>PageHeader</strong></td>
+                  <td><code>shared/components</code></td>
+                  <td>P0</td>
+                  <td>页面标题、副标题、版本状态、右侧主操作区。</td>
+                  <td>支持 breadcrumbs、状态标签、主次按钮、次级说明。</td>
+                </tr>
+                <tr>
+                  <td><strong>DataTable</strong></td>
+                  <td><code>shared/components</code></td>
+                  <td>P0</td>
+                  <td>承载 Agent、运行记录、Schema、方法、工具、验收集等列表。</td>
+                  <td>支持 loading、空态、错误态、分页、行内操作、列宽控制。</td>
+                </tr>
+                <tr>
+                  <td><strong>StatusTag</strong></td>
+                  <td><code>shared/components</code></td>
+                  <td>P0</td>
+                  <td>统一展示 Draft、Published、Running、Failed 等状态。</td>
+                  <td>颜色、图标、文案必须固定映射，不允许同状态多种样式。</td>
+                </tr>
+                <tr>
+                  <td><strong>JsonViewer</strong></td>
+                  <td><code>shared/components</code></td>
+                  <td>P0</td>
+                  <td>展示结构化输入输出、Schema、Trace detail。</td>
+                  <td>支持折叠、复制、搜索、长文本滚动、高亮字段路径。</td>
+                </tr>
+                <tr>
+                  <td><strong>SchemaFormRenderer</strong></td>
+                  <td><code>shared/forms</code></td>
+                  <td>P0</td>
+                  <td>基于 JSON Schema 渲染调试输入、配置表单和用例输入。</td>
+                  <td>支持必填、枚举、默认值、数组、对象、字段说明与校验提示。</td>
+                </tr>
+                <tr>
+                  <td><strong>WorkflowCanvas</strong></td>
+                  <td><code>features/workflow</code></td>
+                  <td>P0</td>
+                  <td>封装 React Flow 画布、缩放、拖拽、选中、边连线。</td>
+                  <td>支持未保存状态、错误高亮、运行路径高亮、框选、空白画布操作。</td>
+                </tr>
+                <tr>
+                  <td><strong>NodePalette</strong></td>
+                  <td><code>features/workflow</code></td>
+                  <td>P0</td>
+                  <td>按节点类型展示 START、LLM、CONDITION、JAVA_METHOD 等。</td>
+                  <td>支持搜索、分组、拖拽添加、禁用态说明。</td>
+                </tr>
+                <tr>
+                  <td><strong>NodeConfigPanel</strong></td>
+                  <td><code>features/workflow</code></td>
+                  <td>P0</td>
+                  <td>展示当前节点基础配置、运行配置、高级配置。</td>
+                  <td>切换节点时保留未保存提示；字段按分组折叠；错误字段即时定位。</td>
+                </tr>
+                <tr>
+                  <td><strong>EdgeConfigPanel</strong></td>
+                  <td><code>features/workflow</code></td>
+                  <td>P1</td>
+                  <td>编辑条件边、默认边、结束边说明与规则。</td>
+                  <td>CONDITION 边缺失默认分支时给出显性错误。</td>
+                </tr>
+                <tr>
+                  <td><strong>ValidationSummaryDrawer</strong></td>
+                  <td><code>features/workflow</code></td>
+                  <td>P0</td>
+                  <td>汇总发布校验和草稿校验结果。</td>
+                  <td>点击错误项直接定位到对应节点或边，并同步打开配置面板。</td>
+                </tr>
+                <tr>
+                  <td><strong>RunInputPanel</strong></td>
+                  <td><code>features/runs</code></td>
+                  <td>P0</td>
+                  <td>承载调试输入、运行版本选择、运行模式提示。</td>
+                  <td>支持 Schema 表单、原始 JSON 切换、版本标签与运行按钮禁用控制。</td>
+                </tr>
+                <tr>
+                  <td><strong>RunResultPanel</strong></td>
+                  <td><code>features/runs</code></td>
+                  <td>P0</td>
+                  <td>展示最终输出、错误摘要、耗时、runId。</td>
+                  <td>成功时突出最终结果，失败时突出错误摘要与详情入口。</td>
+                </tr>
+                <tr>
+                  <td><strong>NodeRunList</strong></td>
+                  <td><code>features/runs</code></td>
+                  <td>P0</td>
+                  <td>展示本次运行经过的节点序列。</td>
+                  <td>支持节点选中、失败节点高亮、按执行时间顺序展示。</td>
+                </tr>
+                <tr>
+                  <td><strong>TraceTimeline</strong></td>
+                  <td><code>features/runs</code></td>
+                  <td>P0</td>
+                  <td>展示 MODEL_REQUEST、SCHEMA_VALIDATION、NODE_ERROR 等事件。</td>
+                  <td>摘要默认展开，detail 按需查看；支持按事件类型筛选。</td>
+                </tr>
+                <tr>
+                  <td><strong>SchemaEditor</strong></td>
+                  <td><code>features/schemas</code></td>
+                  <td>P1</td>
+                  <td>用于维护 JSON Schema、版本信息和来源说明。</td>
+                  <td>锁定版本只读；切换版本需显式提示；保存前校验 JSON 合法性。</td>
+                </tr>
+                <tr>
+                  <td><strong>EvalSuitePanel</strong></td>
+                  <td><code>features/evals</code></td>
+                  <td>P0</td>
+                  <td>展示验收集目标、阈值、状态、绑定节点。</td>
+                  <td>只有 CONFIRMED 状态允许发起正式运行。</td>
+                </tr>
+                <tr>
+                  <td><strong>EvalCaseEditor</strong></td>
+                  <td><code>features/evals</code></td>
+                  <td>P0</td>
+                  <td>编辑输入、参考答案、断言规则、确认状态。</td>
+                  <td>AI 草稿用例默认显著标识为待确认，不计入正式通过率。</td>
+                </tr>
+                <tr>
+                  <td><strong>EvalRunSummary</strong></td>
+                  <td><code>features/evals</code></td>
+                  <td>P1</td>
+                  <td>展示通过率、失败数、关键失败用例和历史对比。</td>
+                  <td>关键用例失败时即使通过率达标也需显性提示失败。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="global">
+          <h2>全局交互规范</h2>
+          <p class="lead">全局交互要保持一致，用户不能在不同页面里重新学习“保存怎么提示、错误怎么定位、抽屉怎么关闭”。</p>
+
+          <div class="grid-2">
+            <article class="card">
+              <h3>导航与切换</h3>
+              <ul>
+                <li>左侧导航点击后立即高亮当前模块。</li>
+                <li>页面切换时，如果存在未保存内容，先提示再允许离开。</li>
+                <li>相同路由下的标签页切换不刷新整页，只切换局部内容。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>按钮与主操作</h3>
+              <ul>
+                <li>每个页面只允许一个主按钮视觉最强，例如“创建 Agent”“发布工作流”“开始调试”。</li>
+                <li>次级按钮弱化处理，不与主按钮争夺视觉层级。</li>
+                <li>危险动作必须二次确认，确认文案说明后果。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>加载与空态</h3>
+              <ul>
+                <li>首次加载用骨架屏，局部刷新优先用局部 loading。</li>
+                <li>空态必须给出下一步，例如创建、导入、刷新或返回。</li>
+                <li>长耗时接口如调试运行，应展示进度感而不是静止等待。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>焦点与键盘</h3>
+              <ul>
+                <li>所有可交互组件必须有明显焦点态。</li>
+                <li>弹窗、抽屉打开后焦点进入容器内部，关闭时返回触发源。</li>
+                <li>画布与表单区域允许分别定义快捷键，但不得相互冲突。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="workflow">
+          <h2>工作流交互规范</h2>
+          <p class="lead">工作流设计器是前端最复杂区域，交互要优先解决“找节点、配节点、看错误、发版本、跑调试”五个核心问题。</p>
+
+          <div class="dark-panel">
+            <h3>工作流设计器三区交互模型</h3>
+            <div class="dark-grid">
+              <div class="dark-cell">
+                <h4>左：节点库</h4>
+                <p>支持搜索、分组、拖拽、点击添加。节点卡片需说明节点职责，避免用户只看英文类型名。</p>
+              </div>
+              <div class="dark-cell">
+                <h4>中：画布区</h4>
+                <p>支持拖拽、缩放、框选、连线、删除、复制、运行路径高亮、错误节点标记。画布空态应提示从左侧拖入 START 节点开始。</p>
+              </div>
+              <div class="dark-cell">
+                <h4>右：配置区</h4>
+                <p>分为基础配置、运行配置、高级配置。切换节点时，如果当前面板有未提交编辑，先提示保存或放弃。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="process" style="margin-top: 18px;">
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>新增节点</strong>
+                <p>用户拖入节点后，系统自动生成默认名称和占位配置，并立即选中该节点打开配置面板。画布中心附近优先落点，避免节点落在可视区外。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>节点选中</strong>
+                <p>选中态应包含边框高亮、阴影抬升和右侧配置同步切换。多选时右侧面板不展示复杂配置，只显示批量操作或数量说明。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>边与条件编辑</strong>
+                <p>点击边后展示边配置。CONDITION 节点的默认分支必须能被直观看见，若缺失默认分支，节点本体、边列表和顶部校验摘要同时提示。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>保存与发布</strong>
+                <p>保存草稿只反馈“已保存”与草稿更新时间；发布动作必须先执行校验。校验失败时打开错误汇总抽屉，点击任一错误项直接定位节点或边。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>JSON 视图</strong>
+                <p>JSON 视图作为辅助视图，不抢主编辑入口。打开后应支持只读查看、复制、搜索和回到画布，不允许绕开受控配置直接写入危险字段。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top: 16px;">
+            <article class="card">
+              <h3>节点视觉规则</h3>
+              <ul class="token-list">
+                <li>START、END 使用更明确的入口/出口视觉，不与普通节点混同。</li>
+                <li>LLM、REVIEW、SUMMARY 属于 LLM 类节点，可共享一组视觉家族。</li>
+                <li>JAVA_METHOD、TOOL、EXTERNAL_AGENT、AGENT_CALL 要能看出“调用外部能力”的差异。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>画布错误规则</h3>
+              <ul class="token-list">
+                <li>错误节点右上角显示危险角标。</li>
+                <li>hover 错误节点时展示简短错误摘要。</li>
+                <li>严重错误优先在顶部与右侧面板重复提示，避免只在节点上出现一次。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="runtime">
+          <h2>运行与 Trace 交互规范</h2>
+          <p class="lead">运行调试页与运行详情页的首要任务是解释“这次执行发生了什么”，因此结果与过程必须同时可见，但主次要清楚。</p>
+
+          <div class="grid-3">
+            <article class="card">
+              <h3>调试输入区</h3>
+              <p>默认使用 <code>SchemaFormRenderer</code>，支持切换到原始 JSON。顶部始终展示当前运行版本、运行类型和默认超时。</p>
+            </article>
+            <article class="card">
+              <h3>最终结果区</h3>
+              <p>结果优先于日志。成功时突出最终输出，失败时突出错误摘要、错误节点和跳转运行详情入口。</p>
+            </article>
+            <article class="card">
+              <h3>过程追踪区</h3>
+              <p>使用“节点序列 + 节点详情 + Trace 时间线”三段式结构，不把所有事件塞成一栏长日志。</p>
+            </article>
+          </div>
+
+          <div class="process" style="margin-top: 18px;">
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>开始运行</strong>
+                <p>点击运行后，按钮进入 loading，输入区转为只读，页面展示 <code>runId</code> 占位与运行中的状态脉冲效果。若是调试草稿运行，必须明确显示是基于草稿固化版本执行。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>运行进行中</strong>
+                <p>NodeRun 序列按执行顺序逐步出现，当前节点高亮。若后端仅支持最终返回，也要在前端展示稳定的等待状态，不制造虚假实时日志。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>运行成功</strong>
+                <p>顶部状态切换为 SUCCESS，结果区默认展开最终输出，节点序列停留在 END 节点，Trace 中的 <code>RUN_FINISHED</code> 事件自动滚动到可视区。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>运行失败</strong>
+                <p>失败节点在节点序列中变红高亮，中间详情区自动聚焦该节点，右侧时间线自动定位最近一个 <code>NODE_ERROR</code> 或 <code>SCHEMA_VALIDATION</code> 事件。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin-top: 16px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 16%;">组件</th>
+                  <th style="width: 26%;">默认展开内容</th>
+                  <th style="width: 22%;">收起策略</th>
+                  <th>交互要求</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>NodeRunList</strong></td>
+                  <td>节点名、类型、状态、耗时</td>
+                  <td>不收起，允许纵向滚动</td>
+                  <td>点击节点同步更新中间详情和右侧 Trace 过滤状态。</td>
+                </tr>
+                <tr>
+                  <td><strong>NodeRunDetail</strong></td>
+                  <td>输入、输出、错误、Schema 校验结果</td>
+                  <td>长 JSON 折叠，重要错误默认展开</td>
+                  <td>失败时优先展示错误摘要，其次展示原始数据。</td>
+                </tr>
+                <tr>
+                  <td><strong>TraceTimeline</strong></td>
+                  <td>事件摘要、时间、类型</td>
+                  <td>detail 默认收起</td>
+                  <td>支持按事件类型筛选；AGENT_CALL 事件提供子运行跳转。</td>
+                </tr>
+                <tr>
+                  <td><strong>RunResultPanel</strong></td>
+                  <td>最终输出与 run 基本信息</td>
+                  <td>无</td>
+                  <td>失败时同时显示错误码、中文错误消息和运行详情入口。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="schema">
+          <h2>Schema 与表单交互规范</h2>
+          <p class="lead">Schema 是统一契约，前端不能把 Schema 当成一段原始 JSON 文本随便塞。表单渲染、字段提示、校验反馈必须围绕同一份 SchemaDefinition 工作。</p>
+
+          <div class="grid-2">
+            <article class="card">
+              <h3>SchemaFormRenderer 规则</h3>
+              <ul>
+                <li>对象字段按逻辑分组展示，数组字段支持新增、删除、排序。</li>
+                <li>字段标签显示中文名称或稳定字段名，必要时补充 description。</li>
+                <li>必填项、默认值、枚举项、格式约束必须可视化。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>SchemaRefPicker 规则</h3>
+              <ul>
+                <li>选择器展示 schemaKey、版本号、状态、是否 locked。</li>
+                <li>被已发布工作流锁定的版本只读展示，不允许原地改结构。</li>
+                <li>切换 Schema 版本前提示可能影响的映射与字段。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>MappingEditor 规则</h3>
+              <ul>
+                <li>输入映射和输出映射使用结构化编辑器，不直接暴露脚本输入框。</li>
+                <li>受控 JSONPath 子集要有提示和示例。</li>
+                <li>映射目标字段不存在时立即提示，不等到发布才暴露。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>SchemaEditor 规则</h3>
+              <ul>
+                <li>编辑区与版本信息区分离，避免误把元信息和结构文本混在一起。</li>
+                <li>保存前先校验 JSON 与 JSON Schema 结构。</li>
+                <li>锁定版本进入只读态，编辑按钮不可点击并给出说明。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="eval">
+          <h2>节点验收交互规范</h2>
+          <p class="lead">节点验收不是普通列表页，它需要同时表达对象层级、确认状态、运行结果和失败原因，因此建议使用“三段式”结构：Suite、Case、Run。</p>
+
+          <div class="grid-3">
+            <article class="card">
+              <h3>左侧：EvalSuite 列表</h3>
+              <p>展示名称、绑定节点、状态、通过阈值、最近运行结果。Suite 切换后刷新中间与右侧区域。</p>
+            </article>
+            <article class="card">
+              <h3>中间：EvalCase 编辑</h3>
+              <p>用于编辑输入、参考答案、断言、是否关键用例、确认状态。AI 草稿必须有明显待确认标识。</p>
+            </article>
+            <article class="card">
+              <h3>右侧：EvalRun 结果</h3>
+              <p>展示通过率、失败数、关键失败用例、历史对比曲线和失败原因。</p>
+            </article>
+          </div>
+
+          <div class="process" style="margin-top: 18px;">
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>创建用例</strong>
+                <p>支持手工创建与从 NodeRun 导入。来源于历史 NodeRun 的用例默认标记为 <code>AI_DRAFT_PENDING</code>，并展示来源链路信息。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>确认用例</strong>
+                <p>只有用户创建或用户确认的用例才能计入正式通过率。确认动作应是显式操作，不要在保存时隐式确认。</p>
+              </div>
+            </div>
+            <div class="process-item">
+              <div class="dot"></div>
+              <div>
+                <strong>发起验收运行</strong>
+                <p>若当前 Suite 不是 CONFIRMED，运行按钮禁用并给出原因。运行结束后，失败用例默认优先展示而不是隐藏在二级标签页里。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="feedback">
+          <h2>反馈与异常规范</h2>
+          <p class="lead">反馈规范决定整套系统是否“可控”。同一个问题，页面提示、列表状态、详情信息和操作按钮的反馈不能互相矛盾。</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 16%;">场景</th>
+                  <th style="width: 22%;">反馈组件</th>
+                  <th style="width: 24%;">必须展示的信息</th>
+                  <th>交互要求</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>保存成功</strong></td>
+                  <td>Toast + 页面局部状态</td>
+                  <td>成功文案、更新时间</td>
+                  <td>不要打断用户；工作流页同时清理未保存标识。</td>
+                </tr>
+                <tr>
+                  <td><strong>保存失败</strong></td>
+                  <td>Inline Alert + Toast</td>
+                  <td>中文错误消息、失败原因</td>
+                  <td>保留当前输入，不清空表单。</td>
+                </tr>
+                <tr>
+                  <td><strong>发布校验失败</strong></td>
+                  <td>ValidationSummaryDrawer</td>
+                  <td>节点/边定位、错误摘要、字段提示</td>
+                  <td>点击错误项必须直接定位，不允许用户手动找。</td>
+                </tr>
+                <tr>
+                  <td><strong>运行失败</strong></td>
+                  <td>RunResultPanel + NodeRunDetail</td>
+                  <td>runId、错误码、中文错误消息、失败节点</td>
+                  <td>支持进入运行详情继续排查。</td>
+                </tr>
+                <tr>
+                  <td><strong>Schema 校验失败</strong></td>
+                  <td>Field Error + Detail Panel</td>
+                  <td>字段路径、错误原因、原始摘要</td>
+                  <td>字段错误优先就地提示，同时在详情中保留完整信息。</td>
+                </tr>
+                <tr>
+                  <td><strong>危险操作确认</strong></td>
+                  <td>ConfirmDialog</td>
+                  <td>操作名称、影响范围、不可逆说明</td>
+                  <td>确认按钮使用危险色，文案明确，不用“确定/取消”空泛描述。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid-2" style="margin-top: 16px;">
+            <article class="card">
+              <h3>中文错误文案规则</h3>
+              <ul class="token-list">
+                <li>先写问题，再写修正方向。</li>
+                <li>优先展示后端 <code>error.message</code>，但要补充前端定位信息。</li>
+                <li>避免只有错误码，没有人类可理解说明。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>状态色固定映射</h3>
+              <ul class="token-list">
+                <li>Success 统一绿色，Failed 统一红色，Timeout 偏橙色，Running 使用蓝青色。</li>
+                <li>Draft、Published、History 也应有固定颜色，不因页面不同而变化。</li>
+                <li>状态色只表达状态，不承担品牌装饰。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="implementation">
+          <h2>实现建议</h2>
+          <p class="lead">组件文档最终要服务实现，因此这里给出与现有前端架构一致的落地拆分建议。</p>
+
+          <div class="grid-2">
+            <article class="card">
+              <h3>建议目录拆分</h3>
+              <div class="table-wrap" style="margin-top: 12px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>目录</th>
+                      <th>建议内容</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>src/shared/components</code></td>
+                      <td>Button、StatusTag、PageHeader、DataTable、JsonViewer、Drawer、Dialog、EmptyState、InlineAlert</td>
+                    </tr>
+                    <tr>
+                      <td><code>src/shared/forms</code></td>
+                      <td>SchemaFormRenderer、FieldRenderer、ArrayField、ObjectField、ValidationMessage</td>
+                    </tr>
+                    <tr>
+                      <td><code>src/features/workflow/components</code></td>
+                      <td>WorkflowCanvas、NodePalette、NodeCard、NodeConfigPanel、EdgeConfigPanel、ValidationSummaryDrawer</td>
+                    </tr>
+                    <tr>
+                      <td><code>src/features/runs/components</code></td>
+                      <td>RunInputPanel、RunResultPanel、NodeRunList、NodeRunDetail、TraceTimeline</td>
+                    </tr>
+                    <tr>
+                      <td><code>src/features/evals/components</code></td>
+                      <td>EvalSuitePanel、EvalCaseEditor、EvalRunSummary、EvalHistoryChart</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+            <article class="card">
+              <h3>实现顺序建议</h3>
+              <ul>
+                <li>P0 先做壳层、按钮、标签、表格、JSON 查看器、SchemaFormRenderer。</li>
+                <li>第二步做工作流设计器核心链路：节点库、画布、配置面板、校验抽屉。</li>
+                <li>第三步做运行详情、Trace 和节点验收的复杂组件。</li>
+                <li>图表、历史对比、增强筛选等放到 P1/P2。</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="callout" style="margin-top: 16px;">
+            <h3>收口结论</h3>
+            <p>
+              这套组件体系必须围绕三件事稳定下来：统一状态语义、统一错误反馈、统一编辑与复盘路径。
+              只要这三点稳定，页面再复杂也不会失控；反之，即使界面再华丽，用户也只会感觉难用。
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <p class="footer-note">
+      本文档作为 [Agent管理平台-前端设计方案-v1.html] 的补充，面向前端实现与组件拆分阶段使用。
+    </p>
+  </div>
+</body>
+</html>

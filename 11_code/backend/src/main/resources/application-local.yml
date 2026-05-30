@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: ${MYAGENT_DATASOURCE_URL:jdbc:postgresql://localhost:5432/myagent}
+    username: ${MYAGENT_DATASOURCE_USERNAME:myagent}
+    password: ${MYAGENT_DATASOURCE_PASSWORD:myagent}
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.myagent: INFO
+    org.springframework.ai: INFO

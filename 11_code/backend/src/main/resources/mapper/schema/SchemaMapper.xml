@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.myagent.schema.repository.SchemaMapper">
+
+    <resultMap id="SchemaRecordMap" type="com.myagent.schema.repository.SchemaRecord">
+        <constructor>
+            <idArg column="id" javaType="long"/>
+            <arg column="schema_key" javaType="string"/>
+            <arg column="version" javaType="int"/>
+            <arg column="name" javaType="string"/>
+            <arg column="description" javaType="string"/>
+            <arg column="json_schema" javaType="com.fasterxml.jackson.databind.JsonNode"
+                 typeHandler="com.myagent.common.repository.JsonNodeTypeHandler"/>
+            <arg column="java_type" javaType="string"/>
+            <arg column="created_from" javaType="com.myagent.schema.domain.SchemaCreatedFrom"/>
+            <arg column="status" javaType="com.myagent.schema.domain.SchemaStatus"/>
+            <arg column="locked" javaType="boolean"/>
+            <arg column="created_at" javaType="java.time.Instant" typeHandler="com.myagent.common.repository.InstantTypeHandler"/>
+            <arg column="updated_at" javaType="java.time.Instant" typeHandler="com.myagent.common.repository.InstantTypeHandler"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="SchemaColumns">
+        id,
+        schema_key,
+        version,
+        name,
+        description,
+        json_schema,
+        java_type,
+        created_from,
+        status,
+        locked,
+        created_at,
+        updated_at
+    </sql>
+
+    <sql id="SchemaFilters">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and (
+                    schema_key ilike concat('%', #{keyword}, '%')
+                    or name ilike concat('%', #{keyword}, '%')
+                    or description ilike concat('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="createdFrom != null and createdFrom != ''">
+                and created_from = #{createdFrom}
+            </if>
+        </where>
+    </sql>
+
+    <select id="listSchemas" resultMap="SchemaRecordMap">
+        select
+        <include refid="SchemaColumns"/>
+        from schema_definition
+        <include refid="SchemaFilters"/>
+        order by schema_key asc, version desc, id desc
+        limit #{limit}
+        offset #{offset}
+    </select>
+
+    <select id="countSchemas" resultType="long">
+        select count(*)
+        from schema_definition
+        <include refid="SchemaFilters"/>
+    </select>
+
+    <select id="findById" resultMap="SchemaRecordMap">
+        select
+        <include refid="SchemaColumns"/>
+        from schema_definition
+        where id = #{schemaId}
+    </select>
+
+    <select id="findByKeyAndVersion" resultMap="SchemaRecordMap">
+        select
+        <include refid="SchemaColumns"/>
+        from schema_definition
+        where schema_key = #{schemaKey}
+          and version = #{version}
+    </select>
+
+    <select id="findMaxVersion" resultType="int">
+        select coalesce(max(version), 0)
+        from schema_definition
+        where schema_key = #{schemaKey}
+    </select>
+
+    <insert id="insert">
+        insert into schema_definition(
+            schema_key,
+            version,
+            name,
+            description,
+            json_schema,
+            java_type,
+            created_from,
+            status,
+            locked
+        )
+        values (
+            #{record.schemaKey},
+            #{record.version},
+            #{record.name},
+            #{record.description},
+            #{record.jsonSchema, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+            #{record.javaType},
+            #{record.createdFrom},
+            #{record.status},
+            #{record.locked}
+        )
+    </insert>
+
+    <update id="updateDraft">
+        update schema_definition
+        set name = #{record.name},
+            description = #{record.description},
+            json_schema = #{record.jsonSchema, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+            java_type = #{record.javaType},
+            updated_at = now()
+        where id = #{record.id}
+          and status = 'DRAFT'
+          and locked = false
+    </update>
+
+    <update id="lockSchemaVersion">
+        update schema_definition
+        set status = 'ACTIVE',
+            locked = true,
+            updated_at = now()
+        where id = #{schemaId}
+    </update>
+</mapper>

@@ -1,0 +1,49 @@
+server:
+  port: ${MYAGENT_SERVER_PORT:8080}
+
+spring:
+  application:
+    name: myagent-backend
+  datasource:
+    url: ${MYAGENT_DATASOURCE_URL:jdbc:postgresql://localhost:5432/myagent}
+    username: ${MYAGENT_DATASOURCE_USERNAME:myagent}
+    password: ${MYAGENT_DATASOURCE_PASSWORD:myagent}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      initialization-fail-timeout: 0
+  flyway:
+    enabled: false
+  jackson:
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:dummy-key}
+      chat:
+        options:
+          model: ${MYAGENT_OPENAI_DEFAULT_MODEL:gpt-4.1-mini}
+
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-handlers-package: com.myagent.common.repository
+  configuration:
+    map-underscore-to-camel-case: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+myagent:
+  openai:
+    default-model: ${MYAGENT_OPENAI_DEFAULT_MODEL:gpt-4.1-mini}
+  runtime:
+    default-timeout-seconds: ${MYAGENT_RUNTIME_DEFAULT_TIMEOUT_SECONDS:120}

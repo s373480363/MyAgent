@@ -1,0 +1,108 @@
+:root {
+  color: #0f172a;
+  background: #f5f7fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: #f5f7fb;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: #f5f7fb;
+}
+
+.app-sider {
+  border-inline-end: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 16px 12px;
+}
+
+.brand-panel {
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.brand-kicker,
+.header-label {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-title.ant-typography,
+.header-title.ant-typography {
+  margin: 6px 0 0;
+}
+
+.brand-desc.ant-typography,
+.muted-text.ant-typography {
+  color: #475569;
+  margin-bottom: 0;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  height: auto;
+  padding: 20px 24px 8px;
+  background: transparent;
+}
+
+.app-content {
+  padding: 12px 24px 24px;
+}
+
+.page-section {
+  margin-bottom: 8px;
+}
+
+.page-card,
+.metric-card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+}
+
+.page-card,
+.metric-card {
+  background: #ffffff;
+}
+
+.feature-list .ant-list-item {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+@media (max-width: 992px) {
+  .app-sider {
+    display: none;
+  }
+
+  .app-header {
+    padding: 16px 16px 8px;
+  }
+
+  .app-content {
+    padding: 12px 16px 20px;
+  }
+}

@@ -252,8 +252,10 @@ class PostgresMigrationTests {
             Long sourceWorkflowVersionId
     ) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
-                insert into workflow_version(agent_id, version_no, status, source_workflow_version_id)
-                values (?, ?, ?, ?)
+                insert into workflow_version(
+                  agent_id, version_no, status, runtime_options_json, referenced_schema_versions_json, source_workflow_version_id
+                )
+                values (?, ?, ?, '{"timeoutSeconds":600,"maxSteps":30,"maxAgentCallDepth":3}'::jsonb, '[]'::jsonb, ?)
                 returning id
                 """)) {
             statement.setLong(1, agentId);

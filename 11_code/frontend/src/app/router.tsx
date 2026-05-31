@@ -3,6 +3,7 @@ import { App } from "./App";
 import { HomePage } from "../features/home/pages/HomePage";
 import { AgentsPage } from "../features/agents/pages/AgentsPage";
 import { WorkflowPage } from "../features/workflow/pages/WorkflowPage";
+import { DebugPage } from "../features/workflow/pages/DebugPage";
 import { RunsPage } from "../features/runs/pages/RunsPage";
 import { SchemasPage } from "../features/schemas/pages/SchemasPage";
 import { MethodsPage } from "../features/methods/pages/MethodsPage";
@@ -32,7 +33,19 @@ export const router = createBrowserRouter([
         element: <WorkflowPage />
       },
       {
+        path: "agents/:agentId/workflow/versions/:workflowVersionId",
+        element: <WorkflowPage readonly />
+      },
+      {
+        path: "agents/:agentId/debug",
+        element: <DebugPage />
+      },
+      {
         path: "runs",
+        element: <RunsPage />
+      },
+      {
+        path: "runs/:runId",
         element: <RunsPage />
       },
       {
@@ -53,6 +66,10 @@ export const router = createBrowserRouter([
       },
       {
         path: "evals",
+        element: <EvalsPage />
+      },
+      {
+        path: "eval-runs/:evalRunId",
         element: <EvalsPage />
       },
       {

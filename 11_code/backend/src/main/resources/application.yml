@@ -46,4 +46,9 @@ myagent:
   openai:
     default-model: ${MYAGENT_OPENAI_DEFAULT_MODEL:gpt-4.1-mini}
   runtime:
-    default-timeout-seconds: ${MYAGENT_RUNTIME_DEFAULT_TIMEOUT_SECONDS:120}
+    default-agent-timeout-seconds: ${MYAGENT_RUNTIME_DEFAULT_AGENT_TIMEOUT_SECONDS:600}
+    default-llm-timeout-seconds: ${MYAGENT_RUNTIME_DEFAULT_LLM_TIMEOUT_SECONDS:120}
+    default-java-method-timeout-seconds: ${MYAGENT_RUNTIME_DEFAULT_JAVA_METHOD_TIMEOUT_SECONDS:30}
+    default-external-agent-timeout-seconds: ${MYAGENT_RUNTIME_DEFAULT_EXTERNAL_AGENT_TIMEOUT_SECONDS:600}
+    default-max-steps: ${MYAGENT_RUNTIME_DEFAULT_MAX_STEPS:30}
+    default-max-agent-call-depth: ${MYAGENT_RUNTIME_DEFAULT_MAX_AGENT_CALL_DEPTH:3}

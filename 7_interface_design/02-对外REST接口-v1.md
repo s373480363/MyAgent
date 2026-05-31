@@ -69,6 +69,7 @@
 - `agentKey` 必填且唯一。
 - 创建成功后应初始化一个可编辑草稿版本。
 - Agent 创建只负责基础信息，不承载工作流结构。
+- `timeoutSeconds` 和 `maxSteps` 属于 Agent 级默认值；后端在创建初始草稿版本时必须将其物化进 `WorkflowVersion.runtimeOptions`，后续执行不回头读取 Agent 当前值。
 
 ### 2.3 更新 Agent
 
@@ -92,6 +93,7 @@
 
 - `agentKey` 不允许通过此接口修改。
 - 草稿与发布版本指针由工作流接口维护。
+- 更新 Agent 默认值只影响后续新建或重新归一化的草稿版本，不直接改变已持久化 WorkflowVersion 的执行语义。
 
 ### 2.4 启停 Agent
 
@@ -154,6 +156,7 @@
 规则：
 
 - 必须返回 Agent 基础信息、当前草稿版本摘要、当前发布版本摘要和历史版本入口摘要。
+- `timeoutSeconds` 和 `maxSteps` 表示 Agent 级默认值，用于创建或归一化 WorkflowVersion；不是已持久化工作流版本的最终执行真相。
 - 若当前没有草稿版本或发布版本，对应字段返回 `null`。
 - 历史版本的详细列表和详情通过 `workflow-versions` 相关接口查询；本接口必须提供页面进入历史版本能力所需的摘要信息。
 
@@ -164,6 +167,11 @@
 `GET /api/agents/{agentId}/workflow-draft`
 
 返回当前草稿的完整工作流版本对象。
+
+规则：
+
+- 返回体中的 `runtimeOptions` 必须是完整对象 `{ timeoutSeconds, maxSteps, maxAgentCallDepth }`。
+- 返回体中的 `referencedSchemaVersions` 必须是对象数组，每项为 `{ schemaId, schemaKey, version }`。
 
 ### 3.2 保存草稿
 
@@ -177,7 +185,8 @@
   "edges": [],
   "runtimeOptions": {
     "timeoutSeconds": 600,
-    "maxSteps": 30
+    "maxSteps": 30,
+    "maxAgentCallDepth": 3
   }
 }
 ```
@@ -185,6 +194,8 @@
 规则：
 
 - `nodes` 和 `edges` 必须符合节点与边设计。
+- `runtimeOptions` 的正式字段集固定为 `timeoutSeconds`、`maxSteps`、`maxAgentCallDepth`，不允许额外字段。
+- 保存时后端必须把 `runtimeOptions` 归一化为完整对象；执行阶段只读取持久化后的 `WorkflowVersion.runtimeOptions`。
 - 保存草稿不会生成发布版本。
 - 保存后应刷新当前草稿版本指针。
 - 保存草稿必须创建新的不可变 `DRAFT` 版本，不允许覆盖旧草稿内容。
@@ -321,6 +332,8 @@
 
 - 版本详情必须可用于历史回看和运行复盘。
 - 对历史版本返回只读定义，不返回可变画布态。
+- `runtimeOptions` 必须始终返回完整对象 `{ timeoutSeconds, maxSteps, maxAgentCallDepth }`。
+- `referencedSchemaVersions` 必须始终返回对象数组，每项为 `{ schemaId, schemaKey, version }`，不允许字符串列表。
 
 ## 4. 同步运行与调试运行
 
@@ -405,30 +418,120 @@
 
 返回 `PageResponse<RunListItemDto>`。
 
-建议列表项字段：
+正式字段：
 
 - `runId`
 - `agentId`
 - `agentKey`
 - `agentName`
+- `workflowVersionId`
 - `runType`
 - `status`
 - `startedAt`
 - `finishedAt`
 - `durationMs`
 
+规则：
+
+- 未显式传入 `runType` 时，默认只返回 `API`、`DEBUG`、`AGENT_CALL` 三类普通运行。
+- 只有显式传入 `runType=EVAL` 时，才返回节点验收配套的 `AgentRun(runType=EVAL)`。
+- 列表接口只返回摘要字段，不内嵌 `nodeRuns`、`traceEvents` 或大块输入输出全文。
+
 ### 5.2 运行详情
 
 `GET /api/runs/{runId}`
 
-返回建议包含：
+返回 `RunDetailDto`：
 
-- AgentRun 基础信息。
-- NodeRun 列表。
-- TraceEvent 列表。
-- 父子运行关系。
-- 最终输出。
-- 错误信息。
+```json
+{
+  "runId": "run_20260527_000001",
+  "agent": {
+    "agentId": 1,
+    "agentKey": "summary-agent",
+    "agentName": "摘要 Agent"
+  },
+  "workflowVersion": {
+    "workflowVersionId": 12,
+    "versionNo": 2,
+    "status": "PUBLISHED"
+  },
+  "runType": "API",
+  "status": "FAILED",
+  "parentRunId": null,
+  "evalRunId": null,
+  "input": {
+    "question": "请总结这段文本"
+  },
+  "output": null,
+  "error": {
+    "code": "NODE_EXECUTION_FAILED",
+    "message": "节点执行失败。"
+  },
+  "startedAt": "2026-05-27T10:00:00+08:00",
+  "finishedAt": "2026-05-27T10:00:04+08:00",
+  "durationMs": 4260,
+  "childRuns": [
+    {
+      "runId": "run_20260527_000002",
+      "agentId": 2,
+      "agentKey": "review-agent",
+      "agentName": "审核 Agent",
+      "status": "SUCCESS",
+      "startedAt": "2026-05-27T10:00:01+08:00",
+      "finishedAt": "2026-05-27T10:00:03+08:00",
+      "durationMs": 1800
+    }
+  ],
+  "nodeRuns": [
+    {
+      "nodeRunId": 101,
+      "nodeId": "node_1",
+      "nodeName": "摘要节点",
+      "nodeType": "LLM",
+      "status": "FAILED",
+      "input": {
+        "question": "请总结这段文本"
+      },
+      "output": null,
+      "schemaValidationResult": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "$.summary",
+            "message": "字段缺失"
+          }
+        ]
+      },
+      "errorMessage": "模型输出未通过 Schema 校验。",
+      "startedAt": "2026-05-27T10:00:00+08:00",
+      "finishedAt": "2026-05-27T10:00:04+08:00",
+      "durationMs": 4260
+    }
+  ],
+  "traceEvents": [
+    {
+      "traceEventId": 1001,
+      "nodeRunId": 101,
+      "evalRunId": null,
+      "eventType": "MODEL_REQUEST",
+      "summary": "调用模型 gpt-4.1-mini",
+      "detail": {
+        "model": "gpt-4.1-mini"
+      },
+      "eventTime": "2026-05-27T10:00:00+08:00"
+    }
+  ]
+}
+```
+
+规则：
+
+- `RunDetailDto` 是 v1 正式冻结契约，不再保留“由开发自行决定字段层级”的空间。
+- `nodeRuns` 返回全文详情，按 `startedAt asc` 排序，不分页。
+- `traceEvents` 返回全文详情，按 `eventTime asc` 排序，不分页。
+- `childRuns` 只返回子运行摘要，不内嵌子运行的 `nodeRuns` 和 `traceEvents`。
+- 若当前 `runId` 对应 `runType=EVAL`，`evalRunId` 必须返回关联的 `evalRunId`；此时 `nodeRuns` 可以为空，但 `traceEvents` 仍按正式契约返回。
 
 ## 6. Schema 管理
 
@@ -578,6 +681,24 @@
 
 `GET /api/external-agents/{adapterId}`
 
+规则：
+
+- 对 `CUSTOM_HTTP`，`commandJson.headers` 只返回非敏感 header 的明文值。
+- 敏感 header 必须通过独立的元信息数组返回，例如：
+
+```json
+{
+  "secretHeaders": [
+    {
+      "headerName": "Authorization",
+      "secretConfigured": true
+    }
+  ]
+}
+```
+
+- 详情接口不得返回敏感 header 明文，也不得返回可回传的掩码占位值。
+
 ### 7.7 创建外部 Agent
 
 `POST /api/external-agents`
@@ -611,7 +732,8 @@
 - v1 允许用户在平台内新增 `CUSTOM_CLI` 和 `CUSTOM_HTTP` 外部 Agent。
 - 内置的 `CODEX_CLI` 和 `OPENCODE_CLI` 可由系统预置，也允许在页面调整非敏感配置。
 - CLI `arguments` 必须是数组，不允许保存拼接后的 shell 字符串。
-- HTTP headers 中的敏感值不得在普通详情接口明文回显。
+- 对 `CUSTOM_HTTP`，创建请求可选携带只写字段 `secretHeaders`，用于首次写入敏感 header secret。
+- `secretHeaders` 中的 `secretValue` 只写不回显，创建成功后的响应体和详情接口都不得返回该值。
 
 ### 7.8 更新外部 Agent
 
@@ -621,9 +743,40 @@
 
 - 允许更新名称、描述、命令配置、工作目录、超时、采集配置和输出 Schema。
 - 不允许修改 `adapterKey`。
+- 对 `CUSTOM_HTTP`，普通更新接口只更新非敏感 header 和结构化配置，不要求前端重新传递历史 secret。
+- 普通更新接口不得因为请求体中缺少敏感 secret 而把旧值覆盖为空。
 - 已被发布工作流引用的外部 Agent 更新后只影响后续运行，历史运行以 Trace 记录为准。
 
-### 7.9 启停外部 Agent
+### 7.9 更新外部 Agent 敏感 secret
+
+`PUT /api/external-agents/{adapterId}/secrets`
+
+请求体建议：
+
+```json
+{
+  "items": [
+    {
+      "headerName": "Authorization",
+      "secretValue": "Bearer example-token"
+    }
+  ],
+  "clearHeaderNames": [
+    "X-Legacy-Key"
+  ]
+}
+```
+
+规则：
+
+- 该接口用于维护 `CUSTOM_HTTP` 的敏感 header secret，不用于更新普通字段。
+- `items` 中出现的 `headerName` 执行覆盖写入。
+- `clearHeaderNames` 中出现的 `headerName` 执行显式清空，并移除对应敏感 header 定义。
+- 未出现在 `items` 或 `clearHeaderNames` 中的敏感 secret 保持原值不变。
+- `secretValue` 只写不回显；后续详情接口只返回 `headerName` 和 `secretConfigured`。
+- 敏感 header 重命名按“清空旧 header + 写入新 header”处理，不提供隐式迁移。
+
+### 7.10 启停外部 Agent
 
 `PUT /api/external-agents/{adapterId}/status`
 
@@ -635,7 +788,7 @@
 }
 ```
 
-### 7.10 测试外部 Agent
+### 7.11 测试外部 Agent
 
 `POST /api/external-agents/{adapterId}/test`
 
@@ -651,6 +804,7 @@
 规则：
 
 - 测试连接不创建正式 AgentRun。
+- 对 `CUSTOM_HTTP`，如果存在未配置 secret 的敏感 header，必须在真正发起 HTTP 请求前失败，并返回明确配置错误。
 - 测试结果应返回适配器状态、退出码或 HTTP 状态、stdout/stderr 摘要、输出摘要和耗时。
 - 测试失败必须返回中文错误摘要。
 
@@ -737,22 +891,29 @@
 }
 ```
 
-返回建议包含：
+返回：
 
-- `evalRunId`
-- `suiteId`
-- `status`
-- `passRate`
-- `totalCaseCount`
-- `passedCaseCount`
-- `failedCaseCount`
-- `summary`
+```json
+{
+  "evalRunId": "eval_20260527_000001",
+  "runId": "run_20260527_000010",
+  "suiteId": 201,
+  "status": "FAILED",
+  "passRate": 66.67,
+  "totalCaseCount": 3,
+  "passedCaseCount": 2,
+  "failedCaseCount": 1,
+  "summary": "存在 1 条关键用例失败"
+}
+```
 
 说明：
 
 - 未确认用例默认不计入正式通过率。
 - 关键用例失败时应使验收结果明确失败。
 - `evalRunId` 是对外验收运行标识，对应数据库 `eval_run.run_no`，不是数据库自增主键。
+- `runId` 是本次验收同步创建的 `AgentRun(runType=EVAL)` 的对外运行标识，对应数据库 `agent_run.run_no`。
+- 每次正式验收运行都必须同步创建 `AgentRun(runType=EVAL)`，并写入 `eval_run.agent_run_id`。
 - 只有 `status=CONFIRMED` 的验收套件可以执行正式验收。
 
 ### 8.7 查询验收用例
@@ -868,9 +1029,10 @@
 
 返回 `PageResponse<EvalRunListItemDto>`。
 
-建议列表项字段：
+正式字段：
 
 - `evalRunId`
+- `runId`
 - `suiteId`
 - `workflowVersionId`
 - `nodeId`
@@ -880,19 +1042,83 @@
 - `passedCaseCount`
 - `failedCaseCount`
 - `startedAt`
+- `finishedAt`
 - `durationMs`
+
+规则：
+
+- 列表接口只返回验收运行摘要，不内嵌结果明细。
+- `runId` 用于从验收详情跳转到统一运行时间线。
 
 ### 8.15 查询验收运行详情
 
 `GET /api/eval-runs/{evalRunId}`
 
-返回建议包含：
+返回 `EvalRunDetailDto`：
 
-- EvalRun 基础信息。
-- 绑定的 `workflowVersionId`、`nodeId`、`runId`。
-- 通过率汇总。
-- 关键失败原因摘要。
-- 历史对比摘要。
+```json
+{
+  "evalRunId": "eval_20260527_000001",
+  "runId": "run_20260527_000010",
+  "suite": {
+    "suiteId": 201,
+    "name": "摘要节点回归集"
+  },
+  "agent": {
+    "agentId": 1,
+    "agentKey": "summary-agent",
+    "agentName": "摘要 Agent"
+  },
+  "workflowVersion": {
+    "workflowVersionId": 12,
+    "versionNo": 2
+  },
+  "node": {
+    "nodeId": "node_1",
+    "nodeName": "摘要节点",
+    "nodeType": "LLM"
+  },
+  "status": "FAILED",
+  "passThreshold": 80,
+  "passRate": 66.67,
+  "totalCaseCount": 3,
+  "passedCaseCount": 2,
+  "failedCaseCount": 1,
+  "criticalFailedCaseCount": 1,
+  "summary": "存在 1 条关键用例失败",
+  "error": {
+    "code": "EVAL_ASSERTION_FAILED",
+    "message": "存在关键用例失败。"
+  },
+  "startedAt": "2026-05-27T10:00:00+08:00",
+  "finishedAt": "2026-05-27T10:00:04+08:00",
+  "durationMs": 4260,
+  "historyComparison": {
+    "previousEvalRunId": "eval_20260520_000003",
+    "previousRunId": "run_20260520_000021",
+    "previousPassRate": 100,
+    "passRateDelta": -33.33,
+    "passedCaseCountDelta": -1,
+    "failedCaseCountDelta": 1
+  },
+  "failureSummary": [
+    {
+      "caseId": 101,
+      "caseNo": "case_001",
+      "title": "普通摘要输入",
+      "critical": true,
+      "reason": "$.summary 字段缺失"
+    }
+  ]
+}
+```
+
+规则：
+
+- `EvalRunDetailDto` 是 v1 正式冻结契约。
+- 详情接口返回汇总、失败摘要和历史对比摘要，不内嵌完整结果明细列表。
+- 结果明细统一通过 `GET /api/eval-runs/{evalRunId}/results` 查询。
+- `runId` 必须始终返回，用于统一 Trace 页面跳转和排障。
 
 ### 8.16 查询验收运行结果明细
 
@@ -906,26 +1132,85 @@
 - `critical`
 - `keyword`
 
-返回建议包含：
+返回 `PageResponse<EvalRunResultItemDto>`：
 
-- `caseId`
-- `title`
-- `passed`
-- `critical`
-- `output`
-- `assertionResults`
-- `scoreResult`
-- `errorMessage`
+```json
+{
+  "items": [
+    {
+      "caseId": 101,
+      "caseNo": "case_001",
+      "title": "普通摘要输入",
+      "confirmStatus": "USER_CONFIRMED",
+      "critical": true,
+      "passed": false,
+      "input": {
+        "question": "请总结这段文本"
+      },
+      "referenceAnswer": {
+        "summary": "参考摘要"
+      },
+      "output": null,
+      "assertionResults": [
+        {
+          "type": "JSON_PATH_EXISTS",
+          "passed": false,
+          "message": "$.summary 字段缺失"
+        }
+      ],
+      "scoreResult": null,
+      "errorMessage": "模型输出未通过断言。",
+      "durationMs": 1280
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 1
+}
+```
+
+规则：
+
+- 结果明细是分页接口。
+- 每条结果项返回完整排障所需字段，前端不得再回表拼接用例输入、参考答案或断言结果。
 
 ### 8.17 查询验收历史对比
 
 `GET /api/eval-suites/{suiteId}/run-history`
 
-返回建议包含：
+返回 `PageResponse<EvalRunHistoryItemDto>`：
 
-- 历史 EvalRun 列表。
-- 每次运行的通过率、通过数、失败数。
-- 最近一次与上一次的通过率变化。
+```json
+{
+  "items": [
+    {
+      "evalRunId": "eval_20260527_000001",
+      "runId": "run_20260527_000010",
+      "status": "FAILED",
+      "passRate": 66.67,
+      "totalCaseCount": 3,
+      "passedCaseCount": 2,
+      "failedCaseCount": 1,
+      "criticalFailedCaseCount": 1,
+      "startedAt": "2026-05-27T10:00:00+08:00",
+      "finishedAt": "2026-05-27T10:00:04+08:00",
+      "durationMs": 4260,
+      "passRateDeltaFromPrevious": -33.33,
+      "passedCaseCountDeltaFromPrevious": -1,
+      "failedCaseCountDeltaFromPrevious": 1
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 1
+}
+```
+
+规则：
+
+- 历史对比接口是分页接口。
+- 结果按 `startedAt desc` 排序。
+- 每条历史项直接携带相对上一条运行的差异值，前端不得再自行推导第二套比较逻辑。
 
 ## 9. 系统设置
 
@@ -933,7 +1218,29 @@
 
 `GET /api/settings`
 
-返回建议为 key-value 列表。
+返回建议为 key-value 列表，例如：
+
+```json
+{
+  "items": [
+    {
+      "settingKey": "myagent.openai.default-model",
+      "settingValue": "gpt-4.1-mini",
+      "valueType": "STRING",
+      "editable": true,
+      "description": "默认模型",
+      "source": "SYSTEM_SETTING"
+    }
+  ]
+}
+```
+
+规则：
+
+- 只返回 v1 白名单中的 7 个设置键。
+- `source` 只能是 `SYSTEM_SETTING` 或 `APPLICATION_CONFIG`。
+- `settingValue` 表示当前生效值，不要求调用方自行再做优先级合并。
+- `myagent.openai.api-key` 和 `myagent.trace.persist-full-model-content` 不通过该接口返回。
 
 ### 9.2 更新设置
 
@@ -955,9 +1262,19 @@
 
 规则：
 
+- 只允许更新以下白名单键：
+  - `myagent.openai.default-model`
+  - `myagent.runtime.default-agent-timeout-seconds`
+  - `myagent.runtime.default-llm-timeout-seconds`
+  - `myagent.runtime.default-java-method-timeout-seconds`
+  - `myagent.runtime.default-external-agent-timeout-seconds`
+  - `myagent.runtime.default-max-steps`
+  - `myagent.runtime.default-max-agent-call-depth`
 - 只能更新可编辑配置。
 - 值类型必须与声明类型一致。
 - 不可编辑项必须返回明确错误。
+- `myagent.runtime.default-timeout-seconds` 不是 v1 合法设置键，必须拒绝写入。
+- `myagent.openai.api-key` 和 `myagent.trace.persist-full-model-content` 不属于该接口可编辑范围。
 
 ## 10. REST 设计结论
 

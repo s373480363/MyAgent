@@ -10,36 +10,35 @@ export function HomePage() {
       <div className="page-section">
         <Typography.Title level={2}>MyAgent 管理台</Typography.Title>
         <Typography.Paragraph className="muted-text">
-          当前页面用于验证全局布局、基础路由、模块入口和公共组件骨架。后续步骤会在此基础上继续接入真实接口、表格、表单和工作流设计器。
+          从这里进入 Agent 设计、运行回溯、节点验收和平台主数据维护。页面均基于后端 OpenAPI 契约和统一运行语义构建。
         </Typography.Paragraph>
       </div>
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Card className="metric-card">
-            <Statistic title="当前阶段" value="步骤 01" />
+            <Statistic title="V1 能力域" value={9} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card className="metric-card">
-            <Statistic title="后续页面入口" value={9} />
+            <Statistic title="运行 ID 口径" value="已统一" />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card className="metric-card">
-            <Statistic title="公共基线" value="已接入" />
+            <Statistic title="OpenAPI 类型" value="已接入" />
           </Card>
         </Col>
       </Row>
       <FeatureIntroCard
-        title="本步交付内容"
-        description="前端工程骨架优先承接全局布局、模块入口和公共组件，不在第 01 步提前引入业务语义或复杂视觉包装。"
+        title="控制台入口"
+        description="侧边导航覆盖完整 V1 的配置、设计、运行、追踪和验收入口，便于按业务链路排查和回看。"
         bullets={[
-          "React + TypeScript + Vite 工程可独立启动",
-          "全局路由和侧边导航已接通",
-          "TanStack Query 与 Ant Design 已接入",
-          "后续各功能目录已预留",
-          "统一 HTTP Client 已准备",
-          "基础页面状态组件已准备"
+          "Agents：维护 Agent 基础信息、启停、草稿和历史版本入口",
+          "Workflow：保存草稿、校验、发布和调试运行",
+          "Runs：查看运行摘要、NodeRun、Trace 和绑定版本",
+          "Evals：管理套件、用例、运行结果和历史对比",
+          "Settings：仅展示和更新 V1 白名单配置"
         ]}
       />
     </Space>

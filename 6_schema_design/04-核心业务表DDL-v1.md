@@ -52,7 +52,7 @@ create table workflow_version (
   status varchar(20) not null,
   nodes_json jsonb not null default '[]'::jsonb,
   edges_json jsonb not null default '[]'::jsonb,
-  runtime_options_json jsonb not null default '{}'::jsonb,
+  runtime_options_json jsonb not null,
   referenced_schema_versions_json jsonb not null default '[]'::jsonb,
   source_workflow_version_id bigint,
   published_at timestamptz,
@@ -85,8 +85,31 @@ create unique index uq_workflow_version_one_published
 
 - `nodes_json` 保存 NodeDefinition 数组。
 - `edges_json` 保存 EdgeDefinition 数组。
-- `runtime_options_json` 保存最大步数、默认超时和运行级开关。
-- `referenced_schema_versions_json` 保存引用的 `schema_key + version` 列表或对象列表。
+- `runtime_options_json` 保存完整运行约束快照，正式结构固定为：
+
+```json
+{
+  "timeoutSeconds": 600,
+  "maxSteps": 30,
+  "maxAgentCallDepth": 3
+}
+```
+
+- `runtime_options_json` 是已持久化 WorkflowVersion 的运行时事实来源；执行时不得再回头读取 Agent 当前主数据重算总超时或最大步数。
+- `runtime_options_json` 不使用数据库默认空对象；应用层必须在写入 WorkflowVersion 时显式持久化完整对象。
+- `referenced_schema_versions_json` 保存引用的 Schema 版本对象数组，正式结构固定为：
+
+```json
+[
+  {
+    "schemaId": 12,
+    "schemaKey": "summary-output",
+    "version": 3
+  }
+]
+```
+
+- `referenced_schema_versions_json` 由后端派生、去重并稳定排序，不允许同时支持字符串列表和对象列表。
 - 每个 Agent 最多一个 `DRAFT`，由 `agent_definition.current_draft_workflow_version_id` 指向。
 - 每个 Agent 最多一个 `PUBLISHED`，由 `agent_definition.current_published_workflow_version_id` 指向。
 - `version_no` 是工作流定义序号，草稿、发布和历史版本共享同一递增序列；同一 Agent 下不得重复。

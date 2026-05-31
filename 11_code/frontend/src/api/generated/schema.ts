@@ -4,6 +4,30 @@
  */
 
 export interface paths {
+    "/api/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询系统设置
+         * @description 只返回 V1 白名单中的 7 个系统设置项。
+         */
+        get: operations["getSettings"];
+        /**
+         * 批量更新系统设置
+         * @description 仅允许更新 V1 白名单中的可编辑设置项。
+         */
+        put: operations["updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/schemas/{schemaId}": {
         parameters: {
             query?: never;
@@ -21,6 +45,241 @@ export interface paths {
          * @description 仅允许更新 status=DRAFT 且 locked=false 的 Schema。
          */
         put: operations["updateSchemaDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-agents/{adapterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询外部 Agent 详情
+         * @description 查询外部 Agent 详情并按规则脱敏敏感 header。
+         */
+        get: operations["getExternalAgent"];
+        /**
+         * 更新外部 Agent
+         * @description 只更新非敏感字段和敏感 header 定义，不更新 secret 值。
+         */
+        put: operations["updateExternalAgent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-agents/{adapterId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 更新外部 Agent 状态
+         * @description 启用或停用外部 Agent。
+         */
+        put: operations["changeExternalAgentStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-agents/{adapterId}/secrets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 更新外部 Agent 敏感 secret
+         * @description 覆盖写入、显式清空并保留未出现的旧 secret。
+         */
+        put: operations["updateExternalAgentSecrets"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 更新验收套件 */
+        put: operations["updateEvalSuite"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 确认验收套件 */
+        put: operations["confirmEvalSuite"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/cases/{caseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询验收用例详情 */
+        get: operations["getEvalCase"];
+        /** 更新验收用例 */
+        put: operations["updateEvalCase"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/cases/{caseId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 确认验收用例 */
+        put: operations["confirmEvalCase"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/cases/{caseId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 归档验收用例 */
+        put: operations["archiveEvalCase"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 归档验收套件 */
+        put: operations["archiveEvalSuite"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询 Agent 详情
+         * @description 查询 Agent 基础信息、当前草稿、当前发布和历史版本入口摘要。
+         */
+        get: operations["getAgentDetail"];
+        /**
+         * 更新 Agent
+         * @description 更新 Agent 基础信息和默认配置。
+         */
+        put: operations["updateAgent"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/workflow-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 获取当前草稿
+         * @description 获取当前 Agent 的完整草稿版本。
+         */
+        get: operations["getWorkflowDraft"];
+        /**
+         * 保存当前草稿
+         * @description 保存当前草稿并生成新的不可变 DRAFT 版本。
+         */
+        put: operations["saveWorkflowDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 修改 Agent 状态
+         * @description 启用或停用 Agent。
+         */
+        put: operations["changeAgentStatus"];
         post?: never;
         delete?: never;
         options?: never;
@@ -72,6 +331,328 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/node-runs/{nodeRunId}/eval-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 从 NodeRun 创建验收用例
+         * @description nodeRunId 必须使用 node_run.id。
+         */
+        post: operations["createEvalCaseFromNodeRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询外部 Agent 列表
+         * @description 按分页、关键词、状态和类型筛选外部 Agent。
+         */
+        get: operations["listExternalAgents"];
+        put?: never;
+        /**
+         * 创建外部 Agent
+         * @description 创建 CUSTOM_CLI 或 CUSTOM_HTTP 外部 Agent。
+         */
+        post: operations["createExternalAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-agents/{adapterId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 测试外部 Agent
+         * @description 发起轻量测试，不创建正式 AgentRun。
+         */
+        post: operations["testExternalAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询验收套件列表 */
+        get: operations["listEvalSuites"];
+        put?: never;
+        /** 创建验收套件 */
+        post: operations["createEvalSuite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询验收运行列表 */
+        get: operations["listEvalRuns"];
+        put?: never;
+        /** 运行验收套件 */
+        post: operations["runEvalSuite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询验收用例列表 */
+        get: operations["listEvalCases"];
+        put?: never;
+        /** 创建验收用例 */
+        post: operations["createEvalCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询 Agent 列表
+         * @description 按分页、状态和关键词查询 Agent。
+         */
+        get: operations["listAgents"];
+        put?: never;
+        /**
+         * 创建 Agent
+         * @description 创建 Agent 基础信息并初始化首个草稿版本。
+         */
+        post: operations["createAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentKey}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 正式运行 Agent
+         * @description 同步运行 Agent 当前发布版本。
+         */
+        post: operations["runPublishedAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/workflow-draft/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 校验当前草稿
+         * @description 按完整发布规则校验当前草稿。
+         */
+        post: operations["validateWorkflowDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/workflow-draft/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 发布当前草稿
+         * @description 校验通过后发布当前草稿，生成新的不可变 PUBLISHED 版本。
+         */
+        post: operations["publishWorkflowDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/workflow-draft/copy-from-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 从已有版本复制生成新草稿
+         * @description 显式从历史版本或已持久化版本复制生成新的草稿版本。
+         */
+        post: operations["copyWorkflowDraftFromVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/debug-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 调试运行 Agent
+         * @description 同步运行 Agent 当前草稿或指定版本。
+         */
+        post: operations["runDebugAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询工具列表
+         * @description 按分页、关键词、状态和执行器类型筛选工具目录。
+         */
+        get: operations["listTools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tools/{toolId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询工具详情
+         * @description 查询单个工具定义详情。
+         */
+        get: operations["getTool"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询运行列表
+         * @description 默认只返回 API、DEBUG、AGENT_CALL，显式 runType=EVAL 时返回验收运行。
+         */
+        get: operations["listRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runs/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询运行详情
+         * @description 返回 RunDetailDto，包含 nodeRuns 和 traceEvents 全文数组。
+         */
+        get: operations["getRunDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ping": {
         parameters: {
             query?: never;
@@ -92,39 +673,149 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/java-methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询 Java 方法列表
+         * @description 按分页、关键词和状态筛选已注册 Java 方法。
+         */
+        get: operations["listJavaMethods"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/java-methods/{methodId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询 Java 方法详情
+         * @description 查询单个已注册 Java 方法详情。
+         */
+        get: operations["getJavaMethod"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-suites/{suiteId}/run-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询验收历史对比 */
+        get: operations["listEvalRunHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-runs/{evalRunId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询验收运行详情 */
+        get: operations["getEvalRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/eval-runs/{evalRunId}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询验收运行结果明细 */
+        get: operations["listEvalRunResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/workflow-versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询工作流版本列表
+         * @description 分页查询当前 Agent 的草稿、发布和历史版本摘要。
+         */
+        get: operations["listWorkflowVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agentId}/workflow-versions/{workflowVersionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询工作流版本详情
+         * @description 查询指定工作流版本的只读快照详情。
+         */
+        get: operations["getWorkflowVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        JsonNode: unknown;
-        /**
-         * @description 更新 Schema 草稿请求。
-         * @default null
-         */
-        UpdateSchemaDraftRequest: {
-            /**
-             * @description 中文名称。
-             * @default
-             * @example 摘要输入
-             */
-            name: string;
-            /**
-             * @description 描述。
-             * @default
-             * @example 摘要 Agent 的输入结构
-             */
-            description?: string;
-            /**
-             * @description JSON Schema 内容。
-             * @default
-             */
-            jsonSchema: components["schemas"]["JsonNode"];
-            /**
-             * @description Java 类型。
-             * @default
-             * @example com.myagent.schema.SummaryInput
-             */
-            javaType?: string;
+        UpdateSettingsItemRequest: {
+            settingKey: string;
+            settingValue: string;
+            /** @enum {string} */
+            valueType: "STRING" | "NUMBER" | "BOOLEAN" | "JSON";
+        };
+        UpdateSettingsRequest: {
+            items: components["schemas"]["UpdateSettingsItemRequest"][];
         };
         /**
          * @description 统一错误对象。
@@ -185,6 +876,67 @@ export interface components {
              * @default
              */
             hint?: string;
+        };
+        SettingItemResult: {
+            settingKey?: string;
+            settingValue?: string;
+            /** @enum {string} */
+            valueType?: "STRING" | "NUMBER" | "BOOLEAN" | "JSON";
+            editable?: boolean;
+            description?: string;
+            /** @enum {string} */
+            source?: "SYSTEM_SETTING" | "APPLICATION_CONFIG";
+        };
+        /**
+         * @description 系统设置列表统一响应。
+         * @default null
+         */
+        SettingsListApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 系统设置列表。
+             * @default
+             */
+            data?: components["schemas"]["SettingItemResult"][];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        JsonNode: unknown;
+        /**
+         * @description 更新 Schema 草稿请求。
+         * @default null
+         */
+        UpdateSchemaDraftRequest: {
+            /**
+             * @description 中文名称。
+             * @default
+             * @example 摘要输入
+             */
+            name: string;
+            /**
+             * @description 描述。
+             * @default
+             * @example 摘要 Agent 的输入结构
+             */
+            description?: string;
+            /**
+             * @description JSON Schema 内容。
+             * @default
+             */
+            jsonSchema: components["schemas"]["JsonNode"];
+            /**
+             * @description Java 类型。
+             * @default
+             * @example com.myagent.schema.SummaryInput
+             */
+            javaType?: string;
         };
         /**
          * @description Schema 详情结果。
@@ -279,6 +1031,705 @@ export interface components {
              */
             error?: components["schemas"]["ApiError"];
         };
+        ExternalAgentSecretHeaderRequest: {
+            headerName: string;
+            secretValue?: string;
+        };
+        UpdateExternalAgentRequest: {
+            name: string;
+            description?: string;
+            commandJson: components["schemas"]["JsonNode"];
+            secretHeaders?: components["schemas"]["ExternalAgentSecretHeaderRequest"][];
+            workingDirectory?: string;
+            /** Format: int32 */
+            timeoutSeconds?: number;
+            captureStdout?: boolean;
+            captureStderr?: boolean;
+            captureGitDiff?: boolean;
+            /** Format: int64 */
+            outputSchemaId?: number;
+        };
+        /**
+         * @description 外部 Agent 详情统一响应。
+         * @default null
+         */
+        ExternalAgentDetailApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 外部 Agent 详情。
+             * @default
+             */
+            data?: components["schemas"]["ExternalAgentDetailResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        ExternalAgentDetailResult: {
+            /** Format: int64 */
+            id?: number;
+            adapterKey?: string;
+            /** @enum {string} */
+            adapterType?: "CODEX_CLI" | "OPENCODE_CLI" | "CUSTOM_CLI" | "CUSTOM_HTTP";
+            name?: string;
+            description?: string;
+            commandJson?: components["schemas"]["JsonNode"];
+            secretHeaders?: components["schemas"]["ExternalAgentSecretHeaderResult"][];
+            workingDirectory?: string;
+            /** Format: int32 */
+            timeoutSeconds?: number;
+            captureStdout?: boolean;
+            captureStderr?: boolean;
+            captureGitDiff?: boolean;
+            /** Format: int64 */
+            outputSchemaId?: number;
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ExternalAgentSecretHeaderResult: {
+            headerName?: string;
+            secretConfigured?: boolean;
+        };
+        ChangeExternalAgentStatusRequest: {
+            /** @enum {string} */
+            status: "ENABLED" | "DISABLED";
+        };
+        UpdateExternalAgentSecretsRequest: {
+            items?: components["schemas"]["ExternalAgentSecretHeaderRequest"][];
+            clearHeaderNames?: string[];
+        };
+        UpdateEvalSuiteRequest: {
+            name: string;
+            goal?: string;
+            passThreshold?: number;
+        };
+        /**
+         * @description 验收套件详情统一响应。
+         * @default null
+         */
+        EvalSuiteApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["EvalSuiteResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        EvalSuiteResult: {
+            /** Format: int64 */
+            suiteId?: number;
+            /** Format: int64 */
+            agentId?: number;
+            /** Format: int64 */
+            workflowVersionId?: number;
+            nodeId?: string;
+            name?: string;
+            goal?: string;
+            passThreshold?: number;
+            /** @enum {string} */
+            status?: "DRAFT" | "CONFIRMED" | "ARCHIVED";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        UpdateEvalCaseRequest: {
+            title: string;
+            input?: components["schemas"]["JsonNode"];
+            referenceAnswer?: components["schemas"]["JsonNode"];
+            assertions?: components["schemas"]["JsonNode"];
+            scoreRule?: components["schemas"]["JsonNode"];
+            critical?: boolean;
+            description?: string;
+        };
+        /**
+         * @description 验收用例详情统一响应。
+         * @default null
+         */
+        EvalCaseApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["EvalCaseResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        EvalCaseResult: {
+            /** Format: int64 */
+            caseId?: number;
+            /** Format: int64 */
+            suiteId?: number;
+            caseNo?: string;
+            title?: string;
+            input?: components["schemas"]["JsonNode"];
+            referenceAnswer?: components["schemas"]["JsonNode"];
+            assertions?: components["schemas"]["JsonNode"];
+            scoreRule?: components["schemas"]["JsonNode"];
+            critical?: boolean;
+            /** @enum {string} */
+            confirmStatus?: "USER_CREATED" | "USER_CONFIRMED" | "AI_DRAFT_PENDING" | "ARCHIVED";
+            sourceRunId?: string;
+            /** Format: int64 */
+            sourceNodeRunId?: number;
+            /** Format: int64 */
+            sourceWorkflowVersionId?: number;
+            sourceNodeId?: string;
+            description?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        UpdateAgentRequest: {
+            name: string;
+            description?: string;
+            systemPrompt?: string;
+            defaultModel?: string;
+            temperature?: number;
+            /** Format: int32 */
+            timeoutSeconds?: number;
+            /** Format: int32 */
+            maxSteps?: number;
+        };
+        /**
+         * @description Agent 详情统一响应。
+         * @default null
+         */
+        AgentDetailApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description Agent 详情。
+             * @default
+             */
+            data?: components["schemas"]["AgentDetailResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description Agent 详情结果。
+         * @default null
+         */
+        AgentDetailResult: {
+            /**
+             * Format: int64
+             * @description Agent 主键。
+             * @default
+             * @example 1
+             */
+            agentId: number;
+            /**
+             * @description Agent 业务标识。
+             * @default
+             * @example summary-agent
+             */
+            agentKey: string;
+            /**
+             * @description 名称。
+             * @default
+             * @example 摘要 Agent
+             */
+            name: string;
+            /**
+             * @description 描述。
+             * @default
+             */
+            description?: string;
+            /**
+             * @description 状态。
+             * @default
+             * @enum {string}
+             */
+            status: "ENABLED" | "DISABLED";
+            /**
+             * @description 系统提示词。
+             * @default
+             */
+            systemPrompt?: string;
+            /**
+             * @description 默认模型。
+             * @default
+             * @example gpt-4.1-mini
+             */
+            defaultModel: string;
+            /**
+             * @description 温度。
+             * @default
+             * @example 0.2
+             */
+            temperature?: number;
+            /**
+             * Format: int32
+             * @description Agent 默认总超时（秒）。
+             * @default
+             * @example 600
+             */
+            timeoutSeconds: number;
+            /**
+             * Format: int32
+             * @description Agent 默认最大步数。
+             * @default
+             * @example 30
+             */
+            maxSteps: number;
+            /**
+             * @description 当前草稿版本摘要。
+             * @default
+             */
+            currentDraftWorkflow?: components["schemas"]["WorkflowVersionSummaryResult"];
+            /**
+             * @description 当前发布版本摘要。
+             * @default
+             */
+            currentPublishedWorkflow?: components["schemas"]["WorkflowVersionSummaryResult"];
+            /**
+             * @description 历史版本入口摘要。
+             * @default
+             */
+            historyVersionSummary: components["schemas"]["HistoryVersionSummaryResult"];
+            /**
+             * Format: date-time
+             * @description 更新时间。
+             * @default
+             */
+            updatedAt: string;
+        };
+        /**
+         * @description 历史版本入口摘要。
+         * @default null
+         */
+        HistoryVersionSummaryResult: {
+            /**
+             * Format: int64
+             * @description 历史版本总数。
+             * @default
+             * @example 2
+             */
+            total: number;
+            /**
+             * Format: int64
+             * @description 最近历史版本主键。
+             * @default
+             * @example 9
+             */
+            latestWorkflowVersionId?: number;
+            /**
+             * Format: int32
+             * @description 最近历史版本号。
+             * @default
+             * @example 1
+             */
+            latestVersionNo?: number;
+            /**
+             * Format: date-time
+             * @description 最近历史发布时间。
+             * @default
+             */
+            latestPublishedAt?: string;
+        };
+        /**
+         * @description 工作流版本摘要。
+         * @default null
+         */
+        WorkflowVersionSummaryResult: {
+            /**
+             * Format: int64
+             * @description 工作流版本主键。
+             * @default
+             * @example 11
+             */
+            workflowVersionId?: number;
+            /**
+             * Format: int32
+             * @description 版本号。
+             * @default
+             * @example 3
+             */
+            versionNo?: number;
+            /**
+             * @description 版本状态。
+             * @default
+             * @enum {string}
+             */
+            status?: "DRAFT" | "PUBLISHED" | "HISTORY";
+            /**
+             * Format: int64
+             * @description 来源版本主键。
+             * @default
+             * @example 10
+             */
+            sourceWorkflowVersionId?: number;
+            /**
+             * Format: date-time
+             * @description 发布时间。
+             * @default
+             */
+            publishedAt?: string;
+            /**
+             * Format: date-time
+             * @description 最近更新时间。
+             * @default
+             */
+            updatedAt?: string;
+            /**
+             * Format: date-time
+             * @description 创建时间。
+             * @default
+             */
+            createdAt?: string;
+        };
+        SaveWorkflowDraftRequest: {
+            nodes: components["schemas"]["WorkflowNodeDefinition"][];
+            edges: components["schemas"]["WorkflowEdgeDefinition"][];
+            runtimeOptions?: components["schemas"]["JsonNode"];
+        };
+        /**
+         * @description 工作流边定义。
+         * @default null
+         */
+        WorkflowEdgeDefinition: {
+            /**
+             * @description 边标识，在版本内唯一。
+             * @default
+             * @example edge-1
+             */
+            edgeId: string;
+            /**
+             * @description 源节点标识。
+             * @default
+             * @example node-start
+             */
+            sourceNodeId: string;
+            /**
+             * @description 目标节点标识。
+             * @default
+             * @example node-end
+             */
+            targetNodeId: string;
+            /**
+             * @description 边类型。
+             * @default
+             * @enum {string}
+             */
+            type: "NORMAL" | "CONDITION" | "DEFAULT" | "END";
+            /**
+             * @description 条件对象。
+             * @default
+             */
+            condition?: components["schemas"]["JsonNode"];
+            /**
+             * @description 是否默认分支。
+             * @default false
+             * @example false
+             */
+            isDefault?: boolean;
+            /**
+             * @description 边说明。
+             * @default
+             */
+            description?: string;
+        };
+        /**
+         * @description 工作流节点定义。
+         * @default null
+         */
+        WorkflowNodeDefinition: {
+            /**
+             * @description 节点内部标识，在同一工作流版本内唯一。
+             * @default
+             * @example node-start
+             */
+            nodeId: string;
+            /**
+             * @description 节点类型。
+             * @default
+             * @enum {string}
+             */
+            type: "START" | "LLM" | "CONDITION" | "JAVA_METHOD" | "AGENT_CALL" | "EXTERNAL_AGENT" | "TOOL" | "REVIEW" | "SUMMARY" | "END";
+            /**
+             * @description 节点名称。
+             * @default
+             * @example 开始节点
+             */
+            name: string;
+            /**
+             * @description 节点说明。
+             * @default
+             */
+            description?: string;
+            /**
+             * @description 输入 Schema 引用。
+             * @default
+             */
+            inputSchemaRef?: components["schemas"]["WorkflowSchemaRef"];
+            /**
+             * @description 输出 Schema 引用。
+             * @default
+             */
+            outputSchemaRef?: components["schemas"]["WorkflowSchemaRef"];
+            /**
+             * @description 输入映射对象。
+             * @default
+             */
+            inputMapping?: components["schemas"]["JsonNode"];
+            /**
+             * @description 输出映射对象。
+             * @default
+             */
+            outputMapping?: components["schemas"]["JsonNode"];
+            /**
+             * Format: int32
+             * @description 节点级超时（秒）。
+             * @default
+             * @example 120
+             */
+            timeoutSeconds?: number;
+            /**
+             * @description 失败策略。
+             * @default
+             * @example FAIL_FAST
+             */
+            failurePolicy?: string;
+            /**
+             * @description 节点专属配置。
+             * @default
+             */
+            config?: components["schemas"]["JsonNode"];
+            /**
+             * @description 画布展示信息。
+             * @default
+             */
+            ui?: components["schemas"]["WorkflowNodeUi"];
+        };
+        /**
+         * @description 节点画布展示属性。
+         * @default null
+         */
+        WorkflowNodeUi: {
+            /**
+             * @description 画布坐标。
+             * @default
+             */
+            position?: components["schemas"]["WorkflowNodeUiPosition"];
+            /**
+             * Format: int32
+             * @description 节点宽度。
+             * @default
+             * @example 280
+             */
+            width?: number;
+            /**
+             * Format: int32
+             * @description 节点高度。
+             * @default
+             * @example 160
+             */
+            height?: number;
+        };
+        /**
+         * @description 节点画布坐标。
+         * @default null
+         */
+        WorkflowNodeUiPosition: {
+            /**
+             * Format: int32
+             * @description X 坐标。
+             * @default
+             * @example 0
+             */
+            x?: number;
+            /**
+             * Format: int32
+             * @description Y 坐标。
+             * @default
+             * @example 0
+             */
+            y?: number;
+        };
+        /**
+         * @description 工作流节点上的 Schema 引用。
+         * @default null
+         */
+        WorkflowSchemaRef: {
+            /**
+             * @description Schema 业务键。
+             * @default
+             * @example summary-output
+             */
+            schemaKey: string;
+            /**
+             * Format: int32
+             * @description Schema 版本号。
+             * @default
+             * @example 3
+             */
+            version: number;
+        };
+        /**
+         * @description 工作流版本引用的 Schema 快照。
+         * @default null
+         */
+        ReferencedSchemaVersion: {
+            /**
+             * Format: int64
+             * @description Schema 主键。
+             * @default
+             * @example 12
+             */
+            schemaId: number;
+            /**
+             * @description Schema 业务键。
+             * @default
+             * @example summary-output
+             */
+            schemaKey: string;
+            /**
+             * Format: int32
+             * @description Schema 版本号。
+             * @default
+             * @example 3
+             */
+            version: number;
+        };
+        /**
+         * @description 工作流草稿统一响应。
+         * @default null
+         */
+        WorkflowDraftApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 工作流草稿数据。
+             * @default
+             */
+            data?: components["schemas"]["WorkflowDraftResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 当前草稿详情结果。
+         * @default null
+         */
+        WorkflowDraftResult: {
+            /**
+             * Format: int64
+             * @description 工作流版本主键。
+             * @default
+             * @example 11
+             */
+            workflowVersionId: number;
+            /**
+             * Format: int64
+             * @description 所属 Agent 主键。
+             * @default
+             * @example 1
+             */
+            agentId: number;
+            /**
+             * Format: int32
+             * @description 版本号。
+             * @default
+             * @example 3
+             */
+            versionNo: number;
+            /**
+             * @description 版本状态。
+             * @default
+             * @enum {string}
+             */
+            status: "DRAFT" | "PUBLISHED" | "HISTORY";
+            /**
+             * @description 节点列表。
+             * @default
+             */
+            nodes: components["schemas"]["WorkflowNodeDefinition"][];
+            /**
+             * @description 边列表。
+             * @default
+             */
+            edges: components["schemas"]["WorkflowEdgeDefinition"][];
+            /**
+             * @description 运行约束。
+             * @default
+             */
+            runtimeOptions: components["schemas"]["WorkflowRuntimeOptions"];
+            /**
+             * @description Schema 引用快照。
+             * @default
+             */
+            referencedSchemaVersions: components["schemas"]["ReferencedSchemaVersion"][];
+            /**
+             * Format: int64
+             * @description 来源版本主键。
+             * @default
+             * @example 10
+             */
+            sourceWorkflowVersionId?: number;
+            /**
+             * Format: date-time
+             * @description 发布时间。
+             * @default
+             */
+            publishedAt?: string;
+            /**
+             * Format: date-time
+             * @description 创建时间。
+             * @default
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description 更新时间。
+             * @default
+             */
+            updatedAt: string;
+        };
+        /**
+         * @description 工作流版本运行约束快照。
+         * @default null
+         */
+        WorkflowRuntimeOptions: {
+            /**
+             * Format: int32
+             * @description 工作流总超时（秒）。
+             * @default
+             * @example 600
+             */
+            timeoutSeconds: number;
+            /**
+             * Format: int32
+             * @description 最大执行步数。
+             * @default
+             * @example 30
+             */
+            maxSteps: number;
+            /**
+             * Format: int32
+             * @description 最大 Agent 调用深度。
+             * @default
+             * @example 3
+             */
+            maxAgentCallDepth: number;
+        };
+        ChangeAgentStatusRequest: {
+            /** @enum {string} */
+            status: "ENABLED" | "DISABLED";
+        };
         /**
          * @description 创建 Schema 请求。
          * @default null
@@ -354,6 +1805,453 @@ export interface components {
              * @example com.myagent.schema.SummaryInput
              */
             javaType?: string;
+        };
+        CreateEvalCaseFromNodeRunRequest: {
+            /** Format: int64 */
+            suiteId?: number;
+            title: string;
+            description?: string;
+        };
+        CreateExternalAgentRequest: {
+            adapterKey: string;
+            /** @enum {string} */
+            adapterType: "CODEX_CLI" | "OPENCODE_CLI" | "CUSTOM_CLI" | "CUSTOM_HTTP";
+            name: string;
+            description?: string;
+            commandJson: components["schemas"]["JsonNode"];
+            secretHeaders?: components["schemas"]["ExternalAgentSecretHeaderRequest"][];
+            workingDirectory?: string;
+            /** Format: int32 */
+            timeoutSeconds?: number;
+            captureStdout?: boolean;
+            captureStderr?: boolean;
+            captureGitDiff?: boolean;
+            /** Format: int64 */
+            outputSchemaId?: number;
+        };
+        TestExternalAgentRequest: {
+            prompt?: string;
+            input?: components["schemas"]["JsonNode"];
+        };
+        /**
+         * @description 外部 Agent 测试统一响应。
+         * @default null
+         */
+        ExternalAgentTestApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 测试结果。
+             * @default
+             */
+            data?: components["schemas"]["ExternalAgentTestResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        ExternalAgentTestResult: {
+            success?: boolean;
+            status?: string;
+            /** Format: int32 */
+            exitCode?: number;
+            /** Format: int32 */
+            httpStatus?: number;
+            stdout?: string;
+            stderr?: string;
+            outputJson?: components["schemas"]["JsonNode"];
+            summary?: string;
+            errorMessage?: string;
+            /** Format: int64 */
+            durationMs?: number;
+        };
+        CreateEvalSuiteRequest: {
+            /** Format: int64 */
+            agentId?: number;
+            /** Format: int64 */
+            workflowVersionId?: number;
+            nodeId: string;
+            name: string;
+            goal?: string;
+            passThreshold?: number;
+        };
+        RunEvalSuiteRequest: {
+            caseIds?: number[];
+            includeUnconfirmed?: boolean;
+        };
+        /**
+         * @description 验收运行创建统一响应。
+         * @default null
+         */
+        EvalRunApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["EvalRunResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        EvalRunResult: {
+            evalRunId?: string;
+            runId?: string;
+            /** Format: int64 */
+            suiteId?: number;
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            passRate?: number;
+            /** Format: int32 */
+            totalCaseCount?: number;
+            /** Format: int32 */
+            passedCaseCount?: number;
+            /** Format: int32 */
+            failedCaseCount?: number;
+            summary?: string;
+        };
+        CreateEvalCaseRequest: {
+            caseNo: string;
+            title: string;
+            input?: components["schemas"]["JsonNode"];
+            referenceAnswer?: components["schemas"]["JsonNode"];
+            assertions?: components["schemas"]["JsonNode"];
+            scoreRule?: components["schemas"]["JsonNode"];
+            critical?: boolean;
+            description?: string;
+        };
+        CreateAgentRequest: {
+            agentKey: string;
+            name: string;
+            description?: string;
+            systemPrompt?: string;
+            defaultModel?: string;
+            temperature?: number;
+            /** Format: int32 */
+            timeoutSeconds?: number;
+            /** Format: int32 */
+            maxSteps?: number;
+        };
+        /**
+         * @description 正式运行请求。
+         * @default null
+         */
+        RunRequest: {
+            /**
+             * @description 运行输入。
+             * @default
+             */
+            input?: components["schemas"]["JsonNode"];
+        };
+        /**
+         * @description 同步运行统一响应。
+         * @default null
+         */
+        RunApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 运行结果。
+             * @default
+             */
+            data?: components["schemas"]["RunResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        RunErrorResult: {
+            code?: string;
+            message?: string;
+        };
+        RunResult: {
+            runId?: string;
+            agentKey?: string;
+            /** Format: int64 */
+            workflowVersionId?: number;
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            output?: components["schemas"]["JsonNode"];
+            error?: components["schemas"]["RunErrorResult"];
+            /** Format: int64 */
+            durationMs?: number;
+        };
+        /**
+         * @description 工作流校验统一响应。
+         * @default null
+         */
+        WorkflowValidationApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 工作流校验结果。
+             * @default
+             */
+            data?: components["schemas"]["WorkflowValidationResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 工作流校验问题。
+         * @default null
+         */
+        WorkflowValidationIssueResult: {
+            /**
+             * @description 稳定错误码。
+             * @default
+             * @example WORKFLOW_VALIDATION_FAILED
+             */
+            code: string;
+            /**
+             * @description 中文错误消息。
+             * @default
+             */
+            message: string;
+            /**
+             * @description 字段级错误明细。
+             * @default
+             */
+            details?: components["schemas"]["ApiErrorDetail"][];
+        };
+        /**
+         * @description 工作流校验结果。
+         * @default null
+         */
+        WorkflowValidationResult: {
+            /**
+             * @description 是否通过。
+             * @default false
+             * @example false
+             */
+            valid: boolean;
+            /**
+             * @description 校验问题列表。
+             * @default
+             */
+            errors: components["schemas"]["WorkflowValidationIssueResult"][];
+        };
+        PublishWorkflowDraftRequest: {
+            publishMessage?: string;
+        };
+        /**
+         * @description 工作流发布统一响应。
+         * @default null
+         */
+        WorkflowPublishApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 工作流发布结果。
+             * @default
+             */
+            data?: components["schemas"]["WorkflowPublishResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 工作流发布结果。
+         * @default null
+         */
+        WorkflowPublishResult: {
+            /**
+             * Format: int64
+             * @description 工作流版本主键。
+             * @default
+             * @example 12
+             */
+            workflowVersionId: number;
+            /**
+             * Format: int64
+             * @description 所属 Agent 主键。
+             * @default
+             * @example 1
+             */
+            agentId: number;
+            /**
+             * Format: int32
+             * @description 版本号。
+             * @default
+             * @example 2
+             */
+            versionNo: number;
+            /**
+             * @description 状态。
+             * @default
+             * @enum {string}
+             */
+            status: "DRAFT" | "PUBLISHED" | "HISTORY";
+            /**
+             * Format: int64
+             * @description 来源版本主键。
+             * @default
+             * @example 11
+             */
+            sourceWorkflowVersionId?: number;
+            /**
+             * Format: date-time
+             * @description 发布时间。
+             * @default
+             */
+            publishedAt: string;
+            /**
+             * Format: date-time
+             * @description 创建时间。
+             * @default
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description 更新时间。
+             * @default
+             */
+            updatedAt: string;
+        };
+        CopyWorkflowDraftFromVersionRequest: {
+            /** Format: int64 */
+            sourceWorkflowVersionId: number;
+        };
+        /**
+         * @description 调试运行请求。
+         * @default null
+         */
+        DebugRunRequest: {
+            /**
+             * Format: int64
+             * @description 工作流版本主键。
+             * @default
+             */
+            workflowVersionId?: number;
+            /**
+             * @description 运行输入。
+             * @default
+             */
+            input?: components["schemas"]["JsonNode"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseToolListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["ToolListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        ToolListItemResult: {
+            /** Format: int64 */
+            id?: number;
+            toolKey?: string;
+            name?: string;
+            description?: string;
+            /** Format: int64 */
+            inputSchemaId?: number;
+            /** Format: int64 */
+            outputSchemaId?: number;
+            executorType?: string;
+            executorConfigJson?: components["schemas"]["JsonNode"];
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /**
+         * @description 工具分页统一响应。
+         * @default null
+         */
+        ToolPageApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 工具分页数据。
+             * @default
+             */
+            data?: components["schemas"]["PageResponseToolListItemResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 工具详情统一响应。
+         * @default null
+         */
+        ToolDetailApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 工具详情。
+             * @default
+             */
+            data?: components["schemas"]["ToolDetailResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        ToolDetailResult: {
+            /** Format: int64 */
+            id?: number;
+            toolKey?: string;
+            name?: string;
+            description?: string;
+            /** Format: int64 */
+            inputSchemaId?: number;
+            /** Format: int64 */
+            outputSchemaId?: number;
+            executorType?: string;
+            executorConfigJson?: components["schemas"]["JsonNode"];
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         /**
          * @description Schema 列表项。
@@ -481,6 +2379,173 @@ export interface components {
             total: number;
         };
         /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseRunListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["RunListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        RunListItemResult: {
+            runId?: string;
+            /** Format: int64 */
+            agentId?: number;
+            agentKey?: string;
+            agentName?: string;
+            /** @enum {string} */
+            runType?: "DEBUG" | "API" | "AGENT_CALL" | "EVAL";
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            /** Format: int64 */
+            workflowVersionId?: number;
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            durationMs?: number;
+        };
+        /**
+         * @description 运行列表统一响应。
+         * @default null
+         */
+        RunPageApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 运行分页列表。
+             * @default
+             */
+            data?: components["schemas"]["PageResponseRunListItemResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        ChildRunResult: {
+            runId?: string;
+            summary?: string;
+        };
+        NodeRunResult: {
+            /** Format: int64 */
+            nodeRunId?: number;
+            nodeId?: string;
+            nodeName?: string;
+            nodeType?: string;
+            input?: components["schemas"]["JsonNode"];
+            output?: components["schemas"]["JsonNode"];
+            schemaValidationResult?: components["schemas"]["JsonNode"];
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            errorMessage?: string;
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            durationMs?: number;
+        };
+        RunAgentResult: {
+            /** Format: int64 */
+            agentId?: number;
+            agentKey?: string;
+            agentName?: string;
+        };
+        /**
+         * @description 运行详情统一响应。
+         * @default null
+         */
+        RunDetailApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 运行详情。
+             * @default
+             */
+            data?: components["schemas"]["RunDetailResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        RunDetailResult: {
+            runId?: string;
+            agent?: components["schemas"]["RunAgentResult"];
+            workflowVersion?: components["schemas"]["RunWorkflowVersionResult"];
+            /** @enum {string} */
+            runType?: "DEBUG" | "API" | "AGENT_CALL" | "EVAL";
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            parentRunId?: string;
+            evalRunId?: string;
+            input?: components["schemas"]["JsonNode"];
+            output?: components["schemas"]["JsonNode"];
+            error?: components["schemas"]["RunErrorResult"];
+            nodeRuns?: components["schemas"]["NodeRunResult"][];
+            traceEvents?: components["schemas"]["TraceEventResult"][];
+            childRuns?: components["schemas"]["ChildRunResult"][];
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            durationMs?: number;
+        };
+        RunWorkflowVersionResult: {
+            /** Format: int64 */
+            workflowVersionId?: number;
+            /** Format: int32 */
+            versionNo?: number;
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "HISTORY";
+        };
+        TraceEventResult: {
+            /** Format: int64 */
+            traceEventId?: number;
+            /** Format: int64 */
+            nodeRunId?: number;
+            /** Format: int64 */
+            evalRunId?: number;
+            /** @enum {string} */
+            eventType?: "MODEL_REQUEST" | "MODEL_RESPONSE" | "SCHEMA_VALIDATION" | "CONDITION_DECISION" | "JAVA_METHOD_CALL" | "TOOL_CALL" | "EXTERNAL_AGENT_CALL" | "AGENT_CALL" | "EVAL_CASE_RESULT" | "NODE_ERROR" | "RUN_FINISHED";
+            summary?: string;
+            detailJson?: components["schemas"]["JsonNode"];
+            /** Format: date-time */
+            eventTime?: string;
+        };
+        /**
          * @description 统一业务响应包装。
          * @default null
          */
@@ -521,6 +2586,797 @@ export interface components {
              */
             openApiPath?: string;
         };
+        JavaMethodListItemResult: {
+            /** Format: int64 */
+            id?: number;
+            methodKey?: string;
+            name?: string;
+            description?: string;
+            beanName?: string;
+            methodName?: string;
+            /** Format: int64 */
+            inputSchemaId?: number;
+            /** Format: int64 */
+            outputSchemaId?: number;
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /**
+         * @description Java 方法分页统一响应。
+         * @default null
+         */
+        JavaMethodPageApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description Java 方法分页数据。
+             * @default
+             */
+            data?: components["schemas"]["PageResponseJavaMethodListItemResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseJavaMethodListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["JavaMethodListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        /**
+         * @description Java 方法详情统一响应。
+         * @default null
+         */
+        JavaMethodDetailApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description Java 方法详情。
+             * @default
+             */
+            data?: components["schemas"]["JavaMethodDetailResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        JavaMethodDetailResult: {
+            /** Format: int64 */
+            id?: number;
+            methodKey?: string;
+            name?: string;
+            description?: string;
+            beanName?: string;
+            methodName?: string;
+            /** Format: int64 */
+            inputSchemaId?: number;
+            /** Format: int64 */
+            outputSchemaId?: number;
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ExternalAgentListItemResult: {
+            /** Format: int64 */
+            id?: number;
+            adapterKey?: string;
+            /** @enum {string} */
+            adapterType?: "CODEX_CLI" | "OPENCODE_CLI" | "CUSTOM_CLI" | "CUSTOM_HTTP";
+            name?: string;
+            description?: string;
+            /** Format: int32 */
+            timeoutSeconds?: number;
+            /** Format: int64 */
+            outputSchemaId?: number;
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /**
+         * @description 外部 Agent 分页统一响应。
+         * @default null
+         */
+        ExternalAgentPageApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 外部 Agent 分页数据。
+             * @default
+             */
+            data?: components["schemas"]["PageResponseExternalAgentListItemResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseExternalAgentListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["ExternalAgentListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        EvalSuiteListItemResult: {
+            /** Format: int64 */
+            suiteId?: number;
+            /** Format: int64 */
+            agentId?: number;
+            /** Format: int64 */
+            workflowVersionId?: number;
+            nodeId?: string;
+            name?: string;
+            goal?: string;
+            passThreshold?: number;
+            /** @enum {string} */
+            status?: "DRAFT" | "CONFIRMED" | "ARCHIVED";
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /**
+         * @description 验收套件列表统一响应。
+         * @default null
+         */
+        EvalSuitePageApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PageResponseEvalSuiteListItemResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseEvalSuiteListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["EvalSuiteListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        EvalRunListItemResult: {
+            evalRunId?: string;
+            runId?: string;
+            /** Format: int64 */
+            suiteId?: number;
+            /** Format: int64 */
+            workflowVersionId?: number;
+            nodeId?: string;
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            passRate?: number;
+            /** Format: int32 */
+            totalCaseCount?: number;
+            /** Format: int32 */
+            passedCaseCount?: number;
+            /** Format: int32 */
+            failedCaseCount?: number;
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            durationMs?: number;
+        };
+        /**
+         * @description 验收运行列表统一响应。
+         * @default null
+         */
+        EvalRunPageApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PageResponseEvalRunListItemResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseEvalRunListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["EvalRunListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        EvalRunHistoryItemResult: {
+            evalRunId?: string;
+            runId?: string;
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            passRate?: number;
+            /** Format: int32 */
+            totalCaseCount?: number;
+            /** Format: int32 */
+            passedCaseCount?: number;
+            /** Format: int32 */
+            failedCaseCount?: number;
+            /** Format: int64 */
+            criticalFailedCaseCount?: number;
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            durationMs?: number;
+            passRateDeltaFromPrevious?: number;
+            /** Format: int32 */
+            passedCaseCountDeltaFromPrevious?: number;
+            /** Format: int32 */
+            failedCaseCountDeltaFromPrevious?: number;
+        };
+        /**
+         * @description 验收历史对比统一响应。
+         * @default null
+         */
+        EvalRunHistoryPageApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PageResponseEvalRunHistoryItemResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseEvalRunHistoryItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["EvalRunHistoryItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        /**
+         * @description 验收用例列表统一响应。
+         * @default null
+         */
+        EvalCasePageApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PageResponseEvalCaseResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseEvalCaseResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["EvalCaseResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        EvalAgentSummaryResult: {
+            /** Format: int64 */
+            agentId?: number;
+            agentKey?: string;
+            agentName?: string;
+        };
+        EvalFailureSummaryResult: {
+            /** Format: int64 */
+            caseId?: number;
+            caseNo?: string;
+            title?: string;
+            critical?: boolean;
+            reason?: string;
+        };
+        EvalNodeSummaryResult: {
+            nodeId?: string;
+            nodeName?: string;
+            nodeType?: string;
+        };
+        /**
+         * @description 验收运行详情统一响应。
+         * @default null
+         */
+        EvalRunDetailApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["EvalRunDetailResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        EvalRunDetailResult: {
+            evalRunId?: string;
+            runId?: string;
+            suite?: components["schemas"]["EvalSuiteSummaryResult"];
+            agent?: components["schemas"]["EvalAgentSummaryResult"];
+            workflowVersion?: components["schemas"]["EvalWorkflowVersionSummaryResult"];
+            node?: components["schemas"]["EvalNodeSummaryResult"];
+            /** @enum {string} */
+            status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+            passThreshold?: number;
+            passRate?: number;
+            /** Format: int32 */
+            totalCaseCount?: number;
+            /** Format: int32 */
+            passedCaseCount?: number;
+            /** Format: int32 */
+            failedCaseCount?: number;
+            /** Format: int64 */
+            criticalFailedCaseCount?: number;
+            summary?: string;
+            error?: components["schemas"]["RunErrorResult"];
+            /** Format: date-time */
+            startedAt?: string;
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            durationMs?: number;
+            historyComparison?: components["schemas"]["EvalRunHistoryComparisonResult"];
+            failureSummary?: components["schemas"]["EvalFailureSummaryResult"][];
+        };
+        EvalRunHistoryComparisonResult: {
+            previousEvalRunId?: string;
+            previousRunId?: string;
+            previousPassRate?: number;
+            passRateDelta?: number;
+            /** Format: int32 */
+            passedCaseCountDelta?: number;
+            /** Format: int32 */
+            failedCaseCountDelta?: number;
+        };
+        EvalSuiteSummaryResult: {
+            /** Format: int64 */
+            suiteId?: number;
+            name?: string;
+        };
+        EvalWorkflowVersionSummaryResult: {
+            /** Format: int64 */
+            workflowVersionId?: number;
+            /** Format: int32 */
+            versionNo?: number;
+        };
+        EvalAssertionResultItem: {
+            type?: string;
+            passed?: boolean;
+            message?: string;
+        };
+        EvalRunResultItemResult: {
+            /** Format: int64 */
+            caseId?: number;
+            caseNo?: string;
+            title?: string;
+            /** @enum {string} */
+            confirmStatus?: "USER_CREATED" | "USER_CONFIRMED" | "AI_DRAFT_PENDING" | "ARCHIVED";
+            critical?: boolean;
+            passed?: boolean;
+            input?: components["schemas"]["JsonNode"];
+            referenceAnswer?: components["schemas"]["JsonNode"];
+            output?: components["schemas"]["JsonNode"];
+            assertionResults?: components["schemas"]["EvalAssertionResultItem"][];
+            scoreResult?: components["schemas"]["JsonNode"];
+            errorMessage?: string;
+            /** Format: int64 */
+            durationMs?: number;
+        };
+        /**
+         * @description 验收运行结果明细统一响应。
+         * @default null
+         */
+        EvalRunResultPageApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PageResponseEvalRunResultItemResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseEvalRunResultItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["EvalRunResultItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        AgentListItemResult: {
+            /** Format: int64 */
+            agentId?: number;
+            agentKey?: string;
+            name?: string;
+            description?: string;
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** Format: int64 */
+            currentDraftWorkflowVersionId?: number;
+            /** Format: int64 */
+            currentPublishedWorkflowVersionId?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /**
+         * @description Agent 分页统一响应。
+         * @default null
+         */
+        AgentPageApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description Agent 分页数据。
+             * @default
+             */
+            data?: components["schemas"]["PageResponseAgentListItemResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseAgentListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["AgentListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseWorkflowVersionListItemResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["WorkflowVersionListItemResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        WorkflowVersionListItemResult: {
+            /** Format: int64 */
+            workflowVersionId?: number;
+            /** Format: int32 */
+            versionNo?: number;
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "HISTORY";
+            /** Format: int64 */
+            sourceWorkflowVersionId?: number;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /**
+         * @description 工作流版本分页统一响应。
+         * @default null
+         */
+        WorkflowVersionPageApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 工作流版本分页数据。
+             * @default
+             */
+            data?: components["schemas"]["PageResponseWorkflowVersionListItemResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 工作流版本详情统一响应。
+         * @default null
+         */
+        WorkflowVersionDetailApiResponse: {
+            /**
+             * @description 业务是否成功。
+             * @default false
+             */
+            success: boolean;
+            /**
+             * @description 工作流版本详情。
+             * @default
+             */
+            data?: components["schemas"]["WorkflowVersionResult"];
+            /**
+             * @description 错误对象。
+             * @default
+             */
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 工作流版本详情结果。
+         * @default null
+         */
+        WorkflowVersionResult: {
+            /**
+             * Format: int64
+             * @description 工作流版本主键。
+             * @default
+             * @example 12
+             */
+            workflowVersionId: number;
+            /**
+             * Format: int64
+             * @description 所属 Agent 主键。
+             * @default
+             * @example 1
+             */
+            agentId: number;
+            /**
+             * Format: int32
+             * @description 版本号。
+             * @default
+             * @example 4
+             */
+            versionNo: number;
+            /**
+             * @description 状态。
+             * @default
+             * @enum {string}
+             */
+            status: "DRAFT" | "PUBLISHED" | "HISTORY";
+            /**
+             * @description 节点列表。
+             * @default
+             */
+            nodes: components["schemas"]["WorkflowNodeDefinition"][];
+            /**
+             * @description 边列表。
+             * @default
+             */
+            edges: components["schemas"]["WorkflowEdgeDefinition"][];
+            /**
+             * @description 运行约束。
+             * @default
+             */
+            runtimeOptions: components["schemas"]["WorkflowRuntimeOptions"];
+            /**
+             * @description Schema 引用快照。
+             * @default
+             */
+            referencedSchemaVersions: components["schemas"]["ReferencedSchemaVersion"][];
+            /**
+             * Format: int64
+             * @description 来源版本主键。
+             * @default
+             * @example 11
+             */
+            sourceWorkflowVersionId?: number;
+            /**
+             * Format: date-time
+             * @description 发布时间。
+             * @default
+             */
+            publishedAt?: string;
+            /**
+             * Format: date-time
+             * @description 创建时间。
+             * @default
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description 更新时间。
+             * @default
+             */
+            updatedAt: string;
+        };
         /**
          * @description 统一分页响应对象。
          * @default null
@@ -559,6 +3415,50 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SettingsListApiResponse"];
+                };
+            };
+        };
+    };
+    updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SettingsListApiResponse"];
+                };
+            };
+        };
+    };
     getSchema: {
         parameters: {
             query?: never;
@@ -603,6 +3503,394 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SchemaDetailApiResponse"];
+                };
+            };
+        };
+    };
+    getExternalAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adapterId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExternalAgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    updateExternalAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adapterId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExternalAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExternalAgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    changeExternalAgentStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adapterId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeExternalAgentStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExternalAgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    updateExternalAgentSecrets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adapterId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExternalAgentSecretsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExternalAgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    updateEvalSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEvalSuiteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalSuiteApiResponse"];
+                };
+            };
+        };
+    };
+    confirmEvalSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalSuiteApiResponse"];
+                };
+            };
+        };
+    };
+    getEvalCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+                caseId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalCaseApiResponse"];
+                };
+            };
+        };
+    };
+    updateEvalCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+                caseId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEvalCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalCaseApiResponse"];
+                };
+            };
+        };
+    };
+    confirmEvalCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+                caseId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalCaseApiResponse"];
+                };
+            };
+        };
+    };
+    archiveEvalCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+                caseId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalCaseApiResponse"];
+                };
+            };
+        };
+    };
+    archiveEvalSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalSuiteApiResponse"];
+                };
+            };
+        };
+    };
+    getAgentDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    updateAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    getWorkflowDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkflowDraftApiResponse"];
+                };
+            };
+        };
+    };
+    saveWorkflowDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveWorkflowDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkflowDraftApiResponse"];
+                };
+            };
+        };
+    };
+    changeAgentStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeAgentStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AgentDetailApiResponse"];
                 };
             };
         };
@@ -683,6 +3971,543 @@ export interface operations {
             };
         };
     };
+    createEvalCaseFromNodeRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                nodeRunId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvalCaseFromNodeRunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalCaseApiResponse"];
+                };
+            };
+        };
+    };
+    listExternalAgents: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                keyword?: string;
+                status?: "ENABLED" | "DISABLED";
+                adapterType?: "CODEX_CLI" | "OPENCODE_CLI" | "CUSTOM_CLI" | "CUSTOM_HTTP";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExternalAgentPageApiResponse"];
+                };
+            };
+        };
+    };
+    createExternalAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateExternalAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExternalAgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    testExternalAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adapterId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestExternalAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExternalAgentTestApiResponse"];
+                };
+            };
+        };
+    };
+    listEvalSuites: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                agentId?: number;
+                workflowVersionId?: number;
+                nodeId?: string;
+                status?: "DRAFT" | "CONFIRMED" | "ARCHIVED";
+                keyword?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalSuitePageApiResponse"];
+                };
+            };
+        };
+    };
+    createEvalSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvalSuiteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalSuiteApiResponse"];
+                };
+            };
+        };
+    };
+    listEvalRuns: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+                startedAtFrom?: string;
+                startedAtTo?: string;
+            };
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalRunPageApiResponse"];
+                };
+            };
+        };
+    };
+    runEvalSuite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunEvalSuiteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalRunApiResponse"];
+                };
+            };
+        };
+    };
+    listEvalCases: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                confirmStatus?: "USER_CREATED" | "USER_CONFIRMED" | "AI_DRAFT_PENDING" | "ARCHIVED";
+                critical?: boolean;
+                keyword?: string;
+            };
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalCasePageApiResponse"];
+                };
+            };
+        };
+    };
+    createEvalCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEvalCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalCaseApiResponse"];
+                };
+            };
+        };
+    };
+    listAgents: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                keyword?: string;
+                status?: "ENABLED" | "DISABLED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AgentPageApiResponse"];
+                };
+            };
+        };
+    };
+    createAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AgentDetailApiResponse"];
+                };
+            };
+        };
+    };
+    runPublishedAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RunApiResponse"];
+                };
+            };
+        };
+    };
+    validateWorkflowDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkflowValidationApiResponse"];
+                };
+            };
+        };
+    };
+    publishWorkflowDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PublishWorkflowDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkflowPublishApiResponse"];
+                };
+            };
+        };
+    };
+    copyWorkflowDraftFromVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyWorkflowDraftFromVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkflowDraftApiResponse"];
+                };
+            };
+        };
+    };
+    runDebugAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DebugRunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RunApiResponse"];
+                };
+            };
+        };
+    };
+    listTools: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                keyword?: string;
+                status?: "ENABLED" | "DISABLED";
+                executorType?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ToolPageApiResponse"];
+                };
+            };
+        };
+    };
+    getTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ToolDetailApiResponse"];
+                };
+            };
+        };
+    };
+    listRuns: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                agentId?: number;
+                agentKey?: string;
+                runType?: "DEBUG" | "API" | "AGENT_CALL" | "EVAL";
+                status?: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "CANCELED";
+                keyword?: string;
+                startedAtFrom?: string;
+                startedAtTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RunPageApiResponse"];
+                };
+            };
+        };
+    };
+    getRunDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RunDetailApiResponse"];
+                };
+            };
+        };
+    };
     ping: {
         parameters: {
             query?: never;
@@ -699,6 +4524,177 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponse"];
+                };
+            };
+        };
+    };
+    listJavaMethods: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                keyword?: string;
+                status?: "ENABLED" | "DISABLED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["JavaMethodPageApiResponse"];
+                };
+            };
+        };
+    };
+    getJavaMethod: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                methodId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["JavaMethodDetailApiResponse"];
+                };
+            };
+        };
+    };
+    listEvalRunHistory: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path: {
+                suiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalRunHistoryPageApiResponse"];
+                };
+            };
+        };
+    };
+    getEvalRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evalRunId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalRunDetailApiResponse"];
+                };
+            };
+        };
+    };
+    listEvalRunResults: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                passed?: boolean;
+                critical?: boolean;
+                keyword?: string;
+            };
+            header?: never;
+            path: {
+                evalRunId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EvalRunResultPageApiResponse"];
+                };
+            };
+        };
+    };
+    listWorkflowVersions: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                status?: "DRAFT" | "PUBLISHED" | "HISTORY";
+            };
+            header?: never;
+            path: {
+                agentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkflowVersionPageApiResponse"];
+                };
+            };
+        };
+    };
+    getWorkflowVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: number;
+                workflowVersionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WorkflowVersionDetailApiResponse"];
                 };
             };
         };

@@ -124,6 +124,15 @@ EXTERNAL_AGENT 用于接入平台之外的 Agent，例如 Codex、OpenCode、自
 | timeoutSeconds | 默认 600 秒 |
 | resultSource | HTTP 响应 JSON 或文本 |
 
+### 9.6 敏感 header 与 secret 更新语义
+
+- 普通详情接口中，敏感 header 只返回 `headerName` 和 `secretConfigured` 等元信息，不返回明文，也不返回可回传的掩码占位值。
+- 创建外部 Agent 时，允许通过只写字段一次性写入敏感 header secret；响应体和后续详情接口都不回显 secret。
+- `PUT /api/external-agents/{adapterId}` 只更新结构化配置和非敏感字段，不要求前端重新传递历史 secret，也不会因为请求体缺少 secret 而覆盖旧值。
+- 敏感 header secret 必须通过 `PUT /api/external-agents/{adapterId}/secrets` 单独更新；`items` 执行覆盖写入，`clearHeaderNames` 执行显式清空，未出现的 secret 保持不变。
+- 删除敏感 header 时，后端必须同步删除已保存 secret；重命名按“删除旧 header + 新增新 header”处理，必须重新写入 secret。
+- 如果定义了敏感 header 但 `secretConfigured=false`，则连接测试和正式运行都必须在真正发起外部请求前失败，并返回明确的配置错误。
+
 ## 10. EXTERNAL_AGENT 流程
 
 ```text

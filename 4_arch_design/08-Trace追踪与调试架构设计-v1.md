@@ -42,7 +42,7 @@ Trace 是平台核心能力。每次运行必须能回答：
 - `runType=DEBUG` 可以绑定草稿版本，但该草稿版本在运行时必须已经固化为一条不可原地覆盖的 `workflow_version` 行。
 - `runType=API` 只能绑定当前发布版本。
 - `runType=AGENT_CALL` 的子运行必须写 `parentRunId`，并绑定目标 Agent 当时的当前发布版本。
-- `runType=EVAL` 用于节点验收时间线时，应和 EvalRun 绑定同一个 `workflowVersionId` 与 `nodeId`。
+- `runType=EVAL` 是 v1 节点验收运行的强制配套运行记录。每次执行 `EvalRun` 时都必须同步创建一条 `AgentRun`，并绑定同一个 `workflowVersionId` 与 `nodeId`。
 
 ## 4. NodeRun
 
@@ -88,6 +88,7 @@ TraceEvent 不只保存一个 payload。架构字段为：
 - eventTime。
 
 `summary` 必须是独立字段，避免列表页解析大 JSONB。
+- 对节点验收产生的 TraceEvent，v1 必须同时写入 `agentRunDbId` 和 `evalRunDbId`，禁止只写一侧关联导致 Trace 时间线出现第二套真相。
 
 ## 7. 全文保存策略
 
@@ -114,4 +115,4 @@ V1 默认保存模型提示词和模型输出全文。该策略的影响：
 
 节点验收使用 `EvalRun` 和 `EvalCaseResult` 保存正式验收结果。
 
-如需要统一 Trace 时间线，创建 `AgentRun(runType=EVAL)` 承载本次验收运行的运行上下文，同时 `TraceEvent.evalRunDbId` 关联 `eval_run.id`。单条用例结果仍以 EvalCaseResult 为准，`EVAL_CASE_RESULT` TraceEvent 只作为时间线展示事件。
+v1 每次节点验收运行都必须创建 `AgentRun(runType=EVAL)` 承载本次验收的运行上下文和 Trace 时间线，同时 `TraceEvent.evalRunDbId` 关联 `eval_run.id`。单条用例结果仍以 `EvalCaseResult` 为准，`EVAL_CASE_RESULT` TraceEvent 只作为时间线展示事件，不替代正式验收结果。

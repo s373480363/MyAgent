@@ -41,12 +41,12 @@ export function AppLayout({ children }: PropsWithChildren) {
     <Layout className="app-shell">
       <Sider width={240} theme="light" className="app-sider">
         <div className="brand-panel">
-          <Typography.Text className="brand-kicker">V1 开发骨架</Typography.Text>
+          <Typography.Text className="brand-kicker">V1 管理控制台</Typography.Text>
           <Typography.Title level={4} className="brand-title">
             MyAgent 管理台
           </Typography.Title>
           <Typography.Paragraph className="brand-desc">
-            当前阶段先完成工程底座、公共基线和模块入口，后续业务能力将按实施方案逐步接入。
+            统一管理 Agent、工作流版本、运行记录、节点验收与平台主数据。
           </Typography.Paragraph>
         </div>
         <Menu

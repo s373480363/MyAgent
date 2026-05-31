@@ -119,6 +119,7 @@ create table trace_event (
 - `summary` 必须独立存储，不能依赖前端解析大 JSON。
 - `detail_json` 用于保存事件完整上下文。
 - `run_id`、`node_run_id`、`eval_run_id` 可按事件类型选择填充。
+- 对节点验收事件，v1 必须同时填充 `run_id=agent_run.id` 和 `eval_run_id=eval_run.id`，禁止只保留单边关联。
 
 ## 5. agent_message
 
@@ -231,7 +232,7 @@ create table eval_run (
   agent_id bigint not null,
   workflow_version_id bigint not null,
   node_id varchar(128) not null,
-  agent_run_id bigint,
+  agent_run_id bigint not null,
   status varchar(20) not null,
   total_case_count integer not null default 0,
   passed_case_count integer not null default 0,
@@ -255,7 +256,7 @@ create table eval_run (
 
 说明：
 
-- `agent_run_id` 用于和统一运行时间线关联，若实现中不使用可保留为可空字段。
+- `agent_run_id` 是必填字段，指向本次验收运行同步创建的 `agent_run.id`，且对应 `agent_run.run_type='EVAL'`。
 - `run_no` 是验收运行对外标识，REST 字段名统一为 `evalRunId`。
 - `summary` 用于验收结果总览。
 

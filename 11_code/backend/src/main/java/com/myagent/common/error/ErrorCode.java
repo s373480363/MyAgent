@@ -78,6 +78,11 @@ public enum ErrorCode implements CodeEnum {
     EVAL_CASE_UNCONFIRMED("EVAL_CASE_UNCONFIRMED", "验收用例尚未确认，不能参与正式验收。"),
 
     /**
+     * 验收断言失败。
+     */
+    EVAL_ASSERTION_FAILED("EVAL_ASSERTION_FAILED", "验收断言失败。"),
+
+    /**
      * 系统设置不可编辑。
      */
     SETTING_NOT_EDITABLE("SETTING_NOT_EDITABLE", "该系统设置不可编辑。"),

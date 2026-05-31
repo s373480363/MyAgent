@@ -21,8 +21,7 @@ type RawApiResponse<T> = {
 /**
  * 临时请求错误对象。
  *
- * 步骤 01 仅用于传输层保留后端结构化错误语义，步骤 03 接入 OpenAPI 后应与生成类型对齐。
- * 该错误对象可以被页面捕获，但不能视为长期业务契约。
+ * 仅用于传输层保留后端结构化错误语义；业务 DTO 仍以 OpenAPI 生成类型为唯一来源。
  */
 export class HttpRequestError extends Error {
   /**

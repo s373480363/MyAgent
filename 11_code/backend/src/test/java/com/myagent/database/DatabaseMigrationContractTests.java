@@ -81,6 +81,11 @@ class DatabaseMigrationContractTests {
                 .contains("where status = 'draft'")
                 .contains("create unique index uq_workflow_version_one_published")
                 .contains("where status = 'published'");
+
+        // 运行约束快照必须由应用层显式写入，不能依赖数据库默认空对象。
+        assertThat(sql)
+                .contains("runtime_options_json jsonb not null")
+                .doesNotContain("runtime_options_json jsonb not null default '{}'::jsonb");
     }
 
     /**
@@ -124,6 +129,10 @@ class DatabaseMigrationContractTests {
         assertThat(nodeRunTable)
                 .doesNotContain("run_no varchar")
                 .doesNotContain("node_run_no");
+
+        // EvalRun 必须同步绑定 AgentRun(run_type=EVAL)，不能留下可空旁路。
+        assertThat(extractCreateTableBlock(sql, "eval_run"))
+                .contains("agent_run_id bigint not null");
     }
 
     /**

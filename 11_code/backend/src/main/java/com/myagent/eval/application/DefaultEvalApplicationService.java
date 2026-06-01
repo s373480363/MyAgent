@@ -9,21 +9,16 @@ import com.myagent.agent.repository.AgentRepository;
 import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
 import com.myagent.common.page.PageResult;
-import com.myagent.eval.application.command.CreateEvalCaseCommand;
-import com.myagent.eval.application.command.CreateEvalCaseFromNodeRunCommand;
 import com.myagent.eval.application.command.CreateEvalSuiteCommand;
 import com.myagent.eval.application.command.RunEvalSuiteCommand;
-import com.myagent.eval.application.command.UpdateEvalCaseCommand;
 import com.myagent.eval.application.command.UpdateEvalSuiteCommand;
 import com.myagent.eval.application.query.GetEvalRunQuery;
-import com.myagent.eval.application.query.ListEvalCasesQuery;
 import com.myagent.eval.application.query.ListEvalRunHistoryQuery;
 import com.myagent.eval.application.query.ListEvalRunResultsQuery;
 import com.myagent.eval.application.query.ListEvalRunsQuery;
 import com.myagent.eval.application.query.ListEvalSuitesQuery;
 import com.myagent.eval.application.result.EvalAgentSummaryResult;
 import com.myagent.eval.application.result.EvalAssertionResultItem;
-import com.myagent.eval.application.result.EvalCaseResult;
 import com.myagent.eval.application.result.EvalFailureSummaryResult;
 import com.myagent.eval.application.result.EvalNodeSummaryResult;
 import com.myagent.eval.application.result.EvalRunDetailResult;
@@ -36,7 +31,6 @@ import com.myagent.eval.application.result.EvalSuiteListItemResult;
 import com.myagent.eval.application.result.EvalSuiteResult;
 import com.myagent.eval.application.result.EvalSuiteSummaryResult;
 import com.myagent.eval.application.result.EvalWorkflowVersionSummaryResult;
-import com.myagent.eval.domain.EvalCaseConfirmStatus;
 import com.myagent.eval.domain.EvalSuiteStatus;
 import com.myagent.eval.repository.EvalCaseRecord;
 import com.myagent.eval.repository.EvalCaseRepository;
@@ -48,12 +42,11 @@ import com.myagent.eval.repository.EvalRunRepository;
 import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
 import com.myagent.run.application.result.RunErrorResult;
+import com.myagent.run.domain.RunNoGenerator;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.domain.TraceEventType;
 import com.myagent.run.repository.AgentRunRecord;
 import com.myagent.run.repository.AgentRunRepository;
-import com.myagent.run.repository.NodeRunRecord;
-import com.myagent.run.repository.NodeRunRepository;
 import com.myagent.runtime.NodeExecutionCommand;
 import com.myagent.runtime.NodeExecutionResult;
 import com.myagent.runtime.NodeExecutionRunner;
@@ -73,11 +66,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -85,32 +74,6 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 public class DefaultEvalApplicationService implements EvalApplicationService {
-
-    /**
-     * 编号时间格式。
-     */
-    private static final DateTimeFormatter NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-            .withZone(ZoneId.of("Asia/Shanghai"));
-
-    /**
-     * V1 正式支持的确定性断言类型。
-     */
-    private static final Set<String> SUPPORTED_ASSERTION_TYPES = Set.of(
-            "JSON_PATH_EXISTS",
-            "JSON_PATH_EQUALS",
-            "FIELD_EQUALS",
-            "JSON_PATH_CONTAINS",
-            "CONTAINS",
-            "JSON_PATH_NOT_CONTAINS",
-            "NOT_CONTAINS",
-            "JSON_PATH_REGEX",
-            "REGEX_MATCH",
-            "JSON_PATH_NUMBER_RANGE",
-            "NUMERIC_RANGE",
-            "JSON_PATH_IN",
-            "ENUM",
-            "SCHEMA_VALIDATION"
-    );
 
     /**
      * JSON 对象映射器。
@@ -153,11 +116,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private final AgentRunRepository agentRunRepository;
 
     /**
-     * NodeRun 仓储。
-     */
-    private final NodeRunRepository nodeRunRepository;
-
-    /**
      * Trace 写入器。
      */
     private final TraceWriter traceWriter;
@@ -183,6 +141,16 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private final EvalRunLifecycleService evalRunLifecycleService;
 
     /**
+     * 正式用例校验服务。
+     */
+    private final EvalCaseFormalValidationService formalValidationService;
+
+    /**
+     * 运行编号生成器。
+     */
+    private final RunNoGenerator runNoGenerator;
+
+    /**
      * 构造节点验收应用服务。
      *
      * @param objectMapper JSON 对象映射器
@@ -193,12 +161,13 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
      * @param agentRepository Agent 仓储
      * @param workflowVersionRepository 工作流版本仓储
      * @param agentRunRepository AgentRun 仓储
-     * @param nodeRunRepository NodeRun 仓储
      * @param traceWriter Trace 写入器
      * @param nodeExecutionRunner 节点执行协调器
      * @param assertionEvaluator 验收断言执行器
      * @param scoreEvaluator 验收评分执行器
      * @param evalRunLifecycleService EvalRun 生命周期服务
+     * @param formalValidationService 正式用例校验服务
+     * @param runNoGenerator 运行编号生成器
      */
     public DefaultEvalApplicationService(
             ObjectMapper objectMapper,
@@ -209,12 +178,13 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
             AgentRepository agentRepository,
             WorkflowVersionRepository workflowVersionRepository,
             AgentRunRepository agentRunRepository,
-            NodeRunRepository nodeRunRepository,
             TraceWriter traceWriter,
             NodeExecutionRunner nodeExecutionRunner,
             EvalAssertionEvaluator assertionEvaluator,
             EvalScoreEvaluator scoreEvaluator,
-            EvalRunLifecycleService evalRunLifecycleService
+            EvalRunLifecycleService evalRunLifecycleService,
+            EvalCaseFormalValidationService formalValidationService,
+            RunNoGenerator runNoGenerator
     ) {
         this.objectMapper = objectMapper;
         this.evalSuiteRepository = evalSuiteRepository;
@@ -224,12 +194,13 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
         this.agentRepository = agentRepository;
         this.workflowVersionRepository = workflowVersionRepository;
         this.agentRunRepository = agentRunRepository;
-        this.nodeRunRepository = nodeRunRepository;
         this.traceWriter = traceWriter;
         this.nodeExecutionRunner = nodeExecutionRunner;
         this.assertionEvaluator = assertionEvaluator;
         this.scoreEvaluator = scoreEvaluator;
         this.evalRunLifecycleService = evalRunLifecycleService;
+        this.formalValidationService = formalValidationService;
+        this.runNoGenerator = runNoGenerator;
     }
 
     @Override
@@ -283,7 +254,10 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
         if (formalCases.isEmpty()) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "确认验收套件前至少需要一个正式用例。");
         }
-        formalCases.forEach(record -> validateFormalEvalCase(suite, record));
+        formalCases.forEach(formalValidationService::validateFormalEvalCase);
+        WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(suite.workflowVersionId());
+        WorkflowNodeDefinition node = requiredEvalNode(workflowVersion, suite.nodeId());
+        formalCases.forEach(record -> formalValidationService.validateFormalEvalCase(record, node));
         return toSuiteResult(evalSuiteRepository.updateStatus(suiteId, EvalSuiteStatus.CONFIRMED));
     }
 
@@ -295,134 +269,8 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     }
 
     @Override
-    public PageResult<EvalCaseResult> listCases(ListEvalCasesQuery query) {
-        requiredSuite(query.suiteId());
-        return evalCaseRepository.list(query).map(this::toCaseResult);
-    }
-
-    @Override
-    @Transactional
-    public EvalCaseResult createCase(CreateEvalCaseCommand command) {
-        EvalSuiteRecord suite = requiredSuite(command.suiteId());
-        requireSuiteNotArchived(suite);
-        EvalCaseRecord record = new EvalCaseRecord(
-                0L,
-                suite.id(),
-                requiredText(command.caseNo(), "验收用例编号不能为空。"),
-                requiredText(command.title(), "验收用例标题不能为空。"),
-                nullToObject(command.input()),
-                command.referenceAnswer(),
-                nullToArray(command.assertions()),
-                nullToObject(command.scoreRule()),
-                command.critical(),
-                EvalCaseConfirmStatus.USER_CREATED,
-                null,
-                null,
-                null,
-                null,
-                command.description() == null ? "" : command.description(),
-                null,
-                null
-        );
-        validateFormalEvalCase(suite, record);
-        return toCaseResult(evalCaseRepository.insert(record));
-    }
-
-    @Override
-    @Transactional
-    public EvalCaseResult createCaseFromNodeRun(CreateEvalCaseFromNodeRunCommand command) {
-        EvalSuiteRecord suite = requiredSuite(command.suiteId());
-        requireSuiteNotArchived(suite);
-        NodeRunRecord nodeRun = nodeRunRepository.findById(command.nodeRunId())
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定 NodeRun 不存在。"));
-        AgentRunRecord sourceRun = agentRunRepository.findById(nodeRun.runId())
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "NodeRun 关联的运行不存在。"));
-        validateNodeRunSourceForSuite(suite, nodeRun, sourceRun);
-        EvalCaseRecord record = evalCaseRepository.insert(new EvalCaseRecord(
-                0L,
-                suite.id(),
-                newCaseNo(),
-                requiredText(command.title(), "验收用例标题不能为空。"),
-                nullToObject(nodeRun.inputJson()),
-                nodeRun.outputJson(),
-                objectMapper.createArrayNode(),
-                objectMapper.createObjectNode(),
-                false,
-                EvalCaseConfirmStatus.AI_DRAFT_PENDING,
-                sourceRun.id(),
-                nodeRun.id(),
-                sourceRun.workflowVersionId(),
-                nodeRun.nodeId(),
-                command.description() == null ? "" : command.description(),
-                null,
-                null
-        ));
-        return toCaseResult(record);
-    }
-
-    @Override
-    public EvalCaseResult getCase(long suiteId, long caseId) {
-        requiredSuite(suiteId);
-        EvalCaseRecord record = requiredCase(suiteId, caseId);
-        return toCaseResult(record);
-    }
-
-    @Override
-    @Transactional
-    public EvalCaseResult updateCase(UpdateEvalCaseCommand command) {
-        EvalSuiteRecord suite = requiredSuite(command.suiteId());
-        requireSuiteNotArchived(suite);
-        EvalCaseRecord current = requiredCase(command.suiteId(), command.caseId());
-        if (current.confirmStatus() == EvalCaseConfirmStatus.ARCHIVED) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收用例不可更新。");
-        }
-        EvalCaseRecord updated = evalCaseRepository.update(new EvalCaseRecord(
-                command.caseId(),
-                command.suiteId(),
-                current.caseNo(),
-                requiredText(command.title(), "验收用例标题不能为空。"),
-                nullToObject(command.input()),
-                command.referenceAnswer(),
-                nullToArray(command.assertions()),
-                nullToObject(command.scoreRule()),
-                command.critical(),
-                current.confirmStatus(),
-                current.sourceAgentRunId(),
-                current.sourceNodeRunId(),
-                current.sourceWorkflowVersionId(),
-                current.sourceNodeId(),
-                command.description() == null ? "" : command.description(),
-                current.createdAt(),
-                current.updatedAt()
-        ));
-        if (isFormalCase(updated)) {
-            validateFormalEvalCase(suite, updated);
-        }
-        return toCaseResult(updated);
-    }
-
-    @Override
-    @Transactional
-    public EvalCaseResult confirmCase(long suiteId, long caseId) {
-        EvalSuiteRecord suite = requiredSuite(suiteId);
-        EvalCaseRecord current = requiredCase(suiteId, caseId);
-        if (current.confirmStatus() == EvalCaseConfirmStatus.ARCHIVED) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收用例不可确认。");
-        }
-        validateFormalEvalCase(suite, current);
-        return toCaseResult(evalCaseRepository.updateConfirmStatus(suiteId, caseId, EvalCaseConfirmStatus.USER_CONFIRMED));
-    }
-
-    @Override
-    @Transactional
-    public EvalCaseResult archiveCase(long suiteId, long caseId) {
-        requiredSuite(suiteId);
-        requiredCase(suiteId, caseId);
-        return toCaseResult(evalCaseRepository.updateConfirmStatus(suiteId, caseId, EvalCaseConfirmStatus.ARCHIVED));
-    }
-
-    @Override
     public EvalRunResult runSuite(RunEvalSuiteCommand command) {
+        // 正式 EvalRun 只接收已确认套件和正式用例，未确认 AI 草稿不允许进入质量统计。
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         if (suite.status() != EvalSuiteStatus.CONFIRMED) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "只有已确认验收套件可以执行正式验收。");
@@ -440,15 +288,18 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
         if (cases.isEmpty()) {
             throw new BizException(ErrorCode.EVAL_CASE_UNCONFIRMED, "没有可执行的验收用例。");
         }
-        cases.forEach(record -> validateFormalEvalCase(record, node));
+        // 创建运行记录前先完成断言合法性校验，避免无效用例污染 AgentRun/EvalRun 审计链路。
+        cases.forEach(record -> formalValidationService.validateFormalEvalCase(record, node));
         long startedAtNanos = System.nanoTime();
-        AgentRunRecord agentRun = evalRunLifecycleService.createEvalAgentRun(newRunNo("run"), agent, workflowVersion, suite, cases);
+        // AgentRun 与 EvalRun 通过生命周期服务独立提交，确保线程池内写 Trace 时外键已经可见。
+        AgentRunRecord agentRun = evalRunLifecycleService.createEvalAgentRun(runNoGenerator.nextRunNo(), agent, workflowVersion, suite, cases);
         EvalRunRecord evalRun = null;
         int passed = 0;
         int failed = 0;
         try {
-            evalRun = evalRunLifecycleService.createEvalRun(newRunNo("eval"), suite, agent, workflowVersion, agentRun);
+            evalRun = evalRunLifecycleService.createEvalRun(runNoGenerator.nextEvalRunNo(), suite, agent, workflowVersion, agentRun);
             for (EvalCaseRecord evalCase : cases) {
+                // 单用例执行复用 NodeExecutionRunner，保持 Eval 与普通运行一致的 NodeRun、Trace、Schema 和超时语义。
                 EvalCaseExecution execution = executeCase(agentRun, evalRun, agent, workflowVersion, node, evalCase);
                 boolean casePassed = execution.passed();
                 if (casePassed) {
@@ -481,6 +332,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                                 .put("errorMessage", execution.errorMessage())
                 ));
             }
+            // 汇总只基于确定性断言结果；LLM 评分只进入 scoreResult，不覆盖正式通过率。
             BigDecimal passRate = percent(passed, cases.size());
             long criticalFailed = evalCaseResultRepository.countCriticalFailures(evalRun.id());
             RunStatus status = passRate.compareTo(suite.passThreshold()) >= 0 && criticalFailed == 0
@@ -522,6 +374,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                     summary
             );
         } catch (RuntimeException exception) {
+            // 异常路径同样显式写入 EvalRun 与 AgentRun 终态，避免运行记录长期停留在 RUNNING。
             markFailedEvalRun(agentRun, evalRun, cases, passed, failed, startedAtNanos, exception);
             throw exception;
         }
@@ -929,151 +782,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     }
 
     /**
-     * 转换用例详情。
-     *
-     * @param record 用例记录
-     * @return 用例详情
-     */
-    private EvalCaseResult toCaseResult(EvalCaseRecord record) {
-        String sourceRunId = record.sourceAgentRunId() == null
-                ? null
-                : agentRunRepository.findById(record.sourceAgentRunId()).map(AgentRunRecord::runNo).orElse(null);
-        return new EvalCaseResult(
-                record.id(),
-                record.suiteId(),
-                record.caseNo(),
-                record.title(),
-                record.inputJson(),
-                record.referenceAnswerJson(),
-                record.assertionsJson(),
-                record.scoreRuleJson(),
-                record.critical(),
-                record.confirmStatus(),
-                sourceRunId,
-                record.sourceNodeRunId(),
-                record.sourceWorkflowVersionId(),
-                record.sourceNodeId(),
-                record.description(),
-                record.createdAt(),
-                record.updatedAt()
-        );
-    }
-
-    /**
-     * 校验从 NodeRun 生成 EvalCase 时的来源一致性。
-     *
-     * @param suite 验收套件
-     * @param nodeRun 来源 NodeRun
-     * @param sourceRun 来源 AgentRun
-     */
-    private void validateNodeRunSourceForSuite(EvalSuiteRecord suite, NodeRunRecord nodeRun, AgentRunRecord sourceRun) {
-        if (sourceRun.agentId() != suite.agentId()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属 Agent 与验收套件绑定的 Agent 不一致。");
-        }
-        if (sourceRun.workflowVersionId() != suite.workflowVersionId()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属工作流版本与验收套件绑定的工作流版本不一致。");
-        }
-        if (!suite.nodeId().equals(nodeRun.nodeId())) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属节点与验收套件目标节点不一致。");
-        }
-        if (nodeRun.status() != RunStatus.SUCCESS) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "只有 SUCCESS 状态的 NodeRun 可以生成验收用例。");
-        }
-        if (nodeRun.outputJson() == null || nodeRun.outputJson().isNull() || nodeRun.outputJson().isMissingNode()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 输出不能为空，无法复制为验收参考答案。");
-        }
-    }
-
-    /**
-     * 校验正式 EvalCase 是否具备可执行验收标准。
-     *
-     * @param record EvalCase 记录
-     */
-    private void validateFormalEvalCase(EvalCaseRecord record) {
-        JsonNode assertions = record.assertionsJson();
-        if (assertions == null || assertions.isNull() || assertions.isMissingNode() || !assertions.isArray()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例必须配置断言数组：" + record.caseNo());
-        }
-        if (assertions.isEmpty()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例断言不能为空：" + record.caseNo());
-        }
-        for (int index = 0; index < assertions.size(); index++) {
-            JsonNode assertion = assertions.get(index);
-            if (assertion == null || !assertion.isObject()) {
-                throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例第 " + (index + 1) + " 条断言必须是对象：" + record.caseNo());
-            }
-            JsonNode typeNode = assertion.get("type");
-            if (typeNode == null || !typeNode.isTextual() || typeNode.asText().isBlank()) {
-                throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例第 " + (index + 1) + " 条断言缺少 type：" + record.caseNo());
-            }
-            String type = typeNode.asText();
-            if (!SUPPORTED_ASSERTION_TYPES.contains(type)) {
-                throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例不支持断言类型：" + type);
-            }
-        }
-    }
-
-    /**
-     * 结合套件目标节点校验正式 EvalCase。
-     *
-     * @param suite EvalSuite 记录
-     * @param record EvalCase 记录
-     */
-    private void validateFormalEvalCase(EvalSuiteRecord suite, EvalCaseRecord record) {
-        validateFormalEvalCase(record);
-        if (!containsSchemaValidationAssertion(record.assertionsJson())) {
-            return;
-        }
-        WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(suite.workflowVersionId());
-        validateFormalEvalCase(record, requiredEvalNode(workflowVersion, suite.nodeId()));
-    }
-
-    /**
-     * 结合目标节点校验正式 EvalCase。
-     *
-     * @param record EvalCase 记录
-     * @param node 目标节点
-     */
-    private void validateFormalEvalCase(EvalCaseRecord record, WorkflowNodeDefinition node) {
-        validateFormalEvalCase(record);
-        if (containsSchemaValidationAssertion(record.assertionsJson()) && node.getOutputSchemaRef() == null) {
-            throw new BizException(
-                    ErrorCode.INVALID_ARGUMENT,
-                    "SCHEMA_VALIDATION 断言要求目标节点配置 outputSchema：" + record.caseNo()
-            );
-        }
-    }
-
-    /**
-     * 判断断言列表是否包含 Schema 校验断言。
-     *
-     * @param assertions 断言配置
-     * @return 包含 Schema 校验断言时返回 true
-     */
-    private boolean containsSchemaValidationAssertion(JsonNode assertions) {
-        if (assertions == null || !assertions.isArray()) {
-            return false;
-        }
-        for (JsonNode assertion : assertions) {
-            if ("SCHEMA_VALIDATION".equals(assertion.path("type").asText())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 判断用例是否属于正式运行候选。
-     *
-     * @param record EvalCase 记录
-     * @return 属于正式候选时返回 true
-     */
-    private boolean isFormalCase(EvalCaseRecord record) {
-        return record.confirmStatus() == EvalCaseConfirmStatus.USER_CREATED
-                || record.confirmStatus() == EvalCaseConfirmStatus.USER_CONFIRMED;
-    }
-
-    /**
      * 查找 EvalRun。
      *
      * @param evalRunId 对外运行编号
@@ -1093,22 +801,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private AgentRunRecord requiredAgentRun(long agentRunId) {
         return agentRunRepository.findById(agentRunId)
                 .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "验收关联运行不存在。"));
-    }
-
-    /**
-     * 查找用例并校验所属套件。
-     *
-     * @param suiteId 套件主键
-     * @param caseId 用例主键
-     * @return 用例记录
-     */
-    private EvalCaseRecord requiredCase(long suiteId, long caseId) {
-        EvalCaseRecord record = evalCaseRepository.findById(caseId)
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定验收用例不存在。"));
-        if (record.suiteId() != suiteId) {
-            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定验收用例不属于当前套件。");
-        }
-        return record;
     }
 
     /**
@@ -1152,17 +844,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private void requireSuiteDraft(EvalSuiteRecord suite) {
         if (suite.status() != EvalSuiteStatus.DRAFT) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "只有草稿态验收套件允许执行该操作。");
-        }
-    }
-
-    /**
-     * 要求套件未归档。
-     *
-     * @param suite 套件记录
-     */
-    private void requireSuiteNotArchived(EvalSuiteRecord suite) {
-        if (suite.status() == EvalSuiteStatus.ARCHIVED) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收套件不可修改。");
         }
     }
 
@@ -1251,26 +932,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     }
 
     /**
-     * 将空值转换为空对象。
-     *
-     * @param json 输入 JSON
-     * @return JSON 对象
-     */
-    private JsonNode nullToObject(JsonNode json) {
-        return json == null || json.isNull() ? objectMapper.createObjectNode() : json;
-    }
-
-    /**
-     * 将空值转换为空数组。
-     *
-     * @param json 输入 JSON
-     * @return JSON 数组
-     */
-    private JsonNode nullToArray(JsonNode json) {
-        return json == null || json.isNull() ? objectMapper.createArrayNode() : json;
-    }
-
-    /**
      * 要求文本非空。
      *
      * @param value 文本
@@ -1282,25 +943,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, message);
         }
         return value;
-    }
-
-    /**
-     * 生成运行编号。
-     *
-     * @param prefix 前缀
-     * @return 编号
-     */
-    private String newRunNo(String prefix) {
-        return prefix + "_" + NO_TIME_FORMATTER.format(Instant.now()) + "_" + UUID.randomUUID().toString().substring(0, 8);
-    }
-
-    /**
-     * 生成用例编号。
-     *
-     * @return 用例编号
-     */
-    private String newCaseNo() {
-        return "case_" + NO_TIME_FORMATTER.format(Instant.now()) + "_" + UUID.randomUUID().toString().substring(0, 8);
     }
 
     /**

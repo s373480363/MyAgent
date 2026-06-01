@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 工作流运行上下文。
@@ -55,9 +57,13 @@ public class WorkflowContext implements Serializable {
      * @param newRoot 新根对象
      */
     public void replaceRoot(JsonNode newRoot) {
-        root.removeAll();
+        List<String> fieldNames = new ArrayList<>();
+        root.fieldNames().forEachRemaining(fieldNames::add);
+        for (String fieldName : fieldNames) {
+            root.remove(fieldName);
+        }
         if (newRoot != null && newRoot.isObject()) {
-            newRoot.fields().forEachRemaining(entry -> root.set(entry.getKey(), entry.getValue().deepCopy()));
+            newRoot.fieldNames().forEachRemaining(fieldName -> root.set(fieldName, newRoot.get(fieldName).deepCopy()));
         }
     }
 
@@ -77,7 +83,14 @@ public class WorkflowContext implements Serializable {
      * @param output 节点输出
      */
     public void putNodeOutput(String nodeId, JsonNode output) {
-        ObjectNode nodesNode = (ObjectNode) root.withObject("/nodes");
+        JsonNode currentNodes = root.get("nodes");
+        ObjectNode nodesNode;
+        if (currentNodes instanceof ObjectNode objectNode) {
+            nodesNode = objectNode;
+        } else {
+            nodesNode = OBJECT_MAPPER.createObjectNode();
+            root.set("nodes", nodesNode);
+        }
         nodesNode.set(nodeId, output == null ? OBJECT_MAPPER.nullNode() : output.deepCopy());
     }
 

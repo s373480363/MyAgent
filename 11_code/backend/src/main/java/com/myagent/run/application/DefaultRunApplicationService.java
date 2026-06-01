@@ -23,6 +23,7 @@ import com.myagent.run.application.result.RunListItemResult;
 import com.myagent.run.application.result.RunResult;
 import com.myagent.run.application.result.RunWorkflowVersionResult;
 import com.myagent.run.application.result.TraceEventResult;
+import com.myagent.run.domain.RunNoGenerator;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.domain.RunType;
 import com.myagent.run.repository.AgentMessageRecord;
@@ -41,23 +42,14 @@ import com.myagent.workflow.repository.WorkflowVersionRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * 默认运行应用服务。
  */
 @Service
 public class DefaultRunApplicationService implements RunApplicationService {
-
-    /**
-     * 运行编号时间格式。
-     */
-    private static final DateTimeFormatter RUN_NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-            .withZone(ZoneId.of("Asia/Shanghai"));
 
     /**
      * JSON 对象映射器。
@@ -105,6 +97,11 @@ public class DefaultRunApplicationService implements RunApplicationService {
     private final WorkflowRuntimeEngine workflowRuntimeEngine;
 
     /**
+     * 运行编号生成器。
+     */
+    private final RunNoGenerator runNoGenerator;
+
+    /**
      * 构造运行应用服务。
      *
      * @param objectMapper JSON 对象映射器
@@ -116,6 +113,7 @@ public class DefaultRunApplicationService implements RunApplicationService {
      * @param agentMessageRepository AgentMessage 仓储
      * @param evalRunRepository EvalRun 仓储
      * @param workflowRuntimeEngine 工作流运行引擎
+     * @param runNoGenerator 运行编号生成器
      */
     public DefaultRunApplicationService(
             ObjectMapper objectMapper,
@@ -126,7 +124,8 @@ public class DefaultRunApplicationService implements RunApplicationService {
             TraceEventRepository traceEventRepository,
             AgentMessageRepository agentMessageRepository,
             EvalRunRepository evalRunRepository,
-            WorkflowRuntimeEngine workflowRuntimeEngine
+            WorkflowRuntimeEngine workflowRuntimeEngine,
+            RunNoGenerator runNoGenerator
     ) {
         this.objectMapper = objectMapper;
         this.agentRepository = agentRepository;
@@ -137,6 +136,7 @@ public class DefaultRunApplicationService implements RunApplicationService {
         this.agentMessageRepository = agentMessageRepository;
         this.evalRunRepository = evalRunRepository;
         this.workflowRuntimeEngine = workflowRuntimeEngine;
+        this.runNoGenerator = runNoGenerator;
     }
 
     /**
@@ -251,7 +251,7 @@ public class DefaultRunApplicationService implements RunApplicationService {
     ) {
         AgentRunRecord run = agentRunRepository.insert(new AgentRunRecord(
                 0L,
-                newRunNo("run"),
+                runNoGenerator.nextRunNo(),
                 agent.id(),
                 agent.agentKey(),
                 workflowVersion.id(),
@@ -461,13 +461,4 @@ public class DefaultRunApplicationService implements RunApplicationService {
         return details.isEmpty() ? null : details;
     }
 
-    /**
-     * 生成运行编号。
-     *
-     * @param prefix 编号前缀
-     * @return 运行编号
-     */
-    private String newRunNo(String prefix) {
-        return prefix + "_" + RUN_NO_TIME_FORMATTER.format(Instant.now()) + "_" + UUID.randomUUID().toString().substring(0, 8);
-    }
 }

@@ -125,4 +125,46 @@ class DefaultEvalAssertionEvaluatorTests {
 
         assertThat(evaluation.passed()).isTrue();
     }
+
+    /**
+     * 正式断言类型不接受别名写法。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void evaluateRejectsAliasAssertionType() throws Exception {
+        EvalAssertionEvaluation evaluation = evaluator.evaluate(
+                objectMapper.createObjectNode().put("summary", "ok"),
+                objectMapper.readTree("""
+                        [
+                          {"type": "FIELD_EQUALS", "path": "$.summary", "expected": "ok"}
+                        ]
+                        """),
+                null
+        );
+
+        assertThat(evaluation.passed()).isFalse();
+        assertThat(evaluation.errorMessage()).isEqualTo("不支持的断言类型：FIELD_EQUALS");
+    }
+
+    /**
+     * value 不是正式期望值字段，不能被运行时当作 expected 兼容读取。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void evaluateDoesNotReadValueAsExpectedFallback() throws Exception {
+        EvalAssertionEvaluation evaluation = evaluator.evaluate(
+                objectMapper.createObjectNode().put("summary", "ok"),
+                objectMapper.readTree("""
+                        [
+                          {"type": "JSON_PATH_EQUALS", "path": "$.summary", "value": "ok"}
+                        ]
+                        """),
+                null
+        );
+
+        assertThat(evaluation.passed()).isFalse();
+        assertThat(evaluation.errorMessage()).isEqualTo("$.summary 不等于期望值。");
+    }
 }

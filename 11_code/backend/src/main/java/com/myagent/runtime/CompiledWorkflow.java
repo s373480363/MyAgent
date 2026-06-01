@@ -2,6 +2,8 @@ package com.myagent.runtime;
 
 import com.myagent.workflow.domain.WorkflowEdgeDefinition;
 import com.myagent.workflow.domain.WorkflowNodeDefinition;
+import org.bsc.langgraph4j.StateGraph;
+import org.bsc.langgraph4j.state.AgentState;
 
 import java.util.List;
 import java.util.Map;
@@ -13,12 +15,14 @@ import java.util.Map;
  * @param nodesById 节点索引
  * @param outgoingEdgesByNodeId 出边索引
  * @param startNode 开始节点
+ * @param executionGraph 已编译 LangGraph4j 执行图
  */
 public record CompiledWorkflow(
         WorkflowVersionSnapshot snapshot,
         Map<String, WorkflowNodeDefinition> nodesById,
         Map<String, List<WorkflowEdgeDefinition>> outgoingEdgesByNodeId,
-        WorkflowNodeDefinition startNode
+        WorkflowNodeDefinition startNode,
+        StateGraph<AgentState> executionGraph
 ) {
 
     /**

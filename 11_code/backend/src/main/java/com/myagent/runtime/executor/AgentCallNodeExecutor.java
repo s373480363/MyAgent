@@ -10,6 +10,7 @@ import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.domain.RunType;
+import com.myagent.run.domain.RunNoGenerator;
 import com.myagent.run.domain.TraceEventType;
 import com.myagent.run.repository.AgentMessageRecord;
 import com.myagent.run.repository.AgentMessageRepository;
@@ -31,22 +32,11 @@ import com.myagent.workflow.repository.WorkflowVersionRepository;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.UUID;
-
 /**
  * AGENT_CALL 节点执行器。
  */
 @Component
 public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implements NodeExecutor, SupportsNodeType {
-
-    /**
-     * 运行编号时间格式。
-     */
-    private static final DateTimeFormatter RUN_NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-            .withZone(ZoneId.of("Asia/Shanghai"));
 
     /**
      * Agent 仓储。
@@ -79,6 +69,11 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
     private final ActiveChildRunRegistry activeChildRunRegistry;
 
     /**
+     * 运行编号生成器。
+     */
+    private final RunNoGenerator runNoGenerator;
+
+    /**
      * 构造 AGENT_CALL 节点执行器。
      *
      * @param objectMapper JSON 对象映射器
@@ -88,6 +83,7 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
      * @param agentMessageRepository AgentMessage 仓储
      * @param workflowRuntimeEngineProvider 工作流运行引擎延迟提供器
      * @param activeChildRunRegistry 活跃子运行登记表
+     * @param runNoGenerator 运行编号生成器
      */
     public AgentCallNodeExecutor(
             ObjectMapper objectMapper,
@@ -96,7 +92,8 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
             AgentRunRepository agentRunRepository,
             AgentMessageRepository agentMessageRepository,
             ObjectProvider<WorkflowRuntimeEngine> workflowRuntimeEngineProvider,
-            ActiveChildRunRegistry activeChildRunRegistry
+            ActiveChildRunRegistry activeChildRunRegistry,
+            RunNoGenerator runNoGenerator
     ) {
         super(objectMapper);
         this.agentRepository = agentRepository;
@@ -105,6 +102,7 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
         this.agentMessageRepository = agentMessageRepository;
         this.workflowRuntimeEngineProvider = workflowRuntimeEngineProvider;
         this.activeChildRunRegistry = activeChildRunRegistry;
+        this.runNoGenerator = runNoGenerator;
     }
 
     /**
@@ -265,7 +263,7 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
     ) {
         AgentRunRecord childRun = agentRunRepository.insert(new AgentRunRecord(
                 0L,
-                newRunNo("run"),
+                runNoGenerator.nextRunNo(),
                 targetAgent.id(),
                 targetAgent.agentKey(),
                 targetWorkflowVersion.id(),
@@ -397,16 +395,6 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
             return config.get(fieldName).asText();
         }
         throw new BizException(ErrorCode.TARGET_AGENT_NOT_PUBLISHED, message);
-    }
-
-    /**
-     * 生成运行编号。
-     *
-     * @param prefix 编号前缀
-     * @return 运行编号
-     */
-    private String newRunNo(String prefix) {
-        return prefix + "_" + RUN_NO_TIME_FORMATTER.format(Instant.now()) + "_" + UUID.randomUUID().toString().substring(0, 8);
     }
 
     /**

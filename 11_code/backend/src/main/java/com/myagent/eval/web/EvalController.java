@@ -2,6 +2,7 @@ package com.myagent.eval.web;
 
 import com.myagent.common.api.PageResponse;
 import com.myagent.eval.application.EvalApplicationService;
+import com.myagent.eval.application.EvalCaseApplicationService;
 import com.myagent.eval.application.command.CreateEvalCaseCommand;
 import com.myagent.eval.application.command.CreateEvalCaseFromNodeRunCommand;
 import com.myagent.eval.application.command.CreateEvalSuiteCommand;
@@ -66,12 +67,22 @@ public class EvalController {
     private final EvalApplicationService evalApplicationService;
 
     /**
+     * 验收用例应用服务。
+     */
+    private final EvalCaseApplicationService evalCaseApplicationService;
+
+    /**
      * 构造节点验收控制器。
      *
      * @param evalApplicationService 节点验收应用服务
+     * @param evalCaseApplicationService 验收用例应用服务
      */
-    public EvalController(EvalApplicationService evalApplicationService) {
+    public EvalController(
+            EvalApplicationService evalApplicationService,
+            EvalCaseApplicationService evalCaseApplicationService
+    ) {
         this.evalApplicationService = evalApplicationService;
+        this.evalCaseApplicationService = evalCaseApplicationService;
     }
 
     /**
@@ -198,7 +209,7 @@ public class EvalController {
             @RequestParam(required = false) Boolean critical,
             @RequestParam(required = false) String keyword
     ) {
-        return new EvalCasePageApiResponse(true, PageResponse.from(evalApplicationService.listCases(
+        return new EvalCasePageApiResponse(true, PageResponse.from(evalCaseApplicationService.listCases(
                 new ListEvalCasesQuery(suiteId, page, pageSize, confirmStatus, critical, keyword)
         )), null);
     }
@@ -216,7 +227,7 @@ public class EvalController {
             @PathVariable @Min(1) long suiteId,
             @Valid @RequestBody CreateEvalCaseRequest request
     ) {
-        return new EvalCaseApiResponse(true, evalApplicationService.createCase(new CreateEvalCaseCommand(
+        return new EvalCaseApiResponse(true, evalCaseApplicationService.createCase(new CreateEvalCaseCommand(
                 suiteId,
                 request.caseNo(),
                 request.title(),
@@ -242,7 +253,7 @@ public class EvalController {
             @PathVariable @Min(1) long suiteId,
             @PathVariable @Min(1) long caseId
     ) {
-        return new EvalCaseApiResponse(true, evalApplicationService.getCase(suiteId, caseId), null);
+        return new EvalCaseApiResponse(true, evalCaseApplicationService.getCase(suiteId, caseId), null);
     }
 
     /**
@@ -260,7 +271,7 @@ public class EvalController {
             @PathVariable @Min(1) long caseId,
             @Valid @RequestBody UpdateEvalCaseRequest request
     ) {
-        return new EvalCaseApiResponse(true, evalApplicationService.updateCase(new UpdateEvalCaseCommand(
+        return new EvalCaseApiResponse(true, evalCaseApplicationService.updateCase(new UpdateEvalCaseCommand(
                 suiteId,
                 caseId,
                 request.title(),
@@ -286,7 +297,7 @@ public class EvalController {
             @PathVariable @Min(1) long suiteId,
             @PathVariable @Min(1) long caseId
     ) {
-        return new EvalCaseApiResponse(true, evalApplicationService.confirmCase(suiteId, caseId), null);
+        return new EvalCaseApiResponse(true, evalCaseApplicationService.confirmCase(suiteId, caseId), null);
     }
 
     /**
@@ -302,7 +313,7 @@ public class EvalController {
             @PathVariable @Min(1) long suiteId,
             @PathVariable @Min(1) long caseId
     ) {
-        return new EvalCaseApiResponse(true, evalApplicationService.archiveCase(suiteId, caseId), null);
+        return new EvalCaseApiResponse(true, evalCaseApplicationService.archiveCase(suiteId, caseId), null);
     }
 
     /**
@@ -318,7 +329,7 @@ public class EvalController {
             @PathVariable @Min(1) long nodeRunId,
             @Valid @RequestBody CreateEvalCaseFromNodeRunRequest request
     ) {
-        return new EvalCaseApiResponse(true, evalApplicationService.createCaseFromNodeRun(
+        return new EvalCaseApiResponse(true, evalCaseApplicationService.createCaseFromNodeRun(
                 new CreateEvalCaseFromNodeRunCommand(nodeRunId, request.suiteId(), request.title(), request.description())
         ), null);
     }

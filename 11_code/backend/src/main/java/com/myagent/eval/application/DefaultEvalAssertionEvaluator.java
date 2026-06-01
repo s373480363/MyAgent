@@ -96,12 +96,12 @@ class DefaultEvalAssertionEvaluator implements EvalAssertionEvaluator {
         JsonNode actual = read(output, path);
         return switch (type) {
             case "JSON_PATH_EXISTS" -> exists(type, path, actual);
-            case "JSON_PATH_EQUALS", "FIELD_EQUALS" -> equals(type, path, actual, expected(assertion));
-            case "JSON_PATH_CONTAINS", "CONTAINS" -> contains(type, path, actual, expected(assertion), true);
-            case "JSON_PATH_NOT_CONTAINS", "NOT_CONTAINS" -> contains(type, path, actual, expected(assertion), false);
-            case "JSON_PATH_REGEX", "REGEX_MATCH" -> regex(type, path, actual, text(assertion, "pattern", ""));
-            case "JSON_PATH_NUMBER_RANGE", "NUMERIC_RANGE" -> range(type, path, actual, assertion);
-            case "JSON_PATH_IN", "ENUM" -> inValues(type, path, actual, assertion.get("values"));
+            case "JSON_PATH_EQUALS" -> equals(type, path, actual, expected(assertion));
+            case "JSON_PATH_CONTAINS" -> contains(type, path, actual, expected(assertion), true);
+            case "JSON_PATH_NOT_CONTAINS" -> contains(type, path, actual, expected(assertion), false);
+            case "JSON_PATH_REGEX" -> regex(type, path, actual, text(assertion, "pattern", ""));
+            case "JSON_PATH_NUMBER_RANGE" -> range(type, path, actual, assertion);
+            case "JSON_PATH_IN" -> inValues(type, path, actual, assertion.get("values"));
             case "SCHEMA_VALIDATION" -> schemaValidation(type, schemaValidationResultJson);
             default -> new AssertionResult(type.isBlank() ? "UNKNOWN" : type, false, "不支持的断言类型：" + type);
         };
@@ -259,9 +259,6 @@ class DefaultEvalAssertionEvaluator implements EvalAssertionEvaluator {
             return objectMapper.nullNode();
         }
         JsonNode expected = assertion.get("expected");
-        if (expected == null) {
-            expected = assertion.get("value");
-        }
         return expected == null ? objectMapper.nullNode() : expected;
     }
 

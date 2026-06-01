@@ -114,6 +114,7 @@ public class NodeExecutionRunner {
      * @return 节点执行结果
      */
     public NodeExecutionResult execute(NodeExecutionCommand command) {
+        // Eval 传入已解析节点输入时必须跳过 inputMapping，避免从历史 NodeRun 生成的用例被二次映射。
         JsonNode inputJson = command.resolvedInputJson() == null
                 ? resolveNodeInput(command.workflowContext(), command.node())
                 : command.resolvedInputJson();
@@ -123,6 +124,7 @@ public class NodeExecutionRunner {
         WorkflowContext executionContext = command.resolvedInputJson() == null
                 ? command.workflowContext()
                 : new WorkflowContext(objectMapper, inputJson);
+        // NodeRun 先创建，后续 Schema、模型调用和错误 Trace 都以这个节点运行记录为审计锚点。
         NodeRunStartResult nodeRun = command.traceWriter().createNodeRun(new NodeRunStartRecord(
                 command.agentRunDbId(),
                 command.agentRunNo(),
@@ -152,6 +154,7 @@ public class NodeExecutionRunner {
                     mappingService,
                     runtimeLimitGuard
             );
+            // 节点执行前后都检查节点超时；真实阻塞调用由 executeNodeWithTimeout 负责用 Future 包住。
             RunLimitContext beforeNodeContext = new RunLimitContext(
                     command.agentRunDbId(),
                     command.agentRunNo(),
@@ -167,6 +170,7 @@ public class NodeExecutionRunner {
             NodeExecutionResult result = executeNodeWithTimeout(context, effectiveTimeoutMillis);
             runtimeLimitGuard.checkNodeTimeout(beforeNodeContext);
             JsonNode schemaValidationResultJson = schemaValidationResultsJson(schemaValidationResults);
+            // 成功或业务失败都要把 Schema 校验汇总写回 NodeRun，运行详情才能直接回放字段级原因。
             command.traceWriter().finishNodeRun(new NodeRunFinishRecord(
                     nodeRun.nodeRunDbId(),
                     result.status(),

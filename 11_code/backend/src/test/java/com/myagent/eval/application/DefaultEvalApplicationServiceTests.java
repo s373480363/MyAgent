@@ -18,6 +18,7 @@ import com.myagent.eval.repository.EvalCaseResultRepository;
 import com.myagent.eval.repository.EvalRunRepository;
 import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
+import com.myagent.run.domain.RunNoGenerator;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.domain.RunType;
 import com.myagent.run.repository.AgentRunRecord;
@@ -67,7 +68,7 @@ class DefaultEvalApplicationServiceTests {
         EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
         AgentRunRepository runRepository = mock(AgentRunRepository.class);
         NodeRunRepository nodeRunRepository = mock(NodeRunRepository.class);
-        DefaultEvalApplicationService service = service(suiteRepository(suite(1L, 10L, "llm")), caseRepository, runRepository, nodeRunRepository);
+        DefaultEvalCaseApplicationService service = caseService(suiteRepository(suite(1L, 10L, "llm")), caseRepository, runRepository, nodeRunRepository);
         AgentRunRecord sourceRun = agentRun(100L, 1L, 10L);
         NodeRunRecord nodeRun = nodeRun(200L, 100L, "llm", RunStatus.SUCCESS, OBJECT_MAPPER.readTree("""
                 {
@@ -202,7 +203,7 @@ class DefaultEvalApplicationServiceTests {
      */
     @Test
     void createCaseRejectsEmptyAssertions() throws Exception {
-        DefaultEvalApplicationService service = service(
+        DefaultEvalCaseApplicationService service = caseService(
                 suiteRepository(suite(1L, 10L, "llm")),
                 mock(EvalCaseRepository.class),
                 mock(AgentRunRepository.class),
@@ -233,7 +234,7 @@ class DefaultEvalApplicationServiceTests {
                 EvalCaseConfirmStatus.AI_DRAFT_PENDING,
                 OBJECT_MAPPER.createArrayNode()
         )));
-        DefaultEvalApplicationService service = service(
+        DefaultEvalCaseApplicationService service = caseService(
                 suiteRepository(suite(1L, 10L, "llm")),
                 caseRepository,
                 mock(AgentRunRepository.class),
@@ -259,14 +260,12 @@ class DefaultEvalApplicationServiceTests {
                 OBJECT_MAPPER.readTree("[{\"type\":\"SCHEMA_VALIDATION\"}]")
         )));
         when(workflowVersionRepository.findById(10L)).thenReturn(Optional.of(workflowVersion(false)));
-        DefaultEvalApplicationService service = service(
+        DefaultEvalCaseApplicationService service = caseService(
                 suiteRepository(suite(1L, 10L, "llm")),
                 caseRepository,
                 mock(AgentRunRepository.class),
                 mock(NodeRunRepository.class),
-                mock(AgentRepository.class),
-                workflowVersionRepository,
-                mock(EvalRunLifecycleService.class)
+                workflowVersionRepository
         );
 
         assertThatThrownBy(() -> service.confirmCase(300L, 400L))
@@ -357,7 +356,7 @@ class DefaultEvalApplicationServiceTests {
         EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
         AgentRunRepository runRepository = mock(AgentRunRepository.class);
         NodeRunRepository nodeRunRepository = mock(NodeRunRepository.class);
-        DefaultEvalApplicationService service = service(suiteRepository(suite), caseRepository, runRepository, nodeRunRepository);
+        DefaultEvalCaseApplicationService service = caseService(suiteRepository(suite), caseRepository, runRepository, nodeRunRepository);
         when(runRepository.findById(sourceRun.id())).thenReturn(Optional.of(sourceRun));
         when(nodeRunRepository.findById(nodeRun.id())).thenReturn(Optional.of(nodeRun));
 
@@ -397,6 +396,58 @@ class DefaultEvalApplicationServiceTests {
     }
 
     /**
+     * 构造验收用例应用服务。
+     *
+     * @param suiteRepository EvalSuite 仓储
+     * @param caseRepository EvalCase 仓储
+     * @param runRepository AgentRun 仓储
+     * @param nodeRunRepository NodeRun 仓储
+     * @return 验收用例应用服务
+     */
+    private DefaultEvalCaseApplicationService caseService(
+            EvalSuiteRepository suiteRepository,
+            EvalCaseRepository caseRepository,
+            AgentRunRepository runRepository,
+            NodeRunRepository nodeRunRepository
+    ) {
+        return caseService(
+                suiteRepository,
+                caseRepository,
+                runRepository,
+                nodeRunRepository,
+                mock(WorkflowVersionRepository.class)
+        );
+    }
+
+    /**
+     * 构造验收用例应用服务。
+     *
+     * @param suiteRepository EvalSuite 仓储
+     * @param caseRepository EvalCase 仓储
+     * @param runRepository AgentRun 仓储
+     * @param nodeRunRepository NodeRun 仓储
+     * @param workflowVersionRepository 工作流版本仓储
+     * @return 验收用例应用服务
+     */
+    private DefaultEvalCaseApplicationService caseService(
+            EvalSuiteRepository suiteRepository,
+            EvalCaseRepository caseRepository,
+            AgentRunRepository runRepository,
+            NodeRunRepository nodeRunRepository,
+            WorkflowVersionRepository workflowVersionRepository
+    ) {
+        return new DefaultEvalCaseApplicationService(
+                OBJECT_MAPPER,
+                suiteRepository,
+                caseRepository,
+                runRepository,
+                nodeRunRepository,
+                workflowVersionRepository,
+                new EvalCaseFormalValidationService()
+        );
+    }
+
+    /**
      * 构造应用服务。
      *
      * @param suiteRepository EvalSuite 仓储
@@ -426,12 +477,13 @@ class DefaultEvalApplicationServiceTests {
                 agentRepository,
                 workflowVersionRepository,
                 runRepository,
-                nodeRunRepository,
                 mock(TraceWriter.class),
                 mock(NodeExecutionRunner.class),
                 mock(EvalAssertionEvaluator.class),
                 mock(EvalScoreEvaluator.class),
-                lifecycleService
+                lifecycleService,
+                new EvalCaseFormalValidationService(),
+                new RunNoGenerator()
         );
     }
 

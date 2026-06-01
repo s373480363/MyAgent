@@ -515,13 +515,14 @@ public class ExternalAgentCommandJsonCodec {
         if (!node.isObject()) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, fieldName + " 必须是对象。");
         }
-        node.fields().forEachRemaining(entry -> {
-            String headerName = normalizeRequiredHeaderName(entry.getKey());
-            if (!entry.getValue().isTextual()) {
+        node.fieldNames().forEachRemaining(fieldNameValue -> {
+            JsonNode value = node.get(fieldNameValue);
+            String headerName = normalizeRequiredHeaderName(fieldNameValue);
+            if (!value.isTextual()) {
                 throw new BizException(ErrorCode.INVALID_ARGUMENT, fieldName + " 中的值必须为字符串。");
             }
             ensureNoDuplicateKey(result, headerName, fieldName);
-            result.put(headerName, entry.getValue().asText());
+            result.put(headerName, value.asText());
         });
         return result;
     }

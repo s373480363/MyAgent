@@ -6,6 +6,7 @@ import com.myagent.common.domain.EnableStatus;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.settings.domain.PlatformSettingsResolver;
 import com.myagent.workflow.domain.WorkflowNodeDefinition;
+import com.myagent.workflow.domain.WorkflowEdgeDefinition;
 import com.myagent.workflow.domain.WorkflowNodeType;
 import com.myagent.workflow.domain.WorkflowRuntimeOptions;
 import com.myagent.workflow.domain.WorkflowVersionStatus;
@@ -14,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -51,19 +51,15 @@ class DefaultWorkflowRuntimeEngineTests {
                 "Agent",
                 1,
                 WorkflowVersionStatus.PUBLISHED,
-                List.of(slowNode),
-                List.of(),
+                List.of(startNode(), slowNode),
+                List.of(edge("start", slowNode.getNodeId())),
                 new WorkflowRuntimeOptions(600, 30, 3),
                 List.of()
         );
-        WorkflowCompiler compiler = mock(WorkflowCompiler.class);
-        when(compiler.compile(snapshot)).thenReturn(new CompiledWorkflow(
-                snapshot,
-                Map.of(slowNode.getNodeId(), slowNode),
-                Map.of(),
-                slowNode
-        ));
+        WorkflowCompiler compiler = new DefaultWorkflowCompiler();
         NodeExecutorRegistry registry = mock(NodeExecutorRegistry.class);
+        when(registry.getExecutor(WorkflowNodeType.START)).thenReturn(context ->
+                NodeExecutionResult.success(objectMapper.createObjectNode(), 1));
         when(registry.getExecutor(WorkflowNodeType.LLM)).thenReturn(context -> {
             try {
                 Thread.sleep(2_000);
@@ -115,19 +111,15 @@ class DefaultWorkflowRuntimeEngineTests {
                 "Agent",
                 1,
                 WorkflowVersionStatus.PUBLISHED,
-                List.of(slowNode),
-                List.of(),
+                List.of(startNode(), slowNode),
+                List.of(edge("start", slowNode.getNodeId())),
                 new WorkflowRuntimeOptions(1, 30, 3),
                 List.of()
         );
-        WorkflowCompiler compiler = mock(WorkflowCompiler.class);
-        when(compiler.compile(snapshot)).thenReturn(new CompiledWorkflow(
-                snapshot,
-                Map.of(slowNode.getNodeId(), slowNode),
-                Map.of(),
-                slowNode
-        ));
+        WorkflowCompiler compiler = new DefaultWorkflowCompiler();
         NodeExecutorRegistry registry = mock(NodeExecutorRegistry.class);
+        when(registry.getExecutor(WorkflowNodeType.START)).thenReturn(context ->
+                NodeExecutionResult.success(objectMapper.createObjectNode(), 1));
         when(registry.getExecutor(WorkflowNodeType.END)).thenReturn(context -> {
             try {
                 Thread.sleep(2_000);
@@ -183,6 +175,34 @@ class DefaultWorkflowRuntimeEngineTests {
                 Instant.now(),
                 Instant.now()
         );
+    }
+
+    /**
+     * 构造 START 节点。
+     *
+     * @return START 节点
+     */
+    private WorkflowNodeDefinition startNode() {
+        WorkflowNodeDefinition node = new WorkflowNodeDefinition();
+        node.setNodeId("start");
+        node.setName("开始");
+        node.setType(WorkflowNodeType.START);
+        return node;
+    }
+
+    /**
+     * 构造普通边。
+     *
+     * @param source 源节点
+     * @param target 目标节点
+     * @return 边定义
+     */
+    private WorkflowEdgeDefinition edge(String source, String target) {
+        WorkflowEdgeDefinition edge = new WorkflowEdgeDefinition();
+        edge.setEdgeId(source + "-" + target);
+        edge.setSourceNodeId(source);
+        edge.setTargetNodeId(target);
+        return edge;
     }
 
     /**

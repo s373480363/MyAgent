@@ -1,19 +1,14 @@
 package com.myagent.eval.application;
 
 import com.myagent.common.page.PageResult;
-import com.myagent.eval.application.command.CreateEvalCaseCommand;
-import com.myagent.eval.application.command.CreateEvalCaseFromNodeRunCommand;
 import com.myagent.eval.application.command.CreateEvalSuiteCommand;
 import com.myagent.eval.application.command.RunEvalSuiteCommand;
-import com.myagent.eval.application.command.UpdateEvalCaseCommand;
 import com.myagent.eval.application.command.UpdateEvalSuiteCommand;
 import com.myagent.eval.application.query.GetEvalRunQuery;
-import com.myagent.eval.application.query.ListEvalCasesQuery;
 import com.myagent.eval.application.query.ListEvalRunHistoryQuery;
 import com.myagent.eval.application.query.ListEvalRunResultsQuery;
 import com.myagent.eval.application.query.ListEvalRunsQuery;
 import com.myagent.eval.application.query.ListEvalSuitesQuery;
-import com.myagent.eval.application.result.EvalCaseResult;
 import com.myagent.eval.application.result.EvalRunDetailResult;
 import com.myagent.eval.application.result.EvalRunHistoryItemResult;
 import com.myagent.eval.application.result.EvalRunListItemResult;
@@ -66,65 +61,6 @@ public interface EvalApplicationService {
      * @return 套件详情
      */
     EvalSuiteResult archiveSuite(long suiteId);
-
-    /**
-     * 查询套件用例列表。
-     *
-     * @param query 查询参数
-     * @return 用例分页
-     */
-    PageResult<EvalCaseResult> listCases(ListEvalCasesQuery query);
-
-    /**
-     * 创建验收用例。
-     *
-     * @param command 创建命令
-     * @return 用例详情
-     */
-    EvalCaseResult createCase(CreateEvalCaseCommand command);
-
-    /**
-     * 从 NodeRun 创建验收用例。
-     *
-     * @param command 创建命令
-     * @return 用例详情
-     */
-    EvalCaseResult createCaseFromNodeRun(CreateEvalCaseFromNodeRunCommand command);
-
-    /**
-     * 查询用例详情。
-     *
-     * @param suiteId 套件主键
-     * @param caseId 用例主键
-     * @return 用例详情
-     */
-    EvalCaseResult getCase(long suiteId, long caseId);
-
-    /**
-     * 更新用例。
-     *
-     * @param command 更新命令
-     * @return 用例详情
-     */
-    EvalCaseResult updateCase(UpdateEvalCaseCommand command);
-
-    /**
-     * 确认用例。
-     *
-     * @param suiteId 套件主键
-     * @param caseId 用例主键
-     * @return 用例详情
-     */
-    EvalCaseResult confirmCase(long suiteId, long caseId);
-
-    /**
-     * 归档用例。
-     *
-     * @param suiteId 套件主键
-     * @param caseId 用例主键
-     * @return 用例详情
-     */
-    EvalCaseResult archiveCase(long suiteId, long caseId);
 
     /**
      * 运行验收套件。

@@ -311,8 +311,11 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
      */
     private void validateConditionObject(WorkflowEdgeDefinition edge, List<WorkflowValidationIssueResult> issues) {
         JsonNode condition = edge.getCondition();
-        if (!hasText(condition, "path")) {
-            issues.add(issue("$.edges", "CONDITION 分支条件缺少 path。", detail("$.edges[*].condition.path", "required", "条件 path 不能为空。", edge.getEdgeId())));
+        String left = textValue(condition, "left");
+        if (isBlank(left)) {
+            issues.add(issue("$.edges", "CONDITION 分支条件缺少 left。", detail("$.edges[*].condition.left", "required", "条件 left 不能为空。", edge.getEdgeId())));
+        } else if (!isControlledJsonPath(left)) {
+            issues.add(issue("$.edges", "CONDITION 分支条件 left 不是受控 JSONPath。", detail("$.edges[*].condition.left", "invalid_path", "条件 left 必须是受控 JSONPath。", left)));
         }
         String operator = textValue(condition, "operator");
         if (isBlank(operator)) {
@@ -322,6 +325,9 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
                 "EQUALS",
                 "NOT_EQUALS",
                 "CONTAINS",
+                "NOT_CONTAINS",
+                "IN",
+                "NOT_IN",
                 "GREATER_THAN",
                 "GREATER_THAN_OR_EQUALS",
                 "LESS_THAN",
@@ -335,9 +341,54 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
         } else if (!Set.of("STRING", "NUMBER", "BOOLEAN", "JSON").contains(valueType)) {
             issues.add(issue("$.edges", "CONDITION 分支条件 valueType 不支持。", detail("$.edges[*].condition.valueType", "not_supported", "不支持的 valueType。", valueType)));
         }
-        if (!"EXISTS".equals(operator) && condition.get("value") == null) {
-            issues.add(issue("$.edges", "CONDITION 分支条件缺少 value。", detail("$.edges[*].condition.value", "required", "条件 value 不能为空。", edge.getEdgeId())));
+        JsonNode right = condition.get("right");
+        if (!"EXISTS".equals(operator) && right == null) {
+            issues.add(issue("$.edges", "CONDITION 分支条件缺少 right。", detail("$.edges[*].condition.right", "required", "条件 right 不能为空。", edge.getEdgeId())));
         }
+        if (("IN".equals(operator) || "NOT_IN".equals(operator)) && right != null && !right.isArray()) {
+            issues.add(issue("$.edges", "CONDITION 分支条件 right 必须是数组。", detail("$.edges[*].condition.right", "invalid_type", "IN/NOT_IN 的 right 必须是数组。", edge.getEdgeId())));
+        }
+    }
+
+    /**
+     * 判断是否为受控 JSONPath。
+     *
+     * @param path JSONPath
+     * @return 合法时返回 true
+     */
+    private boolean isControlledJsonPath(String path) {
+        if (isBlank(path) || path.charAt(0) != '$') {
+            return false;
+        }
+        int index = 1;
+        while (index < path.length()) {
+            char current = path.charAt(index);
+            if (current == '.') {
+                int start = ++index;
+                while (index < path.length() && path.charAt(index) != '.' && path.charAt(index) != '[') {
+                    index++;
+                }
+                if (start == index) {
+                    return false;
+                }
+                continue;
+            }
+            if (current == '[') {
+                int end = path.indexOf(']', index);
+                if (end < 0) {
+                    return false;
+                }
+                try {
+                    Integer.parseInt(path.substring(index + 1, end));
+                } catch (NumberFormatException exception) {
+                    return false;
+                }
+                index = end + 1;
+                continue;
+            }
+            return false;
+        }
+        return true;
     }
 
     /**

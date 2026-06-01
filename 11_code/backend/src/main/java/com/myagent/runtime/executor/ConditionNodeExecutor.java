@@ -15,6 +15,7 @@ import com.myagent.workflow.domain.WorkflowEdgeType;
 import com.myagent.workflow.domain.WorkflowNodeType;
 import org.springframework.stereotype.Component;
 
+import java.util.Iterator;
 import java.util.Objects;
 
 /**
@@ -99,27 +100,52 @@ public class ConditionNodeExecutor extends AbstractNodeExecutorSupport implement
         if (condition == null || !condition.isObject()) {
             throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支配置不是对象。");
         }
-        String path = requiredText(condition, "path", "条件分支缺少 path。");
+        String left = requiredText(condition, "left", "条件分支缺少 left。");
         String operator = requiredText(condition, "operator", "条件分支缺少 operator。");
         String valueType = requiredText(condition, "valueType", "条件分支缺少 valueType。");
-        JsonNode expected = condition.get("value");
-        JsonNode actual = context.mappingService().extractInput(input, objectMapper.getNodeFactory().textNode(path));
+        JsonNode right = condition.get("right");
+        JsonNode actual = context.mappingService().extractInput(input, objectMapper.getNodeFactory().textNode(left));
         return switch (operator) {
             case "EXISTS" -> actual != null && !actual.isMissingNode() && !actual.isNull();
-            case "EQUALS" -> Objects.equals(requireTypedValue(actual, valueType, "actual"), requireTypedValue(expected, valueType, "expected"));
-            case "NOT_EQUALS" -> !Objects.equals(requireTypedValue(actual, valueType, "actual"), requireTypedValue(expected, valueType, "expected"));
+            case "EQUALS" -> Objects.equals(requireTypedValue(actual, valueType, "left"), requireTypedValue(right, valueType, "right"));
+            case "NOT_EQUALS" -> !Objects.equals(requireTypedValue(actual, valueType, "left"), requireTypedValue(right, valueType, "right"));
             case "CONTAINS" -> requireTypedValue(actual, "STRING", "actual").asText()
-                    .contains(requireTypedValue(expected, "STRING", "expected").asText());
+                    .contains(requireTypedValue(right, "STRING", "right").asText());
+            case "NOT_CONTAINS" -> !requireTypedValue(actual, "STRING", "left").asText()
+                    .contains(requireTypedValue(right, "STRING", "right").asText());
+            case "IN" -> inValues(requireTypedValue(actual, valueType, "left"), right, valueType);
+            case "NOT_IN" -> !inValues(requireTypedValue(actual, valueType, "left"), right, valueType);
             case "GREATER_THAN" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
-                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) > 0;
+                    .compareTo(requireTypedValue(right, "NUMBER", "right").decimalValue()) > 0;
             case "GREATER_THAN_OR_EQUALS" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
-                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) >= 0;
+                    .compareTo(requireTypedValue(right, "NUMBER", "right").decimalValue()) >= 0;
             case "LESS_THAN" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
-                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) < 0;
+                    .compareTo(requireTypedValue(right, "NUMBER", "right").decimalValue()) < 0;
             case "LESS_THAN_OR_EQUALS" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
-                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) <= 0;
+                    .compareTo(requireTypedValue(right, "NUMBER", "right").decimalValue()) <= 0;
             default -> throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支不支持的操作符：" + operator);
         };
+    }
+
+    /**
+     * 判断左值是否在右侧数组中。
+     *
+     * @param actual 左侧实际值
+     * @param expectedArray 右侧字面量数组
+     * @param valueType 值类型
+     * @return 命中数组时返回 true
+     */
+    private boolean inValues(JsonNode actual, JsonNode expectedArray, String valueType) {
+        if (expectedArray == null || !expectedArray.isArray()) {
+            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支 right 必须是数组。");
+        }
+        Iterator<JsonNode> values = expectedArray.elements();
+        while (values.hasNext()) {
+            if (Objects.equals(actual, requireTypedValue(values.next(), valueType, "right"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

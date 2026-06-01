@@ -646,7 +646,7 @@ function nodeConfigPlaceholder(nodeType: WorkflowNodeType) {
     return '{"userPromptTemplate":"请基于 {inputJson} 生成结果","systemPromptTemplate":"可选系统提示词","model":"gpt-4.1-mini","temperature":0.2}';
   }
   if (nodeType === "CONDITION") {
-    return "条件写在边 condition 中，例如 {\"path\":\"$.score\",\"operator\":\"GREATER_THAN_OR_EQUALS\",\"value\":80,\"valueType\":\"NUMBER\"}";
+    return "条件写在边 condition 中，例如 {\"left\":\"$.input.score\",\"operator\":\"GREATER_THAN_OR_EQUALS\",\"right\":80,\"valueType\":\"NUMBER\"}";
   }
   return "{}";
 }

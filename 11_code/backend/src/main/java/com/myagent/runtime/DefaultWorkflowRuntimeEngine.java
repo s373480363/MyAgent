@@ -11,7 +11,6 @@ import com.myagent.run.domain.TraceEventType;
 import com.myagent.workflow.domain.WorkflowEdgeDefinition;
 import com.myagent.workflow.domain.WorkflowNodeDefinition;
 import com.myagent.workflow.domain.WorkflowNodeType;
-import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.state.AgentState;
 import org.springframework.stereotype.Component;
 
@@ -20,46 +19,14 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
-import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
-import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
 /**
  * 默认工作流运行引擎。
  */
 @Component
 public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
-
-    /**
-     * LangGraph4j 起始节点。
-     */
-    private static final String LANGGRAPH_START = "__START__";
-
-    /**
-     * LangGraph4j 结束节点。
-     */
-    private static final String LANGGRAPH_END = "__END__";
-
-    /**
-     * 图状态中的工作流上下文键。
-     */
-    private static final String STATE_WORKFLOW_CONTEXT = "workflowContext";
-
-    /**
-     * 图状态中的当前执行步数键。
-     */
-    private static final String STATE_CURRENT_STEP = "currentStep";
-
-    /**
-     * 图状态中的下一节点标识键。
-     */
-    private static final String STATE_NEXT_NODE_ID = "nextNodeId";
-
-    /**
-     * 图状态中的运行结果键。
-     */
-    private static final String STATE_RUNTIME_RESULT = "runtimeResult";
 
     /**
      * JSON 对象映射器。
@@ -140,30 +107,39 @@ public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
         WorkflowContext workflowContext = new WorkflowContext(objectMapper, input);
         try {
             CompiledWorkflow compiledWorkflow = workflowCompiler.compile(snapshot);
-            StateGraph<AgentState> graph = buildExecutionGraph(
+            WorkflowGraphExecutionContext executionContext = (state, node) -> executeGraphNode(
+                    state,
                     compiledWorkflow,
                     agentRunDbId,
                     agentRunNo,
                     agent,
                     snapshot,
+                    node,
                     startedAt,
                     startedAtNanos
             );
-            Map<String, Object> initialState = new LinkedHashMap<>();
-            initialState.put(STATE_WORKFLOW_CONTEXT, workflowContext);
-            initialState.put(STATE_CURRENT_STEP, 0);
-            initialState.put(STATE_NEXT_NODE_ID, compiledWorkflow.startNode().getNodeId());
-            return graph.compile()
-                    .invoke(initialState)
-                    .flatMap(state -> state.value(STATE_RUNTIME_RESULT))
-                    .map(WorkflowRuntimeResult.class::cast)
-                    .orElseGet(() -> finishFailure(
-                            agentRunDbId,
-                            ErrorCode.NODE_EXECUTION_FAILED.getCode(),
-                            "工作流未产生运行结果。",
-                            null,
-                            startedAtNanos
-                    ));
+            String executionContextId = UUID.randomUUID().toString();
+            WorkflowGraphExecutionRegistry.register(executionContextId, executionContext);
+            try {
+                Map<String, Object> initialState = new LinkedHashMap<>();
+                initialState.put(WorkflowGraphStateKeys.WORKFLOW_CONTEXT, workflowContext);
+                initialState.put(WorkflowGraphStateKeys.CURRENT_STEP, 0);
+                initialState.put(WorkflowGraphStateKeys.NEXT_NODE_ID, compiledWorkflow.startNode().getNodeId());
+                initialState.put(WorkflowGraphStateKeys.EXECUTION_CONTEXT_ID, executionContextId);
+                return compiledWorkflow.executionGraph().compile()
+                        .invoke(initialState)
+                        .flatMap(state -> state.value(WorkflowGraphStateKeys.RUNTIME_RESULT))
+                        .map(WorkflowRuntimeResult.class::cast)
+                        .orElseGet(() -> finishFailure(
+                                agentRunDbId,
+                                ErrorCode.NODE_EXECUTION_FAILED.getCode(),
+                                "工作流未产生运行结果。",
+                                null,
+                                startedAtNanos
+                        ));
+            } finally {
+                WorkflowGraphExecutionRegistry.unregister(executionContextId);
+            }
         } catch (BizException exception) {
             return finishFailure(
                     agentRunDbId,
@@ -180,57 +156,6 @@ public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
                     null,
                     startedAtNanos
             );
-        }
-    }
-
-    /**
-     * 构造 LangGraph4j 执行图。
-     *
-     * @param compiledWorkflow 编译后的工作流
-     * @param agentRunDbId AgentRun 数据库主键
-     * @param agentRunNo AgentRun 对外编号
-     * @param agent Agent 主数据
-     * @param snapshot 工作流版本快照
-     * @param startedAt 运行开始时间
-     * @param startedAtNanos 运行开始纳秒
-     * @return LangGraph4j 执行图
-     */
-    private StateGraph<AgentState> buildExecutionGraph(
-            CompiledWorkflow compiledWorkflow,
-            long agentRunDbId,
-            String agentRunNo,
-            AgentRecord agent,
-            WorkflowVersionSnapshot snapshot,
-            Instant startedAt,
-            long startedAtNanos
-    ) {
-        try {
-            StateGraph<AgentState> graph = new StateGraph<>(AgentState::new);
-            for (WorkflowNodeDefinition node : compiledWorkflow.nodesById().values()) {
-                graph.addNode(node.getNodeId(), node_async(state -> executeGraphNode(
-                        state,
-                        compiledWorkflow,
-                        agentRunDbId,
-                        agentRunNo,
-                        agent,
-                        snapshot,
-                        node,
-                        startedAt,
-                        startedAtNanos
-                )));
-                graph.addConditionalEdges(
-                        node.getNodeId(),
-                        edge_async(state -> state.value(STATE_NEXT_NODE_ID, LANGGRAPH_END)),
-                        routeMap(compiledWorkflow, node)
-                );
-            }
-            graph.addEdge(LANGGRAPH_START, compiledWorkflow.startNode().getNodeId());
-            return graph;
-        } catch (Exception exception) {
-            if (exception instanceof BizException bizException) {
-                throw bizException;
-            }
-            throw new BizException(ErrorCode.WORKFLOW_VALIDATION_FAILED, "LangGraph4j 图编译失败：" + exception.getMessage());
         }
     }
 
@@ -259,14 +184,17 @@ public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
             Instant startedAt,
             long startedAtNanos
     ) {
-        WorkflowContext workflowContext = state.value(STATE_WORKFLOW_CONTEXT)
+        WorkflowContext workflowContext = state.value(WorkflowGraphStateKeys.WORKFLOW_CONTEXT)
                 .map(WorkflowContext.class::cast)
                 .orElseThrow(() -> new BizException(ErrorCode.NODE_EXECUTION_FAILED, "工作流图状态缺少运行上下文。"));
-        int currentStep = state.<Integer>value(STATE_CURRENT_STEP, 0) + 1;
+        int currentStep = state.<Integer>value(WorkflowGraphStateKeys.CURRENT_STEP).orElse(0) + 1;
         Map<String, Object> updates = new LinkedHashMap<>();
-        updates.put(STATE_WORKFLOW_CONTEXT, workflowContext);
-        updates.put(STATE_CURRENT_STEP, currentStep);
+        updates.put(WorkflowGraphStateKeys.WORKFLOW_CONTEXT, workflowContext);
+        updates.put(WorkflowGraphStateKeys.CURRENT_STEP, currentStep);
+        state.value(WorkflowGraphStateKeys.EXECUTION_CONTEXT_ID)
+                .ifPresent(value -> updates.put(WorkflowGraphStateKeys.EXECUTION_CONTEXT_ID, value));
         try {
+            // 每个节点执行前先检查运行总约束，确保超时和最大步数由版本快照控制。
             RunLimitContext runLimitContext = new RunLimitContext(
                     agentRunDbId,
                     agentRunNo,
@@ -279,6 +207,7 @@ public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
             );
             runtimeLimitGuard.checkRunTimeout(runLimitContext);
             runtimeLimitGuard.checkStepLimit(runLimitContext);
+            // NodeExecutionRunner 统一负责 NodeRun、节点超时、Schema Trace 和节点错误收口。
             NodeExecutionResult result = nodeExecutionRunner.execute(new NodeExecutionCommand(
                     agentRunDbId,
                     agentRunNo,
@@ -294,10 +223,11 @@ public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
             ));
             runtimeLimitGuard.checkRunTimeout(runLimitContext);
             if (result.status() != RunStatus.SUCCESS) {
-                updates.put(STATE_RUNTIME_RESULT, finishWithResult(agentRunDbId, result, startedAtNanos));
-                updates.put(STATE_NEXT_NODE_ID, LANGGRAPH_END);
+                updates.put(WorkflowGraphStateKeys.RUNTIME_RESULT, finishWithResult(agentRunDbId, result, startedAtNanos));
+                updates.put(WorkflowGraphStateKeys.NEXT_NODE_ID, WorkflowGraphStateKeys.LANGGRAPH_END);
                 return updates;
             }
+            // 成功节点输出先进入上下文快照，再按 outputMapping 写回全局上下文。
             workflowContext.putNodeOutput(currentNode.getNodeId(), result.outputJson());
             workflowContext.replaceRoot(mappingService.applyOutput(
                     workflowContext.root(),
@@ -306,21 +236,21 @@ public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
             ));
             if (currentNode.getType() == WorkflowNodeType.END) {
                 workflowContext.setOutput(result.outputJson());
-                updates.put(STATE_RUNTIME_RESULT, finishSuccess(agentRunDbId, workflowContext.output(), startedAtNanos));
-                updates.put(STATE_NEXT_NODE_ID, LANGGRAPH_END);
+                updates.put(WorkflowGraphStateKeys.RUNTIME_RESULT, finishSuccess(agentRunDbId, workflowContext.output(), startedAtNanos));
+                updates.put(WorkflowGraphStateKeys.NEXT_NODE_ID, WorkflowGraphStateKeys.LANGGRAPH_END);
                 return updates;
             }
-            updates.put(STATE_NEXT_NODE_ID, nextNodeId(compiledWorkflow, currentNode, result.selectedEdgeId()));
+            updates.put(WorkflowGraphStateKeys.NEXT_NODE_ID, nextNodeId(compiledWorkflow, currentNode, result.selectedEdgeId()));
             return updates;
         } catch (BizException exception) {
-            updates.put(STATE_RUNTIME_RESULT, finishFailure(
+            updates.put(WorkflowGraphStateKeys.RUNTIME_RESULT, finishFailure(
                     agentRunDbId,
                     exception.getErrorCode().getCode(),
                     exception.getMessage(),
                     exception.getDetails(),
                     startedAtNanos
             ));
-            updates.put(STATE_NEXT_NODE_ID, LANGGRAPH_END);
+            updates.put(WorkflowGraphStateKeys.NEXT_NODE_ID, WorkflowGraphStateKeys.LANGGRAPH_END);
             return updates;
         }
     }
@@ -342,22 +272,6 @@ public class DefaultWorkflowRuntimeEngine implements WorkflowRuntimeEngine {
                 ? outgoingEdges.stream().min(Comparator.comparing(WorkflowEdgeDefinition::getEdgeId)).orElseThrow()
                 : outgoingEdges.stream().filter(edge -> selectedEdgeId.equals(edge.getEdgeId())).findFirst().orElseThrow();
         return selected.getTargetNodeId();
-    }
-
-    /**
-     * 构造 LangGraph4j 条件边路由表。
-     *
-     * @param compiledWorkflow 编译后的工作流
-     * @param node 当前节点
-     * @return 路由表
-     */
-    private Map<String, String> routeMap(CompiledWorkflow compiledWorkflow, WorkflowNodeDefinition node) {
-        Map<String, String> routes = new LinkedHashMap<>();
-        routes.put(LANGGRAPH_END, LANGGRAPH_END);
-        for (WorkflowEdgeDefinition edge : compiledWorkflow.getOutgoingEdges(node.getNodeId())) {
-            routes.put(edge.getTargetNodeId(), edge.getTargetNodeId());
-        }
-        return routes;
     }
 
     /**

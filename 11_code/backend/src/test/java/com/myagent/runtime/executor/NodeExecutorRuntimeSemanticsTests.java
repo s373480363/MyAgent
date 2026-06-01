@@ -22,6 +22,7 @@ import com.myagent.model.OpenAiModelGateway;
 import com.myagent.run.application.query.ListRunsQuery;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.domain.RunType;
+import com.myagent.run.domain.RunNoGenerator;
 import com.myagent.run.domain.TraceEventType;
 import com.myagent.run.repository.AgentMessageRecord;
 import com.myagent.run.repository.AgentMessageRepository;
@@ -383,7 +384,7 @@ class NodeExecutorRuntimeSemanticsTests {
                 WorkflowNodeType.CONDITION,
                 "{}",
                 List.of(
-                        edge("edge-high", false, "{\"path\":\"$.input.score\",\"operator\":\"GREATER_THAN\",\"value\":90,\"valueType\":\"NUMBER\"}"),
+                        edge("edge-high", false, "{\"left\":\"$.input.score\",\"operator\":\"GREATER_THAN\",\"right\":90,\"valueType\":\"NUMBER\"}"),
                         edge("edge-default", true, null)
                 ),
                 objectMapper.readTree("{\"score\":70}")
@@ -405,13 +406,79 @@ class NodeExecutorRuntimeSemanticsTests {
                 WorkflowNodeType.CONDITION,
                 "{}",
                 List.of(
-                        edge("edge-missing", false, "{\"path\":\"$.input.missing\",\"operator\":\"EQUALS\",\"value\":\"x\",\"valueType\":\"STRING\"}"),
+                        edge("edge-missing", false, "{\"left\":\"$.input.missing\",\"operator\":\"EQUALS\",\"right\":\"x\",\"valueType\":\"STRING\"}"),
                         edge("edge-default", true, null)
                 ),
                 objectMapper.readTree("{\"score\":70}")
         )))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("映射读取失败");
+    }
+
+    /**
+     * CONDITION 应支持 IN 数组匹配。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void conditionSupportsInOperator() throws Exception {
+        ConditionNodeExecutor executor = new ConditionNodeExecutor(objectMapper);
+
+        NodeExecutionResult result = executor.execute(context(
+                WorkflowNodeType.CONDITION,
+                "{}",
+                List.of(
+                        edge("edge-hit", false, "{\"left\":\"$.input.status\",\"operator\":\"IN\",\"right\":[\"PAID\",\"DONE\"],\"valueType\":\"STRING\"}"),
+                        edge("edge-default", true, null)
+                ),
+                objectMapper.readTree("{\"status\":\"DONE\"}")
+        ));
+
+        assertThat(result.selectedEdgeId()).isEqualTo("edge-hit");
+    }
+
+    /**
+     * CONDITION 应支持 NOT_IN 数组排除。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void conditionSupportsNotInOperator() throws Exception {
+        ConditionNodeExecutor executor = new ConditionNodeExecutor(objectMapper);
+
+        NodeExecutionResult result = executor.execute(context(
+                WorkflowNodeType.CONDITION,
+                "{}",
+                List.of(
+                        edge("edge-hit", false, "{\"left\":\"$.input.status\",\"operator\":\"NOT_IN\",\"right\":[\"CANCELED\",\"FAILED\"],\"valueType\":\"STRING\"}"),
+                        edge("edge-default", true, null)
+                ),
+                objectMapper.readTree("{\"status\":\"DONE\"}")
+        ));
+
+        assertThat(result.selectedEdgeId()).isEqualTo("edge-hit");
+    }
+
+    /**
+     * CONDITION 应支持 NOT_CONTAINS 字符串排除。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void conditionSupportsNotContainsOperator() throws Exception {
+        ConditionNodeExecutor executor = new ConditionNodeExecutor(objectMapper);
+
+        NodeExecutionResult result = executor.execute(context(
+                WorkflowNodeType.CONDITION,
+                "{}",
+                List.of(
+                        edge("edge-hit", false, "{\"left\":\"$.input.summary\",\"operator\":\"NOT_CONTAINS\",\"right\":\"失败\",\"valueType\":\"STRING\"}"),
+                        edge("edge-default", true, null)
+                ),
+                objectMapper.readTree("{\"summary\":\"处理成功\"}")
+        ));
+
+        assertThat(result.selectedEdgeId()).isEqualTo("edge-hit");
     }
 
     /**
@@ -540,7 +607,8 @@ class NodeExecutorRuntimeSemanticsTests {
                 agentRunRepository,
                 agentMessageRepository,
                 provider,
-                new ActiveChildRunRegistry(agentRunRepository)
+                new ActiveChildRunRegistry(agentRunRepository),
+                new RunNoGenerator()
         );
         AgentRecord targetAgent = agent(2L, "target-agent", 20L);
         WorkflowVersionRecord targetVersion = workflowVersion(20L, targetAgent.id());
@@ -586,7 +654,8 @@ class NodeExecutorRuntimeSemanticsTests {
                 agentRunRepository,
                 agentMessageRepository,
                 provider,
-                childRunRegistry
+                childRunRegistry,
+                new RunNoGenerator()
         );
         AgentRecord targetAgent = agent(2L, "target-agent", 20L);
         WorkflowVersionRecord targetVersion = workflowVersion(20L, targetAgent.id());

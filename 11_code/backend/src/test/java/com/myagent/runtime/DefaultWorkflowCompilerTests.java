@@ -40,6 +40,7 @@ class DefaultWorkflowCompilerTests {
         assertThat(compiled.startNode().getNodeId()).isEqualTo("start");
         assertThat(compiled.getNode("end").getType()).isEqualTo(WorkflowNodeType.END);
         assertThat(compiled.getOutgoingEdges("start")).hasSize(1);
+        assertThat(compiled.executionGraph()).isNotNull();
     }
 
     /**

@@ -154,6 +154,66 @@ class DefaultWorkflowDraftValidationServiceTests {
     }
 
     /**
+     * CONDITION 旧 path/value 结构必须被发布校验拒绝。
+     *
+     * @throws Exception JSON 构造失败时抛出
+     */
+    @Test
+    void validateRejectsConditionOldPathValueShape() throws Exception {
+        WorkflowValidationResult result = validateCondition(OBJECT_MAPPER.readTree("""
+                {
+                  "path": "$.input.score",
+                  "operator": "GREATER_THAN",
+                  "value": 80,
+                  "valueType": "NUMBER"
+                }
+                """));
+
+        assertThat(result.isValid()).isFalse();
+        assertThat(messages(result)).anyMatch(message -> message.contains("缺少 left"));
+        assertThat(messages(result)).anyMatch(message -> message.contains("缺少 right"));
+    }
+
+    /**
+     * CONDITION IN/NOT_IN 的 right 必须是数组。
+     *
+     * @throws Exception JSON 构造失败时抛出
+     */
+    @Test
+    void validateRejectsConditionInWhenRightIsNotArray() throws Exception {
+        WorkflowValidationResult result = validateCondition(OBJECT_MAPPER.readTree("""
+                {
+                  "left": "$.input.status",
+                  "operator": "IN",
+                  "right": "DONE",
+                  "valueType": "STRING"
+                }
+                """));
+
+        assertThat(result.isValid()).isFalse();
+        assertThat(messages(result)).anyMatch(message -> message.contains("right 必须是数组"));
+    }
+
+    /**
+     * CONDITION left/right 正式结构应通过发布校验。
+     *
+     * @throws Exception JSON 构造失败时抛出
+     */
+    @Test
+    void validateAcceptsConditionLeftRightShape() throws Exception {
+        WorkflowValidationResult result = validateCondition(OBJECT_MAPPER.readTree("""
+                {
+                  "left": "$.input.status",
+                  "operator": "NOT_IN",
+                  "right": ["CANCELED", "FAILED"],
+                  "valueType": "STRING"
+                }
+                """));
+
+        assertThat(result.isValid()).isTrue();
+    }
+
+    /**
      * 执行校验。
      *
      * @param llm LLM 节点
@@ -177,6 +237,47 @@ class DefaultWorkflowDraftValidationServiceTests {
                 WorkflowVersionStatus.DRAFT,
                 List.of(startNode(), llm, endNode()),
                 List.of(edge("e1", "start", "llm"), edge("e2", "llm", "end")),
+                new WorkflowRuntimeOptions(600, 30, 3),
+                List.of(),
+                null,
+                null,
+                Instant.now(),
+                Instant.now()
+        ));
+    }
+
+    /**
+     * 执行 CONDITION 校验。
+     *
+     * @param condition 条件对象
+     * @return 校验结果
+     * @throws Exception JSON 构造失败时抛出
+     */
+    private WorkflowValidationResult validateCondition(com.fasterxml.jackson.databind.JsonNode condition) throws Exception {
+        SchemaRepository schemaRepository = schemaRepository();
+        DefaultWorkflowDraftValidationService service = new DefaultWorkflowDraftValidationService(
+                schemaRepository,
+                mock(JavaMethodRepository.class),
+                mock(ToolRepository.class),
+                mock(ExternalAgentRepository.class),
+                mock(com.myagent.agent.repository.AgentRepository.class),
+                new WorkflowMappingValidationService(schemaRepository)
+        );
+        WorkflowNodeDefinition conditionNode = new WorkflowNodeDefinition();
+        conditionNode.setNodeId("condition");
+        conditionNode.setType(WorkflowNodeType.CONDITION);
+        conditionNode.setName("条件");
+        return service.validate(agent(), new WorkflowVersionRecord(
+                1L,
+                1L,
+                1,
+                WorkflowVersionStatus.DRAFT,
+                List.of(startNode(), conditionNode, endNode()),
+                List.of(
+                        edge("e1", "start", "condition"),
+                        conditionEdge("e2", "condition", "end", condition, false),
+                        conditionEdge("e3", "condition", "end", null, true)
+                ),
                 new WorkflowRuntimeOptions(600, 30, 3),
                 List.of(),
                 null,
@@ -350,6 +451,30 @@ class DefaultWorkflowDraftValidationServiceTests {
         edge.setSourceNodeId(source);
         edge.setTargetNodeId(target);
         edge.setType(WorkflowEdgeType.NORMAL);
+        return edge;
+    }
+
+    /**
+     * 构造条件边。
+     *
+     * @param edgeId 边标识
+     * @param source 源节点
+     * @param target 目标节点
+     * @param condition 条件对象
+     * @param isDefault 是否默认边
+     * @return 边定义
+     */
+    private WorkflowEdgeDefinition conditionEdge(
+            String edgeId,
+            String source,
+            String target,
+            com.fasterxml.jackson.databind.JsonNode condition,
+            boolean isDefault
+    ) {
+        WorkflowEdgeDefinition edge = edge(edgeId, source, target);
+        edge.setType(isDefault ? WorkflowEdgeType.DEFAULT : WorkflowEdgeType.CONDITION);
+        edge.setIsDefault(isDefault);
+        edge.setCondition(condition);
         return edge;
     }
 

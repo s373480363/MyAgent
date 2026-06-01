@@ -4,6 +4,8 @@ import com.myagent.common.api.ApiError;
 import com.myagent.common.api.ApiResponse;
 import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -21,6 +23,11 @@ import java.util.List;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 日志记录器。
+     */
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * 处理业务异常。
@@ -106,6 +113,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
+        LOGGER.error("未捕获的系统异常。", exception);
         // 对未知异常统一收口，避免直接把无意义堆栈信息暴露给调用方。
         ApiError error = ApiError.of(
                 ErrorCode.INTERNAL_ERROR.getCode(),

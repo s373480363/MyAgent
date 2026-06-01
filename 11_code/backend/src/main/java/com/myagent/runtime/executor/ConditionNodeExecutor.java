@@ -78,7 +78,7 @@ public class ConditionNodeExecutor extends AbstractNodeExecutorSupport implement
                 defaultEdge = edge;
                 continue;
             }
-            if (matches(input, edge.getCondition())) {
+            if (matches(context, input, edge.getCondition())) {
                 return edge;
             }
         }
@@ -95,20 +95,72 @@ public class ConditionNodeExecutor extends AbstractNodeExecutorSupport implement
      * @param condition 条件对象
      * @return 命中时返回 true
      */
-    private boolean matches(JsonNode input, JsonNode condition) {
+    private boolean matches(NodeExecutionContext context, JsonNode input, JsonNode condition) {
         if (condition == null || !condition.isObject()) {
-            return false;
+            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支配置不是对象。");
         }
-        String path = condition.path("path").asText(null);
-        String operator = condition.path("operator").asText("EQUALS");
+        String path = requiredText(condition, "path", "条件分支缺少 path。");
+        String operator = requiredText(condition, "operator", "条件分支缺少 operator。");
+        String valueType = requiredText(condition, "valueType", "条件分支缺少 valueType。");
         JsonNode expected = condition.get("value");
-        JsonNode actual = path == null ? input : new com.myagent.runtime.DefaultMappingService(objectMapper).extractInput(input, objectMapper.getNodeFactory().textNode(path));
+        JsonNode actual = context.mappingService().extractInput(input, objectMapper.getNodeFactory().textNode(path));
         return switch (operator) {
             case "EXISTS" -> actual != null && !actual.isMissingNode() && !actual.isNull();
-            case "NOT_EQUALS" -> !Objects.equals(actual, expected);
-            case "CONTAINS" -> actual != null && actual.asText("").contains(expected == null ? "" : expected.asText());
-            default -> Objects.equals(actual, expected);
+            case "EQUALS" -> Objects.equals(requireTypedValue(actual, valueType, "actual"), requireTypedValue(expected, valueType, "expected"));
+            case "NOT_EQUALS" -> !Objects.equals(requireTypedValue(actual, valueType, "actual"), requireTypedValue(expected, valueType, "expected"));
+            case "CONTAINS" -> requireTypedValue(actual, "STRING", "actual").asText()
+                    .contains(requireTypedValue(expected, "STRING", "expected").asText());
+            case "GREATER_THAN" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
+                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) > 0;
+            case "GREATER_THAN_OR_EQUALS" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
+                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) >= 0;
+            case "LESS_THAN" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
+                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) < 0;
+            case "LESS_THAN_OR_EQUALS" -> requireTypedValue(actual, "NUMBER", "actual").decimalValue()
+                    .compareTo(requireTypedValue(expected, "NUMBER", "expected").decimalValue()) <= 0;
+            default -> throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支不支持的操作符：" + operator);
         };
+    }
+
+    /**
+     * 读取必填文本字段。
+     *
+     * @param node 条件对象
+     * @param fieldName 字段名
+     * @param message 错误消息
+     * @return 文本值
+     */
+    private String requiredText(JsonNode node, String fieldName, String message) {
+        JsonNode value = node.get(fieldName);
+        if (value == null || !value.isTextual() || value.asText().isBlank()) {
+            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, message);
+        }
+        return value.asText();
+    }
+
+    /**
+     * 要求 JSON 值符合条件声明类型。
+     *
+     * @param value JSON 值
+     * @param valueType 声明类型
+     * @param role 值角色
+     * @return 原始 JSON 值
+     */
+    private JsonNode requireTypedValue(JsonNode value, String valueType, String role) {
+        if (value == null || value.isMissingNode() || value.isNull()) {
+            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支 " + role + " 值缺失。");
+        }
+        boolean matched = switch (valueType) {
+            case "STRING" -> value.isTextual();
+            case "NUMBER" -> value.isNumber();
+            case "BOOLEAN" -> value.isBoolean();
+            case "JSON" -> true;
+            default -> throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支不支持的 valueType：" + valueType);
+        };
+        if (!matched) {
+            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "条件分支 " + role + " 类型不匹配：" + valueType);
+        }
+        return value;
     }
 
     /**

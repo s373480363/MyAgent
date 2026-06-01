@@ -190,6 +190,48 @@ class DefaultWorkflowApplicationServiceTests {
     }
 
     /**
+     * 发布校验必须拒绝旧 prompt/promptTemplate 字段，不能因为正式字段存在而保留双轨配置。
+     *
+     * @throws Exception JSON 构造失败时抛出
+     */
+    @Test
+    void publishWorkflowDraftRejectsDeprecatedPromptFields() throws Exception {
+        InMemoryAgentRepository agentRepository = new InMemoryAgentRepository();
+        InMemoryWorkflowVersionRepository workflowRepository = new InMemoryWorkflowVersionRepository();
+        InMemorySchemaRepository schemaRepository = new InMemorySchemaRepository();
+        RecordingSchemaApplicationService schemaApplicationService = new RecordingSchemaApplicationService(schemaRepository);
+        AgentRecord agent = agentRepository.insert(new AgentRecord(
+                0L, "summary-agent", "摘要 Agent", "", EnableStatus.ENABLED, "",
+                "gpt-4.1-mini", null, 600, 30, null, null, null, null
+        ));
+        schemaRepository.insert(schemaRecord("agent-input", 1, 1L));
+        schemaRepository.insert(schemaRecord("agent-output", 1, 2L));
+
+        DefaultWorkflowApplicationService service = newWorkflowService(
+                agentRepository,
+                workflowRepository,
+                schemaRepository,
+                schemaApplicationService,
+                new InMemorySystemSettingRepository()
+        );
+        service.saveWorkflowDraft(new SaveWorkflowDraftCommand(
+                agent.id(),
+                List.of(
+                        startNode("start", "agent-input", 1),
+                        llmNodeWithDeprecatedPrompt("llm", "agent-output", 1),
+                        endNode("end", "agent-output", 1)
+                ),
+                List.of(edge("edge-1", "start", "llm"), edge("edge-2", "llm", "end")),
+                OBJECT_MAPPER.readTree("{}")
+        ));
+
+        assertThatThrownBy(() -> service.publishWorkflowDraft(new PublishWorkflowDraftCommand(agent.id(), "发布")))
+                .isInstanceOf(BizException.class)
+                .satisfies(exception -> assertThat(((BizException) exception).getDetails())
+                        .anySatisfy(detail -> assertThat(detail.getMessage()).contains("userPromptTemplate/systemPromptTemplate")));
+    }
+
+    /**
      * 复制草稿和发布草稿时必须原样复用已持久化 runtimeOptions，不允许回头读取 Agent 默认值重算。
      *
      * @throws Exception JSON 构造失败时抛出
@@ -312,7 +354,8 @@ class DefaultWorkflowApplicationServiceTests {
                         new EmptyJavaMethodRepository(),
                         new EmptyToolRepository(),
                         new EmptyExternalAgentRepository(),
-                        agentRepository
+                        agentRepository,
+                        new com.myagent.workflow.validation.WorkflowMappingValidationService(schemaRepository)
                 )
         );
     }
@@ -419,13 +462,33 @@ class DefaultWorkflowApplicationServiceTests {
         node.setName("LLM");
         node.setConfig(OBJECT_MAPPER.readTree("""
                 {
-                  "promptTemplate": "请总结输入"
+                  "userPromptTemplate": "请总结输入 {inputJson}"
                 }
                 """));
         WorkflowSchemaRef schemaRef = new WorkflowSchemaRef();
         schemaRef.setSchemaKey(schemaKey);
         schemaRef.setVersion(version);
         node.setOutputSchemaRef(schemaRef);
+        return node;
+    }
+
+    /**
+     * 构造带旧提示词字段的 LLM 节点。
+     *
+     * @param nodeId 节点标识
+     * @param schemaKey 输出 Schema 业务键
+     * @param version 输出 Schema 版本号
+     * @return LLM 节点
+     * @throws Exception JSON 构造失败时抛出
+     */
+    private WorkflowNodeDefinition llmNodeWithDeprecatedPrompt(String nodeId, String schemaKey, int version) throws Exception {
+        WorkflowNodeDefinition node = llmNodeWithOutput(nodeId, schemaKey, version);
+        node.setConfig(OBJECT_MAPPER.readTree("""
+                {
+                  "userPromptTemplate": "请总结输入 {inputJson}",
+                  "prompt": {}
+                }
+                """));
         return node;
     }
 

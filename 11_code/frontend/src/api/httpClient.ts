@@ -1,14 +1,14 @@
 import type { components } from "./generated/schema";
 
 /**
- * 临时接口错误解析对象。
+ * 传输层原始错误解析对象。
  *
  * 步骤 03 起使用 OpenAPI 生成类型作为契约来源；该对象仍仅限传输层内部使用，不允许被业务页面引用。
  */
 type RawApiError = components["schemas"]["ApiError"];
 
 /**
- * 临时接口响应解析对象。
+ * 传输层统一响应解析对象。
  *
  * 步骤 03 起使用 OpenAPI 生成类型作为契约来源；该对象仍仅限传输层内部使用，不允许被业务页面引用。
  */
@@ -19,7 +19,7 @@ type RawApiResponse<T> = {
 };
 
 /**
- * 临时请求错误对象。
+ * 传输层请求错误对象。
  *
  * 仅用于传输层保留后端结构化错误语义；业务 DTO 仍以 OpenAPI 生成类型为唯一来源。
  */
@@ -117,7 +117,7 @@ function buildUrl(path: string, query?: RequestOptions["query"]) {
  * 解析统一响应体。
  *
  * @param response Fetch 响应对象
- * @returns 临时响应解析结果
+ * @returns 传输层响应解析结果
  */
 async function parseResponse<T>(response: Response): Promise<RawApiResponse<T>> {
   const contentType = response.headers.get("content-type") ?? "";

@@ -37,13 +37,18 @@ class DefaultEvalAssertionEvaluator implements EvalAssertionEvaluator {
      *
      * @param output 节点输出
      * @param assertions 断言定义
+     * @param schemaValidationResultJson 节点 Schema 校验结果
      * @return 断言结果
      */
     @Override
-    public EvalAssertionEvaluation evaluate(JsonNode output, JsonNode assertions) {
+    public EvalAssertionEvaluation evaluate(JsonNode output, JsonNode assertions, JsonNode schemaValidationResultJson) {
         ArrayNode resultArray = objectMapper.createArrayNode();
-        if (assertions == null || assertions.isNull() || assertions.isMissingNode() || assertions.isEmpty()) {
-            return new EvalAssertionEvaluation(true, resultArray, "");
+        if (assertions == null || assertions.isNull() || assertions.isMissingNode()) {
+            ObjectNode result = resultArray.addObject();
+            result.put("type", "INVALID_ASSERTIONS");
+            result.put("passed", false);
+            result.put("message", "断言配置必须是非空数组。");
+            return new EvalAssertionEvaluation(false, resultArray, "断言配置必须是非空数组。");
         }
         if (!assertions.isArray()) {
             ObjectNode result = resultArray.addObject();
@@ -52,10 +57,17 @@ class DefaultEvalAssertionEvaluator implements EvalAssertionEvaluator {
             result.put("message", "断言配置必须是数组。");
             return new EvalAssertionEvaluation(false, resultArray, "断言配置必须是数组。");
         }
+        if (assertions.isEmpty()) {
+            ObjectNode result = resultArray.addObject();
+            result.put("type", "INVALID_ASSERTIONS");
+            result.put("passed", false);
+            result.put("message", "断言配置不能为空。");
+            return new EvalAssertionEvaluation(false, resultArray, "断言配置不能为空。");
+        }
         boolean passed = true;
         String firstFailure = "";
         for (JsonNode assertion : assertions) {
-            AssertionResult assertionResult = evaluateOne(output, assertion);
+            AssertionResult assertionResult = evaluateOne(output, assertion, schemaValidationResultJson);
             ObjectNode result = resultArray.addObject();
             result.put("type", assertionResult.type());
             result.put("passed", assertionResult.passed());
@@ -75,9 +87,10 @@ class DefaultEvalAssertionEvaluator implements EvalAssertionEvaluator {
      *
      * @param output 输出 JSON
      * @param assertion 断言定义
+     * @param schemaValidationResultJson 节点 Schema 校验结果
      * @return 断言结果
      */
-    private AssertionResult evaluateOne(JsonNode output, JsonNode assertion) {
+    private AssertionResult evaluateOne(JsonNode output, JsonNode assertion, JsonNode schemaValidationResultJson) {
         String type = text(assertion, "type", "");
         String path = text(assertion, "path", "$");
         JsonNode actual = read(output, path);
@@ -89,9 +102,39 @@ class DefaultEvalAssertionEvaluator implements EvalAssertionEvaluator {
             case "JSON_PATH_REGEX", "REGEX_MATCH" -> regex(type, path, actual, text(assertion, "pattern", ""));
             case "JSON_PATH_NUMBER_RANGE", "NUMERIC_RANGE" -> range(type, path, actual, assertion);
             case "JSON_PATH_IN", "ENUM" -> inValues(type, path, actual, assertion.get("values"));
-            case "SCHEMA_VALIDATION" -> new AssertionResult(type, true, "Schema 校验已在断言前完成。");
+            case "SCHEMA_VALIDATION" -> schemaValidation(type, schemaValidationResultJson);
             default -> new AssertionResult(type.isBlank() ? "UNKNOWN" : type, false, "不支持的断言类型：" + type);
         };
+    }
+
+    /**
+     * 判断节点输出 Schema 校验是否真实发生且通过。
+     *
+     * @param type 断言类型
+     * @param schemaValidationResultJson 节点 Schema 校验结果
+     * @return 断言结果
+     */
+    private AssertionResult schemaValidation(String type, JsonNode schemaValidationResultJson) {
+        if (schemaValidationResultJson == null
+                || schemaValidationResultJson.isNull()
+                || !schemaValidationResultJson.isObject()) {
+            return new AssertionResult(type, false, "未执行节点输出 Schema 校验。");
+        }
+        JsonNode results = schemaValidationResultJson.path("results");
+        if (!results.isArray()) {
+            return new AssertionResult(type, false, "未执行节点输出 Schema 校验。");
+        }
+        for (JsonNode result : results) {
+            if ("NODE_OUTPUT".equals(result.path("stage").asText())) {
+                boolean passed = result.path("valid").asBoolean(false);
+                return new AssertionResult(
+                        type,
+                        passed,
+                        passed ? "节点输出 Schema 校验已通过。" : "节点输出 Schema 校验未通过。"
+                );
+            }
+        }
+        return new AssertionResult(type, false, "未执行节点输出 Schema 校验。");
     }
 
     /**

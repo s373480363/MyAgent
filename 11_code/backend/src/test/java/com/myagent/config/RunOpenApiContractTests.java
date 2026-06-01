@@ -54,6 +54,12 @@ class RunOpenApiContractTests {
                 .isEqualTo("array");
         assertThat(apiDocs.at("/components/schemas/RunDetailResult/properties/traceEvents/type").asText())
                 .isEqualTo("array");
+        assertThat(apiDocs.at("/components/schemas/TraceEventResult/properties/detailJson").isMissingNode())
+                .isTrue();
+        assertThat(apiDocs.at("/components/schemas/TraceEventResult/properties/detail/$ref").asText())
+                .isEqualTo("#/components/schemas/JsonNode");
+        assertThat(apiDocs.at("/components/schemas/TraceEventResult/properties/evalRunId/type").asText())
+                .isEqualTo("string");
     }
 
     /**

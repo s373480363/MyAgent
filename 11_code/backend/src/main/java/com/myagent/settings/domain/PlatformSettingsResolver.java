@@ -24,6 +24,21 @@ public class PlatformSettingsResolver {
     public static final String DEFAULT_AGENT_TIMEOUT_KEY = "myagent.runtime.default-agent-timeout-seconds";
 
     /**
+     * LLM 默认节点超时设置键。
+     */
+    public static final String DEFAULT_LLM_TIMEOUT_KEY = "myagent.runtime.default-llm-timeout-seconds";
+
+    /**
+     * Java 方法默认节点超时设置键。
+     */
+    public static final String DEFAULT_JAVA_METHOD_TIMEOUT_KEY = "myagent.runtime.default-java-method-timeout-seconds";
+
+    /**
+     * 外部 Agent 默认节点超时设置键。
+     */
+    public static final String DEFAULT_EXTERNAL_AGENT_TIMEOUT_KEY = "myagent.runtime.default-external-agent-timeout-seconds";
+
+    /**
      * 默认最大步数设置键。
      */
     public static final String DEFAULT_MAX_STEPS_KEY = "myagent.runtime.default-max-steps";
@@ -80,6 +95,42 @@ public class PlatformSettingsResolver {
         return resolvePositiveInt(
                 DEFAULT_AGENT_TIMEOUT_KEY,
                 settingsProperties.getRuntime().getDefaultAgentTimeoutSeconds()
+        );
+    }
+
+    /**
+     * 返回 LLM 默认节点超时。
+     *
+     * @return LLM 默认节点超时
+     */
+    public int resolveDefaultLlmTimeoutSeconds() {
+        return resolvePositiveInt(
+                DEFAULT_LLM_TIMEOUT_KEY,
+                settingsProperties.getRuntime().getDefaultLlmTimeoutSeconds()
+        );
+    }
+
+    /**
+     * 返回 Java 方法默认节点超时。
+     *
+     * @return Java 方法默认节点超时
+     */
+    public int resolveDefaultJavaMethodTimeoutSeconds() {
+        return resolvePositiveInt(
+                DEFAULT_JAVA_METHOD_TIMEOUT_KEY,
+                settingsProperties.getRuntime().getDefaultJavaMethodTimeoutSeconds()
+        );
+    }
+
+    /**
+     * 返回外部 Agent 默认节点超时。
+     *
+     * @return 外部 Agent 默认节点超时
+     */
+    public int resolveDefaultExternalAgentTimeoutSeconds() {
+        return resolvePositiveInt(
+                DEFAULT_EXTERNAL_AGENT_TIMEOUT_KEY,
+                settingsProperties.getRuntime().getDefaultExternalAgentTimeoutSeconds()
         );
     }
 

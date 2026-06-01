@@ -3,6 +3,8 @@ package com.myagent.common.api;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -10,7 +12,13 @@ import java.util.List;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(name = "ApiError", description = "统一错误对象。")
-public final class ApiError {
+public final class ApiError implements Serializable {
+
+    /**
+     * 序列化版本。
+     */
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
      * 稳定错误码。
@@ -98,7 +106,13 @@ public final class ApiError {
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @Schema(name = "ApiErrorDetail", description = "字段级错误明细。")
-    public static final class Detail {
+    public static final class Detail implements Serializable {
+
+        /**
+         * 序列化版本。
+         */
+        @Serial
+        private static final long serialVersionUID = 1L;
 
         /**
          * 错误字段路径。

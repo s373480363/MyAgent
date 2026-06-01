@@ -2,11 +2,11 @@ package com.myagent.runtime.executor;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myagent.common.domain.EnableStatus;
 import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
-import com.myagent.method.repository.JavaMethodRecord;
-import com.myagent.method.repository.JavaMethodRepository;
+import com.myagent.method.runtime.JavaMethodDescriptor;
+import com.myagent.method.runtime.JavaMethodInvoker;
+import com.myagent.method.runtime.JavaMethodRegistry;
 import com.myagent.run.domain.TraceEventType;
 import com.myagent.runtime.NodeExecutionContext;
 import com.myagent.runtime.NodeExecutionResult;
@@ -15,11 +15,7 @@ import com.myagent.runtime.SupportsNodeType;
 import com.myagent.runtime.TraceEventRecord;
 import com.myagent.schema.validation.ValidationStage;
 import com.myagent.workflow.domain.WorkflowNodeType;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 /**
  * JAVA_METHOD 节点执行器。
@@ -28,30 +24,30 @@ import java.lang.reflect.Method;
 public class JavaMethodNodeExecutor extends AbstractNodeExecutorSupport implements NodeExecutor, SupportsNodeType {
 
     /**
-     * Java 方法仓储。
+     * Java 方法注册目录。
      */
-    private final JavaMethodRepository javaMethodRepository;
+    private final JavaMethodRegistry javaMethodRegistry;
 
     /**
-     * Spring 应用上下文。
+     * Java 方法调用器。
      */
-    private final ApplicationContext applicationContext;
+    private final JavaMethodInvoker javaMethodInvoker;
 
     /**
      * 构造 JAVA_METHOD 节点执行器。
      *
      * @param objectMapper JSON 对象映射器
-     * @param javaMethodRepository Java 方法仓储
-     * @param applicationContext Spring 应用上下文
+     * @param javaMethodRegistry Java 方法注册目录
+     * @param javaMethodInvoker Java 方法调用器
      */
     public JavaMethodNodeExecutor(
             ObjectMapper objectMapper,
-            JavaMethodRepository javaMethodRepository,
-            ApplicationContext applicationContext
+            JavaMethodRegistry javaMethodRegistry,
+            JavaMethodInvoker javaMethodInvoker
     ) {
         super(objectMapper);
-        this.javaMethodRepository = javaMethodRepository;
-        this.applicationContext = applicationContext;
+        this.javaMethodRegistry = javaMethodRegistry;
+        this.javaMethodInvoker = javaMethodInvoker;
     }
 
     /**
@@ -75,70 +71,54 @@ public class JavaMethodNodeExecutor extends AbstractNodeExecutorSupport implemen
         long startedAt = System.nanoTime();
         JsonNode input = extractInput(context);
         validateSchema(context, input, context.nodeDefinition().getInputSchemaRef(), ValidationStage.NODE_INPUT);
-        String methodKey = readRequiredConfigText(context.nodeDefinition().getConfig(), "methodKey", "Java 方法节点缺少 methodKey。");
-        JavaMethodRecord methodRecord = javaMethodRepository.findByMethodKey(methodKey)
-                .orElseThrow(() -> new BizException(ErrorCode.JAVA_METHOD_EXECUTION_FAILED, "Java 方法不存在：" + methodKey));
-        if (methodRecord.status() != EnableStatus.ENABLED) {
-            throw new BizException(ErrorCode.JAVA_METHOD_EXECUTION_FAILED, "Java 方法已停用：" + methodKey);
+        String methodKey = null;
+        JsonNode output = null;
+        try {
+            methodKey = readRequiredConfigText(context.nodeDefinition().getConfig(), "methodKey", "Java 方法节点缺少 methodKey。");
+            JavaMethodDescriptor descriptor = javaMethodRegistry.getEnabledMethod(methodKey);
+            output = javaMethodInvoker.invoke(descriptor, input);
+            validateOutputSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
+            long durationMs = elapsedMillis(startedAt);
+            writeJavaMethodTrace(context, methodKey, input, output, durationMs, null);
+            return NodeExecutionResult.success(output, durationMs);
+        } catch (BizException exception) {
+            writeJavaMethodTrace(context, methodKey, input, output, elapsedMillis(startedAt), exception.getMessage());
+            throw exception;
         }
-        JsonNode output = invokeMethod(methodRecord, input);
-        validateSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
+    }
+
+    /**
+     * 写入 Java 方法调用 Trace。
+     *
+     * @param context 节点执行上下文
+     * @param methodKey 方法标识
+     * @param input 输入 JSON
+     * @param output 输出 JSON
+     * @param durationMs 耗时毫秒
+     * @param error 错误消息
+     */
+    private void writeJavaMethodTrace(
+            NodeExecutionContext context,
+            String methodKey,
+            JsonNode input,
+            JsonNode output,
+            long durationMs,
+            String error
+    ) {
+        com.fasterxml.jackson.databind.node.ObjectNode detail = objectMapper.createObjectNode()
+                .put("methodKey", methodKey)
+                .put("durationMs", durationMs)
+                .put("error", error);
+        detail.set("input", input);
+        detail.set("output", output);
         context.traceWriter().writeEvent(new TraceEventRecord(
                 context.agentRunDbId(),
                 context.nodeRunDbId(),
                 null,
                 TraceEventType.JAVA_METHOD_CALL,
-                "Java 方法节点执行完成：" + methodKey,
-                objectMapper.createObjectNode()
-                        .put("methodKey", methodKey)
-                        .set("output", output)
+                error == null ? "Java 方法节点执行完成：" + methodKey : "Java 方法节点执行失败：" + methodKey,
+                detail
         ));
-        return NodeExecutionResult.success(output, elapsedMillis(startedAt));
-    }
-
-    /**
-     * 调用显式注册的 Java 方法。
-     *
-     * @param methodRecord 方法记录
-     * @param input 节点输入
-     * @return 节点输出
-     */
-    private JsonNode invokeMethod(JavaMethodRecord methodRecord, JsonNode input) {
-        try {
-            Object bean = applicationContext.getBean(methodRecord.beanName());
-            Method method = findInvokableMethod(bean.getClass(), methodRecord.methodName());
-            Object result;
-            if (method.getParameterCount() == 0) {
-                result = method.invoke(bean);
-            } else {
-                Object argument = objectMapper.treeToValue(input, method.getParameterTypes()[0]);
-                result = method.invoke(bean, argument);
-            }
-            return objectMapper.valueToTree(result);
-        } catch (IllegalArgumentException exception) {
-            throw new BizException(ErrorCode.JAVA_METHOD_EXECUTION_FAILED, "Java 方法参数转换失败：" + exception.getMessage());
-        } catch (InvocationTargetException exception) {
-            Throwable target = exception.getTargetException();
-            throw new BizException(ErrorCode.JAVA_METHOD_EXECUTION_FAILED, "Java 方法执行失败：" + target.getMessage());
-        } catch (Exception exception) {
-            throw new BizException(ErrorCode.JAVA_METHOD_EXECUTION_FAILED, "Java 方法调用失败：" + exception.getMessage());
-        }
-    }
-
-    /**
-     * 查找可调用方法。
-     *
-     * @param beanClass Bean 类型
-     * @param methodName 方法名
-     * @return 方法
-     */
-    private Method findInvokableMethod(Class<?> beanClass, String methodName) {
-        for (Method method : beanClass.getMethods()) {
-            if (method.getName().equals(methodName) && method.getParameterCount() <= 1) {
-                return method;
-            }
-        }
-        throw new BizException(ErrorCode.JAVA_METHOD_EXECUTION_FAILED, "未找到可调用 Java 方法：" + methodName);
     }
 
     /**

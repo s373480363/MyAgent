@@ -10,19 +10,19 @@ import java.time.Instant;
  *
  * @param traceEventId TraceEvent 主键
  * @param nodeRunId NodeRun 主键
- * @param evalRunId EvalRun 主键
+ * @param evalRunId EvalRun 对外编号
  * @param eventType 事件类型
  * @param summary 摘要
- * @param detailJson 详情 JSON
+ * @param detail 详情 JSON
  * @param eventTime 事件时间
  */
 public record TraceEventResult(
         long traceEventId,
         Long nodeRunId,
-        Long evalRunId,
+        String evalRunId,
         TraceEventType eventType,
         String summary,
-        JsonNode detailJson,
+        JsonNode detail,
         Instant eventTime
 ) {
 }

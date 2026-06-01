@@ -30,7 +30,7 @@ public interface AgentRunMapper {
     @Insert("""
             insert into agent_run(
               run_no, agent_id, agent_key, workflow_version_id, parent_run_id, run_type,
-              input_json, output_json, status, error_message
+              input_json, output_json, status, error_code, error_message
             )
             values (
               #{record.runNo},
@@ -42,6 +42,7 @@ public interface AgentRunMapper {
               #{record.inputJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
               #{record.outputJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
               #{record.status},
+              #{record.errorCode},
               #{record.errorMessage}
             )
             """)
@@ -64,6 +65,7 @@ public interface AgentRunMapper {
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "output_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "status", javaType = RunStatus.class),
+            @Arg(column = "error_code", javaType = String.class),
             @Arg(column = "error_message", javaType = String.class),
             @Arg(column = "started_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
             @Arg(column = "finished_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
@@ -71,7 +73,7 @@ public interface AgentRunMapper {
     })
     @Select("""
             select id, run_no, agent_id, agent_key, workflow_version_id, parent_run_id, run_type,
-                   input_json, output_json, status, error_message, started_at, finished_at, duration_ms
+                   input_json, output_json, status, error_code, error_message, started_at, finished_at, duration_ms
             from agent_run
             where run_no = #{runNo}
             """)
@@ -94,6 +96,7 @@ public interface AgentRunMapper {
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "output_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "status", javaType = RunStatus.class),
+            @Arg(column = "error_code", javaType = String.class),
             @Arg(column = "error_message", javaType = String.class),
             @Arg(column = "started_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
             @Arg(column = "finished_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
@@ -101,7 +104,7 @@ public interface AgentRunMapper {
     })
     @Select("""
             select id, run_no, agent_id, agent_key, workflow_version_id, parent_run_id, run_type,
-                   input_json, output_json, status, error_message, started_at, finished_at, duration_ms
+                   input_json, output_json, status, error_code, error_message, started_at, finished_at, duration_ms
             from agent_run
             where id = #{runId}
             """)
@@ -132,6 +135,7 @@ public interface AgentRunMapper {
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "output_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "status", javaType = RunStatus.class),
+            @Arg(column = "error_code", javaType = String.class),
             @Arg(column = "error_message", javaType = String.class),
             @Arg(column = "started_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
             @Arg(column = "finished_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
@@ -140,7 +144,7 @@ public interface AgentRunMapper {
     @Select({
             "<script>",
             "select id, run_no, agent_id, agent_key, workflow_version_id, parent_run_id, run_type,",
-            "       input_json, output_json, status, error_message, started_at, finished_at, duration_ms",
+            "       input_json, output_json, status, error_code, error_message, started_at, finished_at, duration_ms",
             "from agent_run",
             "<where>",
             "  <if test='agentId != null'> and agent_id = #{agentId} </if>",
@@ -236,6 +240,7 @@ public interface AgentRunMapper {
      * @param runId 运行主键
      * @param status 运行状态
      * @param outputJson 输出 JSON
+     * @param errorCode 错误码
      * @param errorMessage 错误消息
      * @param durationMs 耗时毫秒
      * @return 受影响行数
@@ -244,6 +249,7 @@ public interface AgentRunMapper {
             update agent_run
             set status = #{status},
                 output_json = #{outputJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+                error_code = #{errorCode},
                 error_message = #{errorMessage},
                 finished_at = now(),
                 duration_ms = #{durationMs}
@@ -253,6 +259,33 @@ public interface AgentRunMapper {
             @Param("runId") long runId,
             @Param("status") RunStatus status,
             @Param("outputJson") JsonNode outputJson,
+            @Param("errorCode") String errorCode,
+            @Param("errorMessage") String errorMessage,
+            @Param("durationMs") long durationMs
+    );
+
+    /**
+     * 取消尚未完成的运行。
+     *
+     * @param runId 运行主键
+     * @param errorCode 错误码
+     * @param errorMessage 错误消息
+     * @param durationMs 耗时毫秒
+     * @return 受影响行数
+     */
+    @Update("""
+            update agent_run
+            set status = 'CANCELED',
+                error_code = #{errorCode},
+                error_message = #{errorMessage},
+                finished_at = now(),
+                duration_ms = #{durationMs}
+            where id = #{runId}
+              and status in ('PENDING', 'RUNNING')
+            """)
+    int cancelActiveRun(
+            @Param("runId") long runId,
+            @Param("errorCode") String errorCode,
             @Param("errorMessage") String errorMessage,
             @Param("durationMs") long durationMs
     );

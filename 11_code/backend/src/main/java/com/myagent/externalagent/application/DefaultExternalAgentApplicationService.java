@@ -232,14 +232,6 @@ public class DefaultExternalAgentApplicationService implements ExternalAgentAppl
     }
 
     /**
-     * 刷新外部 Agent 目录。
-     */
-    @Override
-    public void refreshExternalAgentCatalog() {
-        // 步骤 05 只实现平台内维护和测试能力；运行时注册器在后续执行步骤实现。
-    }
-
-    /**
      * 校验输出 Schema。
      *
      * @param outputSchemaId 输出 Schema 主键

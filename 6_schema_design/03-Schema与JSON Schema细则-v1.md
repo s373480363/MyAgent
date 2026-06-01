@@ -119,8 +119,8 @@ v1 采用受控 JSONPath 子集进行输入映射和输出写回。
 
 ```json
 {
-  "$.result.summary": "$.nodeOutput.summary",
-  "$.result.score": "$.nodeOutput.score"
+  "$.result.summary": "$.summary",
+  "$.result.score": "$.score"
 }
 ```
 
@@ -128,6 +128,7 @@ v1 采用受控 JSONPath 子集进行输入映射和输出写回。
 
 - Key 表示写回目标路径。
 - Value 表示节点输出来源路径。
+- Value 的根对象是当前节点输出，`$` 表示整个节点输出；不存在 `$.nodeOutput` 虚拟根。
 - 写回前必须先校验节点输出是否满足 `outputSchemaRef`。
 
 ## 6. 校验时机

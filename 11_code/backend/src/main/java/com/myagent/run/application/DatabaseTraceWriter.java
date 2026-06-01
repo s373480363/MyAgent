@@ -17,6 +17,11 @@ import org.springframework.stereotype.Component;
 public class DatabaseTraceWriter implements TraceWriter {
 
     /**
+     * Trace 摘要字段数据库长度上限。
+     */
+    private static final int SUMMARY_MAX_LENGTH = 500;
+
+    /**
      * NodeRun 仓储。
      */
     private final NodeRunRepository nodeRunRepository;
@@ -75,6 +80,36 @@ public class DatabaseTraceWriter implements TraceWriter {
      */
     @Override
     public void writeEvent(TraceEventRecord record) {
-        traceEventRepository.insert(record);
+        traceEventRepository.insert(normalizeTraceEvent(record));
+    }
+
+    /**
+     * 归一化 Trace 事件，确保列表摘要不会超过数据库字段长度。
+     *
+     * @param record 原始 Trace 事件
+     * @return 可安全持久化的 Trace 事件
+     */
+    private TraceEventRecord normalizeTraceEvent(TraceEventRecord record) {
+        return new TraceEventRecord(
+                record.agentRunDbId(),
+                record.nodeRunDbId(),
+                record.evalRunDbId(),
+                record.eventType(),
+                truncateSummary(record.summary()),
+                record.detailJson()
+        );
+    }
+
+    /**
+     * 截断 Trace 摘要，完整结构化内容由 detailJson 承载。
+     *
+     * @param summary 原始摘要
+     * @return 不超过数据库长度的摘要
+     */
+    private String truncateSummary(String summary) {
+        if (summary == null || summary.length() <= SUMMARY_MAX_LENGTH) {
+            return summary;
+        }
+        return summary.substring(0, SUMMARY_MAX_LENGTH - 3) + "...";
     }
 }

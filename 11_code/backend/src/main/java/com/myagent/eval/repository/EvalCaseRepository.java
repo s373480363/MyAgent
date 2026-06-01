@@ -41,10 +41,9 @@ public interface EvalCaseRepository {
      *
      * @param suiteId 套件主键
      * @param caseIds 指定用例主键
-     * @param includeUnconfirmed 是否包含未确认用例
      * @return 用例列表
      */
-    List<EvalCaseRecord> listRunnableCases(long suiteId, List<Long> caseIds, boolean includeUnconfirmed);
+    List<EvalCaseRecord> listRunnableCases(long suiteId, List<Long> caseIds);
 
     /**
      * 统计正式用例数。

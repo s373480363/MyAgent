@@ -50,8 +50,8 @@ public class MyBatisEvalCaseRepository implements EvalCaseRepository {
     }
 
     @Override
-    public List<EvalCaseRecord> listRunnableCases(long suiteId, List<Long> caseIds, boolean includeUnconfirmed) {
-        return mapper.listRunnableCases(suiteId, caseIds == null || caseIds.isEmpty() ? null : caseIds, includeUnconfirmed);
+    public List<EvalCaseRecord> listRunnableCases(long suiteId, List<Long> caseIds) {
+        return mapper.listRunnableCases(suiteId, caseIds == null || caseIds.isEmpty() ? null : caseIds);
     }
 
     @Override

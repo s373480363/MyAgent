@@ -1,7 +1,6 @@
 package com.myagent.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
 import org.springframework.ai.chat.messages.Message;
@@ -59,7 +58,7 @@ public class DefaultOpenAiModelGateway implements OpenAiModelGateway {
         long startedAt = System.nanoTime();
         OpenAiChatModel chatModel = chatModelProvider.getIfAvailable();
         if (chatModel == null) {
-            return localFallback(request, startedAt);
+            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "OpenAI 模型客户端未配置。");
         }
         try {
             ChatResponse response = chatModel.call(toPrompt(request));
@@ -115,26 +114,6 @@ public class DefaultOpenAiModelGateway implements OpenAiModelGateway {
         } catch (Exception exception) {
             throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "模型结构化输出解析失败：" + exception.getMessage());
         }
-    }
-
-    /**
-     * 无 OpenAI 客户端时的本地回退，保证无密钥环境仍可运行骨架测试。
-     *
-     * @param request 模型调用请求
-     * @param startedAt 开始纳秒
-     * @return 模型调用结果
-     */
-    private ModelInvocationResult localFallback(ModelInvocationRequest request, long startedAt) {
-        if (request.structuredOutput()) {
-            ObjectNode output = objectMapper.createObjectNode();
-            output.put("text", request.userPrompt() == null || request.userPrompt().isBlank() ? "结构化模型输出。" : request.userPrompt());
-            return new ModelInvocationResult(output, output.toString(), elapsedMillis(startedAt));
-        }
-        return new ModelInvocationResult(
-                objectMapper.getNodeFactory().textNode(request.userPrompt() == null ? "" : request.userPrompt()),
-                request.userPrompt(),
-                elapsedMillis(startedAt)
-        );
     }
 
     /**

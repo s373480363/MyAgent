@@ -55,18 +55,26 @@ public class ReviewNodeExecutor extends AbstractNodeExecutorSupport implements N
      */
     @Override
     public NodeExecutionResult execute(NodeExecutionContext context) {
-        long startedAt = System.nanoTime();
         JsonNode input = extractInput(context);
+        validateSchema(context, input, context.nodeDefinition().getInputSchemaRef(), ValidationStage.NODE_INPUT);
         JsonNode config = context.nodeDefinition().getConfig();
-        ModelInvocationResult result = modelGateway.invoke(new ModelInvocationRequest(
-                context.agentDefinition().defaultModel(),
-                context.agentDefinition().systemPrompt(),
-                config != null && config.hasNonNull("prompt") ? config.get("prompt").asText() : input.toString(),
+        ModelInvocationRequest request = new ModelInvocationRequest(
+                readText(config, "model", context.agentDefinition().defaultModel()),
+                renderSystemPromptTemplate(context, input),
+                renderUserPromptTemplate(context, input),
                 input,
-                context.agentDefinition().temperature(),
+                readDecimal(config, "temperature", context.agentDefinition().temperature()),
                 context.nodeDefinition().getOutputSchemaRef() != null
+        );
+        context.traceWriter().writeEvent(new TraceEventRecord(
+                context.agentRunDbId(),
+                context.nodeRunDbId(),
+                null,
+                TraceEventType.MODEL_REQUEST,
+                "审核节点调用模型：" + request.model(),
+                objectMapper.valueToTree(request)
         ));
-        validateSchema(context, result.output(), context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
+        ModelInvocationResult result = modelGateway.invoke(request);
         context.traceWriter().writeEvent(new TraceEventRecord(
                 context.agentRunDbId(),
                 context.nodeRunDbId(),
@@ -75,6 +83,7 @@ public class ReviewNodeExecutor extends AbstractNodeExecutorSupport implements N
                 "审核节点模型输出完成。",
                 objectMapper.valueToTree(result)
         ));
-        return NodeExecutionResult.success(result.output(), java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt));
+        validateOutputSchema(context, result.output(), context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
+        return NodeExecutionResult.success(result.output(), result.durationMs());
     }
 }

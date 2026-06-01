@@ -62,8 +62,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 注意：
 
 - `local` profile 会启用 Flyway，并连接本地 PostgreSQL。
+- 默认配置也会启用 Flyway，后端启动时由 Flyway 自动执行数据库迁移。
 - 如果本机未准备 PostgreSQL，`mvn spring-boot:run -Dspring-boot.run.profiles=local` 将无法完成正常启动。
-- 当前步骤 01 仅要求工程骨架可构建与可测试，本地数据库启动流程会在步骤 02 落地数据库迁移后再补齐。
+- 真实模型调用通过 `OPENAI_API_KEY`、`SPRING_AI_OPENAI_BASE_URL` 和 `MYAGENT_OPENAI_DEFAULT_MODEL` 配置；使用 Poe 时 `SPRING_AI_OPENAI_BASE_URL` 应为 `https://api.poe.com`。
 
 默认地址：
 

@@ -67,10 +67,13 @@ public interface WorkflowVersionMapper {
             @Arg(column = "updated_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class)
     })
     @Select("""
-            select id, agent_id, version_no, status, nodes_json, edges_json, runtime_options_json,
-                   referenced_schema_versions_json, source_workflow_version_id, published_at, created_at, updated_at
-            from workflow_version
-            where agent_id = #{agentId} and status = 'DRAFT'
+            select w.id, w.agent_id, w.version_no, w.status, w.nodes_json, w.edges_json, w.runtime_options_json,
+                   w.referenced_schema_versions_json, w.source_workflow_version_id, w.published_at, w.created_at, w.updated_at
+            from agent_definition a
+            join workflow_version w on w.id = a.current_draft_workflow_version_id
+            where a.id = #{agentId}
+              and w.agent_id = a.id
+              and w.status = 'DRAFT'
             """)
     WorkflowVersionRecord findCurrentDraft(@Param("agentId") long agentId);
 
@@ -95,10 +98,13 @@ public interface WorkflowVersionMapper {
             @Arg(column = "updated_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class)
     })
     @Select("""
-            select id, agent_id, version_no, status, nodes_json, edges_json, runtime_options_json,
-                   referenced_schema_versions_json, source_workflow_version_id, published_at, created_at, updated_at
-            from workflow_version
-            where agent_id = #{agentId} and status = 'PUBLISHED'
+            select w.id, w.agent_id, w.version_no, w.status, w.nodes_json, w.edges_json, w.runtime_options_json,
+                   w.referenced_schema_versions_json, w.source_workflow_version_id, w.published_at, w.created_at, w.updated_at
+            from agent_definition a
+            join workflow_version w on w.id = a.current_published_workflow_version_id
+            where a.id = #{agentId}
+              and w.agent_id = a.id
+              and w.status = 'PUBLISHED'
             """)
     WorkflowVersionRecord findCurrentPublished(@Param("agentId") long agentId);
 

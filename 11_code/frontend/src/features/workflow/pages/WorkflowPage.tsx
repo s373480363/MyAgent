@@ -509,7 +509,7 @@ function NodePropertyPanel({
           <JsonTextArea rows={4} />
         </Form.Item>
         <Form.Item name="configText" label="节点配置 JSON">
-          <JsonTextArea rows={6} />
+          <JsonTextArea rows={6} placeholder={nodeConfigPlaceholder(selectedNode.data.nodeType)} />
         </Form.Item>
       </Form>
       {!readonly ? (
@@ -633,4 +633,20 @@ function parseOptionalJson<T = unknown>(text?: string) {
     return undefined;
   }
   return parseJsonText(text) as T;
+}
+
+/**
+ * 返回节点配置占位示例。
+ *
+ * @param nodeType 节点类型
+ * @returns JSON 占位文本
+ */
+function nodeConfigPlaceholder(nodeType: WorkflowNodeType) {
+  if (["LLM", "REVIEW", "SUMMARY"].includes(nodeType)) {
+    return '{"userPromptTemplate":"请基于 {inputJson} 生成结果","systemPromptTemplate":"可选系统提示词","model":"gpt-4.1-mini","temperature":0.2}';
+  }
+  if (nodeType === "CONDITION") {
+    return "条件写在边 condition 中，例如 {\"path\":\"$.score\",\"operator\":\"GREATER_THAN_OR_EQUALS\",\"value\":80,\"valueType\":\"NUMBER\"}";
+  }
+  return "{}";
 }

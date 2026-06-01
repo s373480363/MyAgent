@@ -103,6 +103,40 @@ public interface EvalRunMapper {
     EvalRunRecord findByRunNo(@Param("runNo") String runNo);
 
     /**
+     * 按数据库主键查询。
+     *
+     * @param evalRunId EvalRun 主键
+     * @return 验收运行
+     */
+    @ConstructorArgs({
+            @Arg(column = "id", javaType = long.class),
+            @Arg(column = "run_no", javaType = String.class),
+            @Arg(column = "suite_id", javaType = long.class),
+            @Arg(column = "agent_id", javaType = long.class),
+            @Arg(column = "workflow_version_id", javaType = long.class),
+            @Arg(column = "node_id", javaType = String.class),
+            @Arg(column = "agent_run_id", javaType = long.class),
+            @Arg(column = "status", javaType = RunStatus.class),
+            @Arg(column = "total_case_count", javaType = int.class),
+            @Arg(column = "passed_case_count", javaType = int.class),
+            @Arg(column = "failed_case_count", javaType = int.class),
+            @Arg(column = "pass_rate", javaType = BigDecimal.class),
+            @Arg(column = "summary", javaType = String.class),
+            @Arg(column = "error_message", javaType = String.class),
+            @Arg(column = "started_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
+            @Arg(column = "finished_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
+            @Arg(column = "duration_ms", javaType = Long.class)
+    })
+    @Select("""
+            select id, run_no, suite_id, agent_id, workflow_version_id, node_id, agent_run_id, status,
+                   total_case_count, passed_case_count, failed_case_count, pass_rate, summary,
+                   error_message, started_at, finished_at, duration_ms
+            from eval_run
+            where id = #{evalRunId}
+            """)
+    EvalRunRecord findById(@Param("evalRunId") long evalRunId);
+
+    /**
      * 按关联 AgentRun 查询。
      *
      * @param agentRunId AgentRun 主键

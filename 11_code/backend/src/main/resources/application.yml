@@ -12,13 +12,14 @@ spring:
     hikari:
       initialization-fail-timeout: 0
   flyway:
-    enabled: false
+    enabled: true
   jackson:
     time-zone: Asia/Shanghai
     serialization:
       write-dates-as-timestamps: false
   ai:
     openai:
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:https://api.openai.com}
       api-key: ${OPENAI_API_KEY:dummy-key}
       chat:
         options:

@@ -7,6 +7,7 @@ import com.myagent.method.application.query.GetJavaMethodQuery;
 import com.myagent.method.application.query.ListJavaMethodsQuery;
 import com.myagent.method.application.result.JavaMethodDetailResult;
 import com.myagent.method.application.result.JavaMethodListItemResult;
+import com.myagent.method.runtime.JavaMethodRegistry;
 import com.myagent.method.repository.JavaMethodRecord;
 import com.myagent.method.repository.JavaMethodRepository;
 import org.springframework.stereotype.Service;
@@ -23,12 +24,22 @@ public class DefaultJavaMethodApplicationService implements JavaMethodApplicatio
     private final JavaMethodRepository javaMethodRepository;
 
     /**
+     * Java 方法注册目录。
+     */
+    private final JavaMethodRegistry javaMethodRegistry;
+
+    /**
      * 构造 Java 方法应用服务。
      *
      * @param javaMethodRepository Java 方法仓储
+     * @param javaMethodRegistry Java 方法注册目录
      */
-    public DefaultJavaMethodApplicationService(JavaMethodRepository javaMethodRepository) {
+    public DefaultJavaMethodApplicationService(
+            JavaMethodRepository javaMethodRepository,
+            JavaMethodRegistry javaMethodRegistry
+    ) {
         this.javaMethodRepository = javaMethodRepository;
+        this.javaMethodRegistry = javaMethodRegistry;
     }
 
     /**
@@ -60,7 +71,7 @@ public class DefaultJavaMethodApplicationService implements JavaMethodApplicatio
      */
     @Override
     public void refreshJavaMethodCatalog() {
-        // 步骤 05 仅落地主数据查询链路；实际执行器和注解扫描在后续运行时步骤实现。
+        javaMethodRegistry.refresh();
     }
 
     /**

@@ -30,6 +30,14 @@ public interface EvalRunRepository {
     Optional<EvalRunRecord> findByRunNo(String runNo);
 
     /**
+     * 按数据库主键查询。
+     *
+     * @param evalRunId EvalRun 数据库主键
+     * @return 验收运行
+     */
+    Optional<EvalRunRecord> findById(long evalRunId);
+
+    /**
      * 按关联 AgentRun 查询。
      *
      * @param agentRunId AgentRun 数据库主键

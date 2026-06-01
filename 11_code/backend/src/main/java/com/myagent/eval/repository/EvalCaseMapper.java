@@ -196,7 +196,6 @@ public interface EvalCaseMapper {
      *
      * @param suiteId 套件主键
      * @param caseIds 指定用例主键
-     * @param includeUnconfirmed 是否包含未确认用例
      * @return 用例列表
      */
     @ConstructorArgs({
@@ -225,10 +224,7 @@ public interface EvalCaseMapper {
             "       source_workflow_version_id, source_node_id, description, created_at, updated_at",
             "from eval_case",
             "where suite_id = #{suiteId}",
-            "  and confirm_status != 'ARCHIVED'",
-            "  <if test='includeUnconfirmed == false'>",
-            "    and confirm_status in ('USER_CREATED', 'USER_CONFIRMED')",
-            "  </if>",
+            "  and confirm_status in ('USER_CREATED', 'USER_CONFIRMED')",
             "  <if test='caseIds != null and caseIds.size() > 0'>",
             "    and id in",
             "    <foreach collection='caseIds' item='caseId' open='(' separator=',' close=')'>",
@@ -240,8 +236,7 @@ public interface EvalCaseMapper {
     })
     List<EvalCaseRecord> listRunnableCases(
             @Param("suiteId") long suiteId,
-            @Param("caseIds") List<Long> caseIds,
-            @Param("includeUnconfirmed") boolean includeUnconfirmed
+            @Param("caseIds") List<Long> caseIds
     );
 
     /**

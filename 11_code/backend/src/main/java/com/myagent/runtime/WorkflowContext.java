@@ -4,15 +4,24 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 /**
  * 工作流运行上下文。
  */
-public class WorkflowContext {
+public class WorkflowContext implements Serializable {
+
+    /**
+     * 序列化版本。
+     */
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
      * JSON 对象映射器。
      */
-    private final ObjectMapper objectMapper;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * 上下文根对象。
@@ -26,7 +35,6 @@ public class WorkflowContext {
      * @param input 运行输入
      */
     public WorkflowContext(ObjectMapper objectMapper, JsonNode input) {
-        this.objectMapper = objectMapper;
         this.root = objectMapper.createObjectNode();
         this.root.set("input", input == null ? objectMapper.createObjectNode() : input.deepCopy());
         this.root.set("nodes", objectMapper.createObjectNode());
@@ -70,7 +78,7 @@ public class WorkflowContext {
      */
     public void putNodeOutput(String nodeId, JsonNode output) {
         ObjectNode nodesNode = (ObjectNode) root.withObject("/nodes");
-        nodesNode.set(nodeId, output == null ? objectMapper.nullNode() : output.deepCopy());
+        nodesNode.set(nodeId, output == null ? OBJECT_MAPPER.nullNode() : output.deepCopy());
     }
 
     /**
@@ -79,7 +87,7 @@ public class WorkflowContext {
      * @param output 最终输出
      */
     public void setOutput(JsonNode output) {
-        root.set("output", output == null ? objectMapper.nullNode() : output.deepCopy());
+        root.set("output", output == null ? OBJECT_MAPPER.nullNode() : output.deepCopy());
     }
 
     /**

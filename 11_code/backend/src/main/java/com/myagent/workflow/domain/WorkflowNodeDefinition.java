@@ -83,98 +83,218 @@ public final class WorkflowNodeDefinition {
     @Schema(description = "画布展示信息。")
     private WorkflowNodeUi ui;
 
+    /**
+     * 返回节点标识。
+     *
+     * @return 节点标识
+     */
     public String getNodeId() {
         return nodeId;
     }
 
+    /**
+     * 设置节点标识。
+     *
+     * @param nodeId 节点标识
+     */
     public void setNodeId(String nodeId) {
         this.nodeId = nodeId;
     }
 
+    /**
+     * 返回节点类型。
+     *
+     * @return 节点类型
+     */
     public WorkflowNodeType getType() {
         return type;
     }
 
+    /**
+     * 设置节点类型。
+     *
+     * @param type 节点类型
+     */
     public void setType(WorkflowNodeType type) {
         this.type = type;
     }
 
+    /**
+     * 返回节点名称。
+     *
+     * @return 节点名称
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * 设置节点名称。
+     *
+     * @param name 节点名称
+     */
     public void setName(String name) {
         this.name = name;
     }
 
+    /**
+     * 返回节点说明。
+     *
+     * @return 节点说明
+     */
     public String getDescription() {
         return description;
     }
 
+    /**
+     * 设置节点说明。
+     *
+     * @param description 节点说明
+     */
     public void setDescription(String description) {
         this.description = description;
     }
 
+    /**
+     * 返回输入 Schema 引用。
+     *
+     * @return 输入 Schema 引用
+     */
     public WorkflowSchemaRef getInputSchemaRef() {
         return inputSchemaRef;
     }
 
+    /**
+     * 设置输入 Schema 引用。
+     *
+     * @param inputSchemaRef 输入 Schema 引用
+     */
     public void setInputSchemaRef(WorkflowSchemaRef inputSchemaRef) {
         this.inputSchemaRef = inputSchemaRef;
     }
 
+    /**
+     * 返回输出 Schema 引用。
+     *
+     * @return 输出 Schema 引用
+     */
     public WorkflowSchemaRef getOutputSchemaRef() {
         return outputSchemaRef;
     }
 
+    /**
+     * 设置输出 Schema 引用。
+     *
+     * @param outputSchemaRef 输出 Schema 引用
+     */
     public void setOutputSchemaRef(WorkflowSchemaRef outputSchemaRef) {
         this.outputSchemaRef = outputSchemaRef;
     }
 
+    /**
+     * 返回输入映射。
+     *
+     * @return 输入映射
+     */
     public JsonNode getInputMapping() {
         return inputMapping;
     }
 
+    /**
+     * 设置输入映射。
+     *
+     * @param inputMapping 输入映射
+     */
     public void setInputMapping(JsonNode inputMapping) {
         this.inputMapping = inputMapping;
     }
 
+    /**
+     * 返回输出映射。
+     *
+     * @return 输出映射
+     */
     public JsonNode getOutputMapping() {
         return outputMapping;
     }
 
+    /**
+     * 设置输出映射。
+     *
+     * @param outputMapping 输出映射
+     */
     public void setOutputMapping(JsonNode outputMapping) {
         this.outputMapping = outputMapping;
     }
 
+    /**
+     * 返回节点级超时秒数。
+     *
+     * @return 节点级超时秒数
+     */
     public Integer getTimeoutSeconds() {
         return timeoutSeconds;
     }
 
+    /**
+     * 设置节点级超时秒数。
+     *
+     * @param timeoutSeconds 节点级超时秒数
+     */
     public void setTimeoutSeconds(Integer timeoutSeconds) {
         this.timeoutSeconds = timeoutSeconds;
     }
 
+    /**
+     * 返回失败策略。
+     *
+     * @return 失败策略
+     */
     public String getFailurePolicy() {
         return failurePolicy;
     }
 
+    /**
+     * 设置失败策略。
+     *
+     * @param failurePolicy 失败策略
+     */
     public void setFailurePolicy(String failurePolicy) {
         this.failurePolicy = failurePolicy;
     }
 
+    /**
+     * 返回节点专属配置。
+     *
+     * @return 节点专属配置
+     */
     public JsonNode getConfig() {
         return config;
     }
 
+    /**
+     * 设置节点专属配置。
+     *
+     * @param config 节点专属配置
+     */
     public void setConfig(JsonNode config) {
         this.config = config;
     }
 
+    /**
+     * 返回画布展示信息。
+     *
+     * @return 画布展示信息
+     */
     public WorkflowNodeUi getUi() {
         return ui;
     }
 
+    /**
+     * 设置画布展示信息。
+     *
+     * @param ui 画布展示信息
+     */
     public void setUi(WorkflowNodeUi ui) {
         this.ui = ui;
     }

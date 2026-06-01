@@ -2,6 +2,7 @@ package com.myagent.common.repository;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 
@@ -21,7 +22,9 @@ public abstract class AbstractJsonValueTypeHandler<T> extends BaseTypeHandler<T>
     /**
      * JSON 对象映射器。
      */
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .findAndAddModules()
+            .build();
 
     /**
      * 返回当前处理器负责的 JavaType。

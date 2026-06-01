@@ -59,6 +59,11 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
     private final AgentRepository agentRepository;
 
     /**
+     * 映射校验服务。
+     */
+    private final WorkflowMappingValidationService workflowMappingValidationService;
+
+    /**
      * 构造工作流校验服务。
      *
      * @param schemaRepository Schema 仓储
@@ -66,19 +71,22 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
      * @param toolRepository 工具仓储
      * @param externalAgentRepository 外部 Agent 仓储
      * @param agentRepository Agent 仓储
+     * @param workflowMappingValidationService 映射校验服务
      */
     public DefaultWorkflowDraftValidationService(
             SchemaRepository schemaRepository,
             JavaMethodRepository javaMethodRepository,
             ToolRepository toolRepository,
             ExternalAgentRepository externalAgentRepository,
-            AgentRepository agentRepository
+            AgentRepository agentRepository,
+            WorkflowMappingValidationService workflowMappingValidationService
     ) {
         this.schemaRepository = schemaRepository;
         this.javaMethodRepository = javaMethodRepository;
         this.toolRepository = toolRepository;
         this.externalAgentRepository = externalAgentRepository;
         this.agentRepository = agentRepository;
+        this.workflowMappingValidationService = workflowMappingValidationService;
     }
 
     /**
@@ -175,6 +183,7 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
 
             validateSchemaRef(node, true, node.getInputSchemaRef(), issues);
             validateSchemaRef(node, false, node.getOutputSchemaRef(), issues);
+            issues.addAll(workflowMappingValidationService.validateMappings(node));
             validateNodeSpecificRules(agent, node, edges, issues);
         }
 
@@ -286,7 +295,48 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
             boolean isDefault = Boolean.TRUE.equals(edge.getIsDefault()) || edge.getType() == com.myagent.workflow.domain.WorkflowEdgeType.DEFAULT;
             if (!isDefault && (edge.getCondition() == null || !edge.getCondition().isObject())) {
                 issues.add(issue("$.edges", "CONDITION 节点的显式分支必须配置条件对象。", detail("$.edges[*].condition", "required", "显式条件分支缺少条件对象。", edge.getEdgeId())));
+                continue;
             }
+            if (!isDefault) {
+                validateConditionObject(edge, issues);
+            }
+        }
+    }
+
+    /**
+     * 校验条件对象完整形态。
+     *
+     * @param edge 条件边
+     * @param issues 校验问题集合
+     */
+    private void validateConditionObject(WorkflowEdgeDefinition edge, List<WorkflowValidationIssueResult> issues) {
+        JsonNode condition = edge.getCondition();
+        if (!hasText(condition, "path")) {
+            issues.add(issue("$.edges", "CONDITION 分支条件缺少 path。", detail("$.edges[*].condition.path", "required", "条件 path 不能为空。", edge.getEdgeId())));
+        }
+        String operator = textValue(condition, "operator");
+        if (isBlank(operator)) {
+            issues.add(issue("$.edges", "CONDITION 分支条件缺少 operator。", detail("$.edges[*].condition.operator", "required", "条件 operator 不能为空。", edge.getEdgeId())));
+        } else if (!Set.of(
+                "EXISTS",
+                "EQUALS",
+                "NOT_EQUALS",
+                "CONTAINS",
+                "GREATER_THAN",
+                "GREATER_THAN_OR_EQUALS",
+                "LESS_THAN",
+                "LESS_THAN_OR_EQUALS"
+        ).contains(operator)) {
+            issues.add(issue("$.edges", "CONDITION 分支条件 operator 不支持。", detail("$.edges[*].condition.operator", "not_supported", "不支持的 operator。", operator)));
+        }
+        String valueType = textValue(condition, "valueType");
+        if (isBlank(valueType)) {
+            issues.add(issue("$.edges", "CONDITION 分支条件缺少 valueType。", detail("$.edges[*].condition.valueType", "required", "条件 valueType 不能为空。", edge.getEdgeId())));
+        } else if (!Set.of("STRING", "NUMBER", "BOOLEAN", "JSON").contains(valueType)) {
+            issues.add(issue("$.edges", "CONDITION 分支条件 valueType 不支持。", detail("$.edges[*].condition.valueType", "not_supported", "不支持的 valueType。", valueType)));
+        }
+        if (!"EXISTS".equals(operator) && condition.get("value") == null) {
+            issues.add(issue("$.edges", "CONDITION 分支条件缺少 value。", detail("$.edges[*].condition.value", "required", "条件 value 不能为空。", edge.getEdgeId())));
         }
     }
 
@@ -299,12 +349,11 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
      */
     private void validatePromptNode(AgentRecord agent, WorkflowNodeDefinition node, List<WorkflowValidationIssueResult> issues) {
         JsonNode config = node.getConfig();
-        boolean hasPrompt = hasText(config, "promptTemplate")
-                || hasText(config, "systemPromptTemplate")
-                || hasText(config, "userPromptTemplate")
-                || !isBlank(agent.systemPrompt());
-        if (!hasPrompt) {
-            issues.add(issue("$.nodes", "提示词节点必须配置提示词模板，或可继承 Agent 默认提示词。", detail("$.nodes[*].config", "missing_prompt", "提示词配置缺失。", node.getNodeId())));
+        if (hasField(config, "prompt") || hasField(config, "promptTemplate")) {
+            issues.add(issue("$.nodes", "提示词节点不允许使用旧 prompt/promptTemplate 字段。", detail("$.nodes[*].config", "deprecated_field", "请改用 userPromptTemplate/systemPromptTemplate。", node.getNodeId())));
+        }
+        if (!hasText(config, "userPromptTemplate")) {
+            issues.add(issue("$.nodes", "提示词节点必须配置 userPromptTemplate。", detail("$.nodes[*].config.userPromptTemplate", "missing_prompt", "用户提示词模板缺失。", node.getNodeId())));
         }
     }
 
@@ -419,6 +468,17 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
     private boolean hasText(JsonNode jsonNode, String fieldName) {
         String value = textValue(jsonNode, fieldName);
         return !isBlank(value);
+    }
+
+    /**
+     * 判断配置中是否存在字段。
+     *
+     * @param jsonNode JSON 对象
+     * @param fieldName 字段名
+     * @return 字段存在时返回 true
+     */
+    private boolean hasField(JsonNode jsonNode, String fieldName) {
+        return jsonNode != null && jsonNode.isObject() && jsonNode.has(fieldName);
     }
 
     /**

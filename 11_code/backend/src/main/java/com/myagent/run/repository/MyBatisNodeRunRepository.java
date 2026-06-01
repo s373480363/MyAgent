@@ -47,7 +47,24 @@ public class MyBatisNodeRunRepository implements NodeRunRepository {
      */
     @Override
     public int finish(NodeRunFinishRecord record) {
-        return nodeRunMapper.finish(record);
+        return nodeRunMapper.finish(normalizeFinishRecord(record));
+    }
+
+    /**
+     * 归一化完成记录，避免成功节点把空错误消息写入非空列。
+     *
+     * @param record 原始完成记录
+     * @return 可安全持久化的完成记录
+     */
+    private NodeRunFinishRecord normalizeFinishRecord(NodeRunFinishRecord record) {
+        return new NodeRunFinishRecord(
+                record.nodeRunDbId(),
+                record.status(),
+                record.outputJson(),
+                record.schemaValidationResultJson(),
+                record.errorMessage() == null ? "" : record.errorMessage(),
+                record.durationMs()
+        );
     }
 
     /**

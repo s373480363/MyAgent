@@ -72,8 +72,4 @@ public interface ExternalAgentApplicationService {
      */
     ExternalAgentTestResult testExternalAgent(TestExternalAgentCommand command);
 
-    /**
-     * 刷新外部 Agent 目录。
-     */
-    void refreshExternalAgentCatalog();
 }

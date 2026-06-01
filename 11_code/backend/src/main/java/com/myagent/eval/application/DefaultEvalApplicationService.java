@@ -3,7 +3,6 @@ package com.myagent.eval.application;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.myagent.agent.repository.AgentRecord;
 import com.myagent.agent.repository.AgentRepository;
@@ -50,24 +49,20 @@ import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
 import com.myagent.run.application.result.RunErrorResult;
 import com.myagent.run.domain.RunStatus;
-import com.myagent.run.domain.RunType;
 import com.myagent.run.domain.TraceEventType;
 import com.myagent.run.repository.AgentRunRecord;
 import com.myagent.run.repository.AgentRunRepository;
 import com.myagent.run.repository.NodeRunRecord;
 import com.myagent.run.repository.NodeRunRepository;
-import com.myagent.runtime.MappingService;
-import com.myagent.runtime.NodeExecutionContext;
+import com.myagent.runtime.NodeExecutionCommand;
 import com.myagent.runtime.NodeExecutionResult;
-import com.myagent.runtime.NodeExecutorRegistry;
+import com.myagent.runtime.NodeExecutionRunner;
 import com.myagent.runtime.NodeRunFinishRecord;
 import com.myagent.runtime.NodeRunStartRecord;
 import com.myagent.runtime.NodeRunStartResult;
-import com.myagent.runtime.RuntimeLimitGuard;
 import com.myagent.runtime.TraceEventRecord;
 import com.myagent.runtime.TraceWriter;
 import com.myagent.runtime.WorkflowContext;
-import com.myagent.schema.validation.SchemaValidationService;
 import com.myagent.workflow.domain.WorkflowNodeDefinition;
 import com.myagent.workflow.domain.WorkflowNodeType;
 import com.myagent.workflow.repository.WorkflowVersionRecord;
@@ -81,6 +76,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -95,6 +91,26 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
      */
     private static final DateTimeFormatter NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
             .withZone(ZoneId.of("Asia/Shanghai"));
+
+    /**
+     * V1 正式支持的确定性断言类型。
+     */
+    private static final Set<String> SUPPORTED_ASSERTION_TYPES = Set.of(
+            "JSON_PATH_EXISTS",
+            "JSON_PATH_EQUALS",
+            "FIELD_EQUALS",
+            "JSON_PATH_CONTAINS",
+            "CONTAINS",
+            "JSON_PATH_NOT_CONTAINS",
+            "NOT_CONTAINS",
+            "JSON_PATH_REGEX",
+            "REGEX_MATCH",
+            "JSON_PATH_NUMBER_RANGE",
+            "NUMERIC_RANGE",
+            "JSON_PATH_IN",
+            "ENUM",
+            "SCHEMA_VALIDATION"
+    );
 
     /**
      * JSON 对象映射器。
@@ -142,34 +158,29 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private final NodeRunRepository nodeRunRepository;
 
     /**
-     * 节点执行器注册表。
-     */
-    private final NodeExecutorRegistry nodeExecutorRegistry;
-
-    /**
      * Trace 写入器。
      */
     private final TraceWriter traceWriter;
 
     /**
-     * Schema 校验服务。
+     * 节点执行协调器。
      */
-    private final SchemaValidationService schemaValidationService;
-
-    /**
-     * 映射服务。
-     */
-    private final MappingService mappingService;
-
-    /**
-     * 运行限制守卫。
-     */
-    private final RuntimeLimitGuard runtimeLimitGuard;
+    private final NodeExecutionRunner nodeExecutionRunner;
 
     /**
      * 验收断言执行器。
      */
     private final EvalAssertionEvaluator assertionEvaluator;
+
+    /**
+     * 验收评分执行器。
+     */
+    private final EvalScoreEvaluator scoreEvaluator;
+
+    /**
+     * EvalRun 生命周期服务。
+     */
+    private final EvalRunLifecycleService evalRunLifecycleService;
 
     /**
      * 构造节点验收应用服务。
@@ -183,12 +194,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
      * @param workflowVersionRepository 工作流版本仓储
      * @param agentRunRepository AgentRun 仓储
      * @param nodeRunRepository NodeRun 仓储
-     * @param nodeExecutorRegistry 节点执行器注册表
      * @param traceWriter Trace 写入器
-     * @param schemaValidationService Schema 校验服务
-     * @param mappingService 映射服务
-     * @param runtimeLimitGuard 运行限制守卫
+     * @param nodeExecutionRunner 节点执行协调器
      * @param assertionEvaluator 验收断言执行器
+     * @param scoreEvaluator 验收评分执行器
+     * @param evalRunLifecycleService EvalRun 生命周期服务
      */
     public DefaultEvalApplicationService(
             ObjectMapper objectMapper,
@@ -200,12 +210,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
             WorkflowVersionRepository workflowVersionRepository,
             AgentRunRepository agentRunRepository,
             NodeRunRepository nodeRunRepository,
-            NodeExecutorRegistry nodeExecutorRegistry,
             TraceWriter traceWriter,
-            SchemaValidationService schemaValidationService,
-            MappingService mappingService,
-            RuntimeLimitGuard runtimeLimitGuard,
-            EvalAssertionEvaluator assertionEvaluator
+            NodeExecutionRunner nodeExecutionRunner,
+            EvalAssertionEvaluator assertionEvaluator,
+            EvalScoreEvaluator scoreEvaluator,
+            EvalRunLifecycleService evalRunLifecycleService
     ) {
         this.objectMapper = objectMapper;
         this.evalSuiteRepository = evalSuiteRepository;
@@ -216,12 +225,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
         this.workflowVersionRepository = workflowVersionRepository;
         this.agentRunRepository = agentRunRepository;
         this.nodeRunRepository = nodeRunRepository;
-        this.nodeExecutorRegistry = nodeExecutorRegistry;
         this.traceWriter = traceWriter;
-        this.schemaValidationService = schemaValidationService;
-        this.mappingService = mappingService;
-        this.runtimeLimitGuard = runtimeLimitGuard;
+        this.nodeExecutionRunner = nodeExecutionRunner;
         this.assertionEvaluator = assertionEvaluator;
+        this.scoreEvaluator = scoreEvaluator;
+        this.evalRunLifecycleService = evalRunLifecycleService;
     }
 
     @Override
@@ -271,9 +279,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     public EvalSuiteResult confirmSuite(long suiteId) {
         EvalSuiteRecord suite = requiredSuite(suiteId);
         requireSuiteDraft(suite);
-        if (evalCaseRepository.countFormalCases(suiteId) <= 0) {
+        List<EvalCaseRecord> formalCases = evalCaseRepository.listRunnableCases(suiteId, null);
+        if (formalCases.isEmpty()) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "确认验收套件前至少需要一个正式用例。");
         }
+        formalCases.forEach(record -> validateFormalEvalCase(suite, record));
         return toSuiteResult(evalSuiteRepository.updateStatus(suiteId, EvalSuiteStatus.CONFIRMED));
     }
 
@@ -295,7 +305,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     public EvalCaseResult createCase(CreateEvalCaseCommand command) {
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         requireSuiteNotArchived(suite);
-        EvalCaseRecord record = evalCaseRepository.insert(new EvalCaseRecord(
+        EvalCaseRecord record = new EvalCaseRecord(
                 0L,
                 suite.id(),
                 requiredText(command.caseNo(), "验收用例编号不能为空。"),
@@ -313,8 +323,9 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 command.description() == null ? "" : command.description(),
                 null,
                 null
-        ));
-        return toCaseResult(record);
+        );
+        validateFormalEvalCase(suite, record);
+        return toCaseResult(evalCaseRepository.insert(record));
     }
 
     @Override
@@ -326,6 +337,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定 NodeRun 不存在。"));
         AgentRunRecord sourceRun = agentRunRepository.findById(nodeRun.runId())
                 .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "NodeRun 关联的运行不存在。"));
+        validateNodeRunSourceForSuite(suite, nodeRun, sourceRun);
         EvalCaseRecord record = evalCaseRepository.insert(new EvalCaseRecord(
                 0L,
                 suite.id(),
@@ -383,17 +395,21 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 current.createdAt(),
                 current.updatedAt()
         ));
+        if (isFormalCase(updated)) {
+            validateFormalEvalCase(suite, updated);
+        }
         return toCaseResult(updated);
     }
 
     @Override
     @Transactional
     public EvalCaseResult confirmCase(long suiteId, long caseId) {
-        requiredSuite(suiteId);
+        EvalSuiteRecord suite = requiredSuite(suiteId);
         EvalCaseRecord current = requiredCase(suiteId, caseId);
         if (current.confirmStatus() == EvalCaseConfirmStatus.ARCHIVED) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收用例不可确认。");
         }
+        validateFormalEvalCase(suite, current);
         return toCaseResult(evalCaseRepository.updateConfirmStatus(suiteId, caseId, EvalCaseConfirmStatus.USER_CONFIRMED));
     }
 
@@ -406,118 +422,109 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     }
 
     @Override
-    @Transactional
     public EvalRunResult runSuite(RunEvalSuiteCommand command) {
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         if (suite.status() != EvalSuiteStatus.CONFIRMED) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "只有已确认验收套件可以执行正式验收。");
+        }
+        if (command.includeUnconfirmed()) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "V1 正式验收不允许包含未确认用例。");
         }
         AgentRecord agent = requiredAgent(suite.agentId());
         WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(suite.workflowVersionId());
         WorkflowNodeDefinition node = requiredEvalNode(workflowVersion, suite.nodeId());
         List<EvalCaseRecord> cases = evalCaseRepository.listRunnableCases(
                 suite.id(),
-                command.caseIds(),
-                command.includeUnconfirmed()
+                command.caseIds()
         );
         if (cases.isEmpty()) {
             throw new BizException(ErrorCode.EVAL_CASE_UNCONFIRMED, "没有可执行的验收用例。");
         }
+        cases.forEach(record -> validateFormalEvalCase(record, node));
         long startedAtNanos = System.nanoTime();
-        AgentRunRecord agentRun = createEvalAgentRun(agent, workflowVersion, suite, cases);
-        EvalRunRecord evalRun = evalRunRepository.insert(new EvalRunRecord(
-                0L,
-                newRunNo("eval"),
-                suite.id(),
-                agent.id(),
-                workflowVersion.id(),
-                suite.nodeId(),
-                agentRun.id(),
-                RunStatus.RUNNING,
-                0,
-                0,
-                0,
-                BigDecimal.ZERO,
-                "",
-                "",
-                null,
-                null,
-                null
-        ));
+        AgentRunRecord agentRun = evalRunLifecycleService.createEvalAgentRun(newRunNo("run"), agent, workflowVersion, suite, cases);
+        EvalRunRecord evalRun = null;
         int passed = 0;
         int failed = 0;
-        for (EvalCaseRecord evalCase : cases) {
-            EvalCaseExecution execution = executeCase(agentRun, evalRun, agent, workflowVersion, node, evalCase);
-            boolean casePassed = execution.passed();
-            if (casePassed) {
-                passed++;
-            } else {
-                failed++;
+        try {
+            evalRun = evalRunLifecycleService.createEvalRun(newRunNo("eval"), suite, agent, workflowVersion, agentRun);
+            for (EvalCaseRecord evalCase : cases) {
+                EvalCaseExecution execution = executeCase(agentRun, evalRun, agent, workflowVersion, node, evalCase);
+                boolean casePassed = execution.passed();
+                if (casePassed) {
+                    passed++;
+                } else {
+                    failed++;
+                }
+                evalRunLifecycleService.insertEvalCaseResult(new EvalCaseResultRecord(
+                        0L,
+                        evalRun.id(),
+                        evalCase.id(),
+                        execution.outputJson(),
+                        execution.assertionResults(),
+                        execution.scoreResult(),
+                        casePassed,
+                        execution.errorMessage(),
+                        execution.durationMs(),
+                        null
+                ));
+                traceWriter.writeEvent(new TraceEventRecord(
+                        agentRun.id(),
+                        execution.nodeRunDbId(),
+                        evalRun.id(),
+                        TraceEventType.EVAL_CASE_RESULT,
+                        casePassed ? "验收用例通过：" + evalCase.caseNo() : "验收用例失败：" + evalCase.caseNo(),
+                        objectMapper.createObjectNode()
+                                .put("caseId", evalCase.id())
+                                .put("caseNo", evalCase.caseNo())
+                                .put("passed", casePassed)
+                                .put("errorMessage", execution.errorMessage())
+                ));
             }
-            evalCaseResultRepository.insert(new EvalCaseResultRecord(
-                    0L,
+            BigDecimal passRate = percent(passed, cases.size());
+            long criticalFailed = evalCaseResultRepository.countCriticalFailures(evalRun.id());
+            RunStatus status = passRate.compareTo(suite.passThreshold()) >= 0 && criticalFailed == 0
+                    ? RunStatus.SUCCESS
+                    : RunStatus.FAILED;
+            String summary = buildSummary(status, criticalFailed, passed, failed, passRate);
+            long durationMs = elapsedMillis(startedAtNanos);
+            EvalRunRecord finishedEvalRun = evalRunLifecycleService.finishEvalRun(
                     evalRun.id(),
-                    evalCase.id(),
-                    execution.outputJson(),
-                    execution.assertionResults(),
-                    execution.scoreResult() == null ? objectMapper.createObjectNode() : execution.scoreResult(),
-                    casePassed,
-                    execution.errorMessage(),
-                    execution.durationMs(),
-                    null
-            ));
-            traceWriter.writeEvent(new TraceEventRecord(
+                    status,
+                    cases.size(),
+                    passed,
+                    failed,
+                    passRate,
+                    summary,
+                    status == RunStatus.SUCCESS ? "" : "验收断言未全部通过。",
+                    durationMs
+            );
+            evalRunLifecycleService.finishEvalAgentRun(
                     agentRun.id(),
-                    execution.nodeRunDbId(),
-                    evalRun.id(),
-                    TraceEventType.EVAL_CASE_RESULT,
-                    casePassed ? "验收用例通过：" + evalCase.caseNo() : "验收用例失败：" + evalCase.caseNo(),
+                    status,
                     objectMapper.createObjectNode()
-                            .put("caseId", evalCase.id())
-                            .put("caseNo", evalCase.caseNo())
-                            .put("passed", casePassed)
-                            .put("errorMessage", execution.errorMessage())
-            ));
+                            .put("evalRunId", finishedEvalRun.runNo())
+                            .put("passRate", passRate)
+                            .put("summary", summary),
+                    status == RunStatus.SUCCESS ? null : ErrorCode.EVAL_ASSERTION_FAILED.getCode(),
+                    status == RunStatus.SUCCESS ? "" : "验收断言未全部通过。",
+                    durationMs
+            );
+            return new EvalRunResult(
+                    finishedEvalRun.runNo(),
+                    agentRun.runNo(),
+                    suite.id(),
+                    status,
+                    passRate,
+                    cases.size(),
+                    passed,
+                    failed,
+                    summary
+            );
+        } catch (RuntimeException exception) {
+            markFailedEvalRun(agentRun, evalRun, cases, passed, failed, startedAtNanos, exception);
+            throw exception;
         }
-        BigDecimal passRate = percent(passed, cases.size());
-        long criticalFailed = evalCaseResultRepository.countCriticalFailures(evalRun.id());
-        RunStatus status = passRate.compareTo(suite.passThreshold()) >= 0 && criticalFailed == 0
-                ? RunStatus.SUCCESS
-                : RunStatus.FAILED;
-        String summary = buildSummary(status, criticalFailed, passed, failed, passRate);
-        long durationMs = elapsedMillis(startedAtNanos);
-        EvalRunRecord finishedEvalRun = evalRunRepository.finish(
-                evalRun.id(),
-                status,
-                cases.size(),
-                passed,
-                failed,
-                passRate,
-                summary,
-                status == RunStatus.SUCCESS ? "" : "验收断言未全部通过。",
-                durationMs
-        );
-        agentRunRepository.finishRun(
-                agentRun.id(),
-                status,
-                objectMapper.createObjectNode()
-                        .put("evalRunId", finishedEvalRun.runNo())
-                        .put("passRate", passRate)
-                        .put("summary", summary),
-                status == RunStatus.SUCCESS ? "" : "验收断言未全部通过。",
-                durationMs
-        );
-        return new EvalRunResult(
-                finishedEvalRun.runNo(),
-                agentRun.runNo(),
-                suite.id(),
-                status,
-                passRate,
-                cases.size(),
-                passed,
-                failed,
-                summary
-        );
     }
 
     @Override
@@ -555,7 +562,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 run.summary(),
                 run.errorMessage() == null || run.errorMessage().isBlank()
                         ? null
-                        : new RunErrorResult(ErrorCode.EVAL_ASSERTION_FAILED.getCode(), run.errorMessage()),
+                        : new RunErrorResult(ErrorCode.EVAL_ASSERTION_FAILED.getCode(), run.errorMessage(), null),
                 run.startedAt(),
                 run.finishedAt(),
                 run.durationMs(),
@@ -578,47 +585,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     }
 
     /**
-     * 创建 Eval 配套 AgentRun。
-     *
-     * @param agent Agent 主数据
-     * @param workflowVersion 工作流版本
-     * @param suite 套件
-     * @param cases 用例列表
-     * @return AgentRun 记录
-     */
-    private AgentRunRecord createEvalAgentRun(
-            AgentRecord agent,
-            WorkflowVersionRecord workflowVersion,
-            EvalSuiteRecord suite,
-            List<EvalCaseRecord> cases
-    ) {
-        ObjectNode input = objectMapper.createObjectNode();
-        input.put("suiteId", suite.id());
-        input.put("workflowVersionId", workflowVersion.id());
-        input.put("nodeId", suite.nodeId());
-        ArrayNode caseIds = input.putArray("caseIds");
-        cases.forEach(evalCase -> caseIds.add(evalCase.id()));
-        AgentRunRecord inserted = agentRunRepository.insert(new AgentRunRecord(
-                0L,
-                newRunNo("run"),
-                agent.id(),
-                agent.agentKey(),
-                workflowVersion.id(),
-                null,
-                RunType.EVAL,
-                input,
-                null,
-                RunStatus.PENDING,
-                "",
-                null,
-                null,
-                null
-        ));
-        agentRunRepository.markRunning(inserted.id());
-        return inserted;
-    }
-
-    /**
      * 执行单条验收用例。
      *
      * @param agentRun AgentRun 记录
@@ -637,89 +603,155 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
             WorkflowNodeDefinition node,
             EvalCaseRecord evalCase
     ) {
-        WorkflowContext workflowContext = new WorkflowContext(objectMapper, evalCase.inputJson());
-        NodeRunStartResult nodeRun = traceWriter.createNodeRun(new NodeRunStartRecord(
+        TraceWriter evalTraceWriter = new EvalTraceWriter(traceWriter, evalRun.id());
+        NodeExecutionResult nodeResult = nodeExecutionRunner.execute(new NodeExecutionCommand(
                 agentRun.id(),
                 agentRun.runNo(),
-                node.getNodeId(),
-                node.getName(),
-                node.getType(),
-                evalCase.inputJson()
+                agent,
+                workflowVersion.id(),
+                workflowVersion.runtimeOptions(),
+                node,
+                List.of(),
+                new WorkflowContext(objectMapper, evalCase.inputJson()),
+                evalCase.inputJson(),
+                evalTraceWriter,
+                agentRun.startedAt() == null ? Instant.now() : agentRun.startedAt()
         ));
-        long startedAtNanos = System.nanoTime();
-        TraceWriter evalTraceWriter = new EvalTraceWriter(traceWriter, evalRun.id());
-        try {
-            NodeExecutionContext context = new NodeExecutionContext(
-                    agentRun.id(),
-                    agentRun.runNo(),
-                    nodeRun.nodeRunDbId(),
-                    agent,
-                    workflowVersion.id(),
-                    node,
-                    List.of(),
-                    workflowContext,
-                    workflowVersion.runtimeOptions(),
-                    evalTraceWriter,
-                    schemaValidationService,
-                    mappingService,
-                    runtimeLimitGuard
-            );
-            NodeExecutionResult nodeResult = nodeExecutorRegistry.getExecutor(node.getType()).execute(context);
-            traceWriter.finishNodeRun(new NodeRunFinishRecord(
-                    nodeRun.nodeRunDbId(),
-                    nodeResult.status(),
+        if (nodeResult.status() != RunStatus.SUCCESS) {
+            return EvalCaseExecution.failed(
+                    nodeResult.nodeRunDbId(),
                     nodeResult.outputJson(),
-                    null,
+                    objectMapper.createArrayNode(),
                     nodeResult.errorMessage(),
-                    elapsedMillis(startedAtNanos)
-            ));
-            if (nodeResult.status() != RunStatus.SUCCESS) {
-                return EvalCaseExecution.failed(
-                        nodeRun.nodeRunDbId(),
-                        nodeResult.outputJson(),
-                        objectMapper.createArrayNode(),
-                        nodeResult.errorMessage(),
-                        nodeResult.durationMs()
-                );
-            }
-            EvalAssertionEvaluation assertion = assertionEvaluator.evaluate(nodeResult.outputJson(), evalCase.assertionsJson());
-            return new EvalCaseExecution(
-                    nodeRun.nodeRunDbId(),
-                    nodeResult.outputJson(),
-                    assertion.assertionResults(),
-                    objectMapper.createObjectNode(),
-                    assertion.passed(),
-                    assertion.errorMessage(),
                     nodeResult.durationMs()
             );
-        } catch (BizException exception) {
-            traceWriter.writeEvent(new TraceEventRecord(
+        }
+        EvalAssertionEvaluation assertion = assertionEvaluator.evaluate(
+                nodeResult.outputJson(),
+                evalCase.assertionsJson(),
+                nodeResult.schemaValidationResultJson()
+        );
+        JsonNode scoreResult = scoreEvaluator.evaluate(new EvalScoreRequest(
+                evalCase.scoreRuleJson(),
+                agent,
+                node,
+                evalCase.inputJson(),
+                evalCase.referenceAnswerJson(),
+                nodeResult.outputJson(),
+                assertion.assertionResults(),
+                assertion.passed()
+        ));
+        return new EvalCaseExecution(
+                nodeResult.nodeRunDbId(),
+                nodeResult.outputJson(),
+                assertion.assertionResults(),
+                scoreResult,
+                assertion.passed(),
+                assertion.errorMessage(),
+                nodeResult.durationMs()
+        );
+    }
+
+    /**
+     * 异常中止时显式提交 EvalRun 与 AgentRun 终态。
+     *
+     * @param agentRun AgentRun 记录
+     * @param evalRun EvalRun 记录
+     * @param cases 本次计划执行的用例
+     * @param passed 已通过数
+     * @param failed 已失败数
+     * @param startedAtNanos 开始纳秒时间
+     * @param exception 原始异常
+     */
+    private void markFailedEvalRun(
+            AgentRunRecord agentRun,
+            EvalRunRecord evalRun,
+            List<EvalCaseRecord> cases,
+            int passed,
+            int failed,
+            long startedAtNanos,
+            RuntimeException exception
+    ) {
+        RunStatus status = failureStatus(exception);
+        String errorCode = failureErrorCode(exception);
+        String errorMessage = failureMessage(exception);
+        int failedCount = Math.max(failed, cases.size() - passed);
+        BigDecimal passRate = percent(passed, cases.size());
+        String summary = "验收运行异常中止：" + errorMessage;
+        long durationMs = elapsedMillis(startedAtNanos);
+        try {
+            if (evalRun != null) {
+                evalRunLifecycleService.finishEvalRun(
+                        evalRun.id(),
+                        status,
+                        cases.size(),
+                        passed,
+                        failedCount,
+                        passRate,
+                        summary,
+                        errorMessage,
+                        durationMs
+                );
+            }
+            evalRunLifecycleService.finishEvalAgentRun(
                     agentRun.id(),
-                    nodeRun.nodeRunDbId(),
-                    evalRun.id(),
-                    TraceEventType.NODE_ERROR,
-                    exception.getMessage(),
+                    status,
                     objectMapper.createObjectNode()
-                            .put("errorCode", exception.getErrorCode().getCode())
-                            .put("errorMessage", exception.getMessage())
-            ));
-            long durationMs = elapsedMillis(startedAtNanos);
-            traceWriter.finishNodeRun(new NodeRunFinishRecord(
-                    nodeRun.nodeRunDbId(),
-                    exception.getErrorCode() == ErrorCode.RUN_TIMEOUT ? RunStatus.TIMEOUT : RunStatus.FAILED,
-                    null,
-                    null,
-                    exception.getMessage(),
-                    durationMs
-            ));
-            return EvalCaseExecution.failed(
-                    nodeRun.nodeRunDbId(),
-                    null,
-                    objectMapper.createArrayNode(),
-                    exception.getMessage(),
+                            .put("evalRunId", evalRun == null ? "" : evalRun.runNo())
+                            .put("passRate", passRate)
+                            .put("summary", summary),
+                    errorCode,
+                    errorMessage,
                     durationMs
             );
+        } catch (RuntimeException finishException) {
+            exception.addSuppressed(finishException);
         }
+    }
+
+    /**
+     * 根据异常映射运行终态。
+     *
+     * @param exception 原始异常
+     * @return 运行终态
+     */
+    private RunStatus failureStatus(RuntimeException exception) {
+        if (exception instanceof BizException bizException) {
+            if (bizException.getErrorCode() == ErrorCode.RUN_TIMEOUT) {
+                return RunStatus.TIMEOUT;
+            }
+            if (bizException.getErrorCode() == ErrorCode.RUN_CANCELED) {
+                return RunStatus.CANCELED;
+            }
+        }
+        return RunStatus.FAILED;
+    }
+
+    /**
+     * 根据异常解析错误码。
+     *
+     * @param exception 原始异常
+     * @return 错误码
+     */
+    private String failureErrorCode(RuntimeException exception) {
+        if (exception instanceof BizException bizException) {
+            return bizException.getErrorCode().getCode();
+        }
+        return ErrorCode.INTERNAL_ERROR.getCode();
+    }
+
+    /**
+     * 根据异常解析中文错误消息。
+     *
+     * @param exception 原始异常
+     * @return 错误消息
+     */
+    private String failureMessage(RuntimeException exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return "验收运行异常中止。";
+        }
+        return message;
     }
 
     /**
@@ -925,6 +957,120 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 record.createdAt(),
                 record.updatedAt()
         );
+    }
+
+    /**
+     * 校验从 NodeRun 生成 EvalCase 时的来源一致性。
+     *
+     * @param suite 验收套件
+     * @param nodeRun 来源 NodeRun
+     * @param sourceRun 来源 AgentRun
+     */
+    private void validateNodeRunSourceForSuite(EvalSuiteRecord suite, NodeRunRecord nodeRun, AgentRunRecord sourceRun) {
+        if (sourceRun.agentId() != suite.agentId()) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属 Agent 与验收套件绑定的 Agent 不一致。");
+        }
+        if (sourceRun.workflowVersionId() != suite.workflowVersionId()) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属工作流版本与验收套件绑定的工作流版本不一致。");
+        }
+        if (!suite.nodeId().equals(nodeRun.nodeId())) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属节点与验收套件目标节点不一致。");
+        }
+        if (nodeRun.status() != RunStatus.SUCCESS) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "只有 SUCCESS 状态的 NodeRun 可以生成验收用例。");
+        }
+        if (nodeRun.outputJson() == null || nodeRun.outputJson().isNull() || nodeRun.outputJson().isMissingNode()) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 输出不能为空，无法复制为验收参考答案。");
+        }
+    }
+
+    /**
+     * 校验正式 EvalCase 是否具备可执行验收标准。
+     *
+     * @param record EvalCase 记录
+     */
+    private void validateFormalEvalCase(EvalCaseRecord record) {
+        JsonNode assertions = record.assertionsJson();
+        if (assertions == null || assertions.isNull() || assertions.isMissingNode() || !assertions.isArray()) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例必须配置断言数组：" + record.caseNo());
+        }
+        if (assertions.isEmpty()) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例断言不能为空：" + record.caseNo());
+        }
+        for (int index = 0; index < assertions.size(); index++) {
+            JsonNode assertion = assertions.get(index);
+            if (assertion == null || !assertion.isObject()) {
+                throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例第 " + (index + 1) + " 条断言必须是对象：" + record.caseNo());
+            }
+            JsonNode typeNode = assertion.get("type");
+            if (typeNode == null || !typeNode.isTextual() || typeNode.asText().isBlank()) {
+                throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例第 " + (index + 1) + " 条断言缺少 type：" + record.caseNo());
+            }
+            String type = typeNode.asText();
+            if (!SUPPORTED_ASSERTION_TYPES.contains(type)) {
+                throw new BizException(ErrorCode.INVALID_ARGUMENT, "正式验收用例不支持断言类型：" + type);
+            }
+        }
+    }
+
+    /**
+     * 结合套件目标节点校验正式 EvalCase。
+     *
+     * @param suite EvalSuite 记录
+     * @param record EvalCase 记录
+     */
+    private void validateFormalEvalCase(EvalSuiteRecord suite, EvalCaseRecord record) {
+        validateFormalEvalCase(record);
+        if (!containsSchemaValidationAssertion(record.assertionsJson())) {
+            return;
+        }
+        WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(suite.workflowVersionId());
+        validateFormalEvalCase(record, requiredEvalNode(workflowVersion, suite.nodeId()));
+    }
+
+    /**
+     * 结合目标节点校验正式 EvalCase。
+     *
+     * @param record EvalCase 记录
+     * @param node 目标节点
+     */
+    private void validateFormalEvalCase(EvalCaseRecord record, WorkflowNodeDefinition node) {
+        validateFormalEvalCase(record);
+        if (containsSchemaValidationAssertion(record.assertionsJson()) && node.getOutputSchemaRef() == null) {
+            throw new BizException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "SCHEMA_VALIDATION 断言要求目标节点配置 outputSchema：" + record.caseNo()
+            );
+        }
+    }
+
+    /**
+     * 判断断言列表是否包含 Schema 校验断言。
+     *
+     * @param assertions 断言配置
+     * @return 包含 Schema 校验断言时返回 true
+     */
+    private boolean containsSchemaValidationAssertion(JsonNode assertions) {
+        if (assertions == null || !assertions.isArray()) {
+            return false;
+        }
+        for (JsonNode assertion : assertions) {
+            if ("SCHEMA_VALIDATION".equals(assertion.path("type").asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断用例是否属于正式运行候选。
+     *
+     * @param record EvalCase 记录
+     * @return 属于正式候选时返回 true
+     */
+    private boolean isFormalCase(EvalCaseRecord record) {
+        return record.confirmStatus() == EvalCaseConfirmStatus.USER_CREATED
+                || record.confirmStatus() == EvalCaseConfirmStatus.USER_CONFIRMED;
     }
 
     /**

@@ -22,6 +22,7 @@ import java.util.List;
  * @param runtimeOptions 工作流版本运行约束快照
  * @param traceWriter Trace 写入器
  * @param schemaValidationService Schema 校验服务
+ * @param schemaValidationResults 本节点已经产生的 Schema 校验记录
  * @param mappingService 映射服务
  * @param runtimeLimitGuard 运行限制守卫
  */
@@ -37,6 +38,7 @@ public record NodeExecutionContext(
         WorkflowRuntimeOptions runtimeOptions,
         TraceWriter traceWriter,
         SchemaValidationService schemaValidationService,
+        List<SchemaValidationRecord> schemaValidationResults,
         MappingService mappingService,
         RuntimeLimitGuard runtimeLimitGuard
 ) {

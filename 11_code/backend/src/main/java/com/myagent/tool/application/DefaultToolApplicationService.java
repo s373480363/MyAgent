@@ -9,6 +9,7 @@ import com.myagent.tool.application.result.ToolDetailResult;
 import com.myagent.tool.application.result.ToolListItemResult;
 import com.myagent.tool.repository.ToolRecord;
 import com.myagent.tool.repository.ToolRepository;
+import com.myagent.tool.runtime.ToolRegistry;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,12 +24,19 @@ public class DefaultToolApplicationService implements ToolApplicationService {
     private final ToolRepository toolRepository;
 
     /**
+     * 工具注册目录。
+     */
+    private final ToolRegistry toolRegistry;
+
+    /**
      * 构造工具应用服务。
      *
      * @param toolRepository 工具仓储
+     * @param toolRegistry 工具注册目录
      */
-    public DefaultToolApplicationService(ToolRepository toolRepository) {
+    public DefaultToolApplicationService(ToolRepository toolRepository, ToolRegistry toolRegistry) {
         this.toolRepository = toolRepository;
+        this.toolRegistry = toolRegistry;
     }
 
     /**
@@ -60,7 +68,7 @@ public class DefaultToolApplicationService implements ToolApplicationService {
      */
     @Override
     public void refreshToolCatalog() {
-        // 步骤 05 仅落地主数据目录查询链路；实际工具执行器在后续运行时步骤实现。
+        toolRegistry.refresh();
     }
 
     /**

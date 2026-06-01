@@ -61,10 +61,10 @@ public class LlmNodeExecutor extends AbstractNodeExecutorSupport implements Node
         boolean structuredOutput = context.nodeDefinition().getOutputSchemaRef() != null;
         ModelInvocationRequest request = new ModelInvocationRequest(
                 readText(config, "model", context.agentDefinition().defaultModel()),
-                context.agentDefinition().systemPrompt(),
-                readText(config, "prompt", input.toString()),
+                renderSystemPromptTemplate(context, input),
+                renderUserPromptTemplate(context, input),
                 input,
-                context.agentDefinition().temperature(),
+                readDecimal(config, "temperature", context.agentDefinition().temperature()),
                 structuredOutput
         );
         context.traceWriter().writeEvent(new TraceEventRecord(
@@ -84,22 +84,7 @@ public class LlmNodeExecutor extends AbstractNodeExecutorSupport implements Node
                 "模型调用完成。",
                 objectMapper.valueToTree(result)
         ));
-        validateSchema(context, result.output(), context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
+        validateOutputSchema(context, result.output(), context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
         return NodeExecutionResult.success(result.output(), result.durationMs());
-    }
-
-    /**
-     * 读取文本配置。
-     *
-     * @param config 配置节点
-     * @param fieldName 字段名
-     * @param fallback 回退值
-     * @return 配置文本
-     */
-    private String readText(JsonNode config, String fieldName, String fallback) {
-        if (config != null && config.hasNonNull(fieldName) && config.get(fieldName).isTextual()) {
-            return config.get(fieldName).asText();
-        }
-        return fallback;
     }
 }

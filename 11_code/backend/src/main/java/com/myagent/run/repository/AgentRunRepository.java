@@ -50,11 +50,23 @@ public interface AgentRunRepository {
      * @param runId 运行主键
      * @param status 运行状态
      * @param outputJson 输出 JSON
+     * @param errorCode 错误码
      * @param errorMessage 错误消息
      * @param durationMs 耗时毫秒
      * @return 受影响行数
      */
-    int finishRun(long runId, RunStatus status, JsonNode outputJson, String errorMessage, long durationMs);
+    int finishRun(long runId, RunStatus status, JsonNode outputJson, String errorCode, String errorMessage, long durationMs);
+
+    /**
+     * 取消尚未完成的运行。
+     *
+     * @param runId 运行主键
+     * @param errorCode 错误码
+     * @param errorMessage 错误消息
+     * @param durationMs 耗时毫秒
+     * @return 受影响行数
+     */
+    int cancelActiveRun(long runId, String errorCode, String errorMessage, long durationMs);
 
     /**
      * 更新运行状态为运行中。

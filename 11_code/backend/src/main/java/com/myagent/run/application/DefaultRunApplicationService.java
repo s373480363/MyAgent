@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myagent.agent.repository.AgentRecord;
 import com.myagent.agent.repository.AgentRepository;
+import com.myagent.common.api.ApiError;
 import com.myagent.common.domain.EnableStatus;
 import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
@@ -42,6 +43,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -207,6 +209,7 @@ public class DefaultRunApplicationService implements RunApplicationService {
         String parentRunNo = run.parentRunId() == null
                 ? null
                 : agentRunRepository.findById(run.parentRunId()).map(AgentRunRecord::runNo).orElse(null);
+        List<NodeRunRecord> nodeRuns = nodeRunRepository.listByRunId(run.id());
         return new RunDetailResult(
                 run.runNo(),
                 new RunAgentResult(agent.id(), agent.agentKey(), agent.name()),
@@ -219,8 +222,8 @@ public class DefaultRunApplicationService implements RunApplicationService {
                         : null,
                 run.inputJson(),
                 run.outputJson(),
-                toError(run),
-                nodeRunRepository.listByRunId(run.id()).stream().map(this::toNodeRunResult).toList(),
+                toError(run, nodeRuns),
+                nodeRuns.stream().map(this::toNodeRunResult).toList(),
                 traceEventRepository.listByRunId(run.id()).stream().map(this::toTraceEventResult).toList(),
                 agentMessageRepository.listByParentRunId(run.id()).stream().map(this::toChildRunResult).toList(),
                 run.startedAt(),
@@ -257,6 +260,7 @@ public class DefaultRunApplicationService implements RunApplicationService {
                 input == null ? objectMapper.createObjectNode() : input,
                 null,
                 RunStatus.PENDING,
+                null,
                 "",
                 null,
                 null,
@@ -274,6 +278,7 @@ public class DefaultRunApplicationService implements RunApplicationService {
                 run.id(),
                 runtimeResult.status(),
                 runtimeResult.outputJson(),
+                runtimeResult.errorCode(),
                 runtimeResult.errorMessage(),
                 runtimeResult.durationMs()
         );
@@ -283,7 +288,13 @@ public class DefaultRunApplicationService implements RunApplicationService {
                 workflowVersion.id(),
                 runtimeResult.status(),
                 runtimeResult.outputJson(),
-                runtimeResult.errorCode() == null ? null : new RunErrorResult(runtimeResult.errorCode(), runtimeResult.errorMessage()),
+                runtimeResult.errorCode() == null
+                        ? null
+                        : new RunErrorResult(
+                                runtimeResult.errorCode(),
+                                runtimeResult.errorMessage(),
+                                runtimeResult.errorDetails()
+                        ),
                 runtimeResult.durationMs()
         );
     }
@@ -378,7 +389,9 @@ public class DefaultRunApplicationService implements RunApplicationService {
         return new TraceEventResult(
                 traceEvent.id(),
                 traceEvent.nodeRunId(),
-                traceEvent.evalRunId(),
+                traceEvent.evalRunId() == null
+                        ? null
+                        : evalRunRepository.findById(traceEvent.evalRunId()).map(com.myagent.eval.repository.EvalRunRecord::runNo).orElse(null),
                 traceEvent.eventType(),
                 traceEvent.summary(),
                 traceEvent.detailJson(),
@@ -393,8 +406,20 @@ public class DefaultRunApplicationService implements RunApplicationService {
      * @return 子运行结果
      */
     private ChildRunResult toChildRunResult(AgentMessageRecord message) {
-        String childRunNo = agentRunRepository.findById(message.childRunId()).map(AgentRunRecord::runNo).orElse(null);
-        return new ChildRunResult(childRunNo, message.summary());
+        AgentRunRecord childRun = agentRunRepository.findById(message.childRunId()).orElse(null);
+        if (childRun == null) {
+            return new ChildRunResult(null, null, null, null, null, null, message.summary());
+        }
+        AgentRecord agent = agentRepository.findById(childRun.agentId()).orElse(null);
+        return new ChildRunResult(
+                childRun.runNo(),
+                agent == null ? null : new RunAgentResult(agent.id(), agent.agentKey(), agent.name()),
+                childRun.status(),
+                childRun.startedAt(),
+                childRun.finishedAt(),
+                childRun.durationMs(),
+                message.summary()
+        );
     }
 
     /**
@@ -403,11 +428,37 @@ public class DefaultRunApplicationService implements RunApplicationService {
      * @param run 运行记录
      * @return 错误结果
      */
-    private RunErrorResult toError(AgentRunRecord run) {
-        if (run.errorMessage() == null || run.errorMessage().isBlank()) {
+    private RunErrorResult toError(AgentRunRecord run, List<NodeRunRecord> nodeRuns) {
+        if (run.errorCode() == null || run.errorCode().isBlank()) {
             return null;
         }
-        return new RunErrorResult(run.status().name(), run.errorMessage());
+        return new RunErrorResult(run.errorCode(), run.errorMessage(), schemaValidationErrorDetails(nodeRuns));
+    }
+
+    /**
+     * 从节点 Schema 校验结果派生字段级错误明细。
+     *
+     * @param nodeRuns 节点运行记录
+     * @return 字段级错误明细；没有错误时返回 null
+     */
+    private List<ApiError.Detail> schemaValidationErrorDetails(List<NodeRunRecord> nodeRuns) {
+        List<ApiError.Detail> details = new ArrayList<>();
+        for (NodeRunRecord nodeRun : nodeRuns) {
+            JsonNode validationResult = nodeRun.schemaValidationResultJson();
+            if (validationResult == null || validationResult.isNull()) {
+                continue;
+            }
+            for (JsonNode result : validationResult.path("results")) {
+                for (JsonNode error : result.path("errors")) {
+                    details.add(ApiError.Detail.of(
+                            error.path("path").asText(null),
+                            error.path("keyword").asText(null),
+                            error.path("message").asText(null)
+                    ));
+                }
+            }
+        }
+        return details.isEmpty() ? null : details;
     }
 
     /**

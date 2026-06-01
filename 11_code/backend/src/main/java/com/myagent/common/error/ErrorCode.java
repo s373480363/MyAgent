@@ -53,6 +53,11 @@ public enum ErrorCode implements CodeEnum {
     RUN_TIMEOUT("RUN_TIMEOUT", "运行超时。"),
 
     /**
+     * 运行被取消。
+     */
+    RUN_CANCELED("RUN_CANCELED", "运行被取消。"),
+
+    /**
      * Java 方法执行失败。
      */
     JAVA_METHOD_EXECUTION_FAILED("JAVA_METHOD_EXECUTION_FAILED", "Java 方法执行失败。"),

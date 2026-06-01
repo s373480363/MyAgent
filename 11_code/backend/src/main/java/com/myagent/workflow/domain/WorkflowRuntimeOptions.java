@@ -1,6 +1,8 @@
 package com.myagent.workflow.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -35,20 +37,40 @@ public final class WorkflowRuntimeOptions {
      * @param maxSteps 最大执行步数
      * @param maxAgentCallDepth 最大 Agent 调用深度
      */
-    public WorkflowRuntimeOptions(int timeoutSeconds, int maxSteps, int maxAgentCallDepth) {
+    @JsonCreator
+    public WorkflowRuntimeOptions(
+            @JsonProperty(value = "timeoutSeconds", required = true) int timeoutSeconds,
+            @JsonProperty(value = "maxSteps", required = true) int maxSteps,
+            @JsonProperty(value = "maxAgentCallDepth", required = true) int maxAgentCallDepth
+    ) {
         this.timeoutSeconds = timeoutSeconds;
         this.maxSteps = maxSteps;
         this.maxAgentCallDepth = maxAgentCallDepth;
     }
 
+    /**
+     * 返回工作流总超时秒数。
+     *
+     * @return 工作流总超时秒数
+     */
     public int getTimeoutSeconds() {
         return timeoutSeconds;
     }
 
+    /**
+     * 返回最大执行步数。
+     *
+     * @return 最大执行步数
+     */
     public int getMaxSteps() {
         return maxSteps;
     }
 
+    /**
+     * 返回最大 Agent 调用深度。
+     *
+     * @return 最大 Agent 调用深度
+     */
     public int getMaxAgentCallDepth() {
         return maxAgentCallDepth;
     }

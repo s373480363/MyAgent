@@ -80,6 +80,28 @@ class DefaultMappingServiceTests {
     }
 
     /**
+     * 输出对象映射使用目标路径到节点输出来源路径的正式形态。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void applyOutputObjectMappingWritesSourceFieldsToTargetPaths() throws Exception {
+        JsonNode context = objectMapper.readTree("{\"input\":{}}");
+        JsonNode output = objectMapper.readTree("{\"summary\":\"完成\",\"score\":90}");
+        JsonNode mapping = objectMapper.readTree("""
+                {
+                  "$.result.summary": "$.summary",
+                  "$.result.score": "$.score"
+                }
+                """);
+
+        JsonNode result = mappingService.applyOutput(context, mapping, output);
+
+        assertThat(result.at("/result/summary").asText()).isEqualTo("完成");
+        assertThat(result.at("/result/score").asInt()).isEqualTo(90);
+    }
+
+    /**
      * 输出写回禁止覆盖运行输入。
      *
      * @throws Exception JSON 解析失败时抛出

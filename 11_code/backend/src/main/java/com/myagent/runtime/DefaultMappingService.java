@@ -92,19 +92,14 @@ public class DefaultMappingService implements MappingService {
         if (!outputMapping.isObject()) {
             throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "输出映射必须是 JSON 对象或路径字符串。");
         }
-        JsonNode targetPathNode = outputMapping.get("targetPath");
-        if (targetPathNode != null && targetPathNode.isTextual()) {
-            writeValue(mutableContext, targetPathNode.asText(), nodeOutput);
-            return mutableContext;
-        }
         Iterator<Map.Entry<String, JsonNode>> fields = outputMapping.fields();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
             JsonNode mappingValue = field.getValue();
-            String sourcePath = field.getKey();
-            String targetPath = mappingValue.isTextual() ? mappingValue.asText() : mappingValue.path("targetPath").asText(null);
-            if (targetPath == null || targetPath.isBlank()) {
-                throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "输出映射字段缺少目标路径。");
+            String targetPath = field.getKey();
+            String sourcePath = mappingValue.isTextual() ? mappingValue.asText() : mappingValue.path("path").asText(null);
+            if (sourcePath == null || sourcePath.isBlank()) {
+                throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "输出映射字段缺少节点输出来源路径。");
             }
             JsonNode value = "$".equals(sourcePath) ? nodeOutput : readRequired(nodeOutput, sourcePath);
             writeValue(mutableContext, targetPath, value);

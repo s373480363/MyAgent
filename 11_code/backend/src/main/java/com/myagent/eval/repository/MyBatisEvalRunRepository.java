@@ -39,6 +39,11 @@ public class MyBatisEvalRunRepository implements EvalRunRepository {
     }
 
     @Override
+    public Optional<EvalRunRecord> findById(long evalRunId) {
+        return Optional.ofNullable(mapper.findById(evalRunId));
+    }
+
+    @Override
     public Optional<EvalRunRecord> findByAgentRunId(long agentRunId) {
         return Optional.ofNullable(mapper.findByAgentRunId(agentRunId));
     }

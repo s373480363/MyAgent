@@ -103,13 +103,28 @@ public class MyBatisAgentRunRepository implements AgentRunRepository {
      * @param runId 运行主键
      * @param status 运行状态
      * @param outputJson 输出 JSON
+     * @param errorCode 错误码
      * @param errorMessage 错误消息
      * @param durationMs 耗时毫秒
      * @return 受影响行数
      */
     @Override
-    public int finishRun(long runId, RunStatus status, JsonNode outputJson, String errorMessage, long durationMs) {
-        return agentRunMapper.finishRun(runId, status, outputJson, errorMessage == null ? "" : errorMessage, durationMs);
+    public int finishRun(long runId, RunStatus status, JsonNode outputJson, String errorCode, String errorMessage, long durationMs) {
+        return agentRunMapper.finishRun(runId, status, outputJson, errorCode, errorMessage == null ? "" : errorMessage, durationMs);
+    }
+
+    /**
+     * 取消尚未完成的运行。
+     *
+     * @param runId 运行主键
+     * @param errorCode 错误码
+     * @param errorMessage 错误消息
+     * @param durationMs 耗时毫秒
+     * @return 受影响行数
+     */
+    @Override
+    public int cancelActiveRun(long runId, String errorCode, String errorMessage, long durationMs) {
+        return agentRunMapper.cancelActiveRun(runId, errorCode, errorMessage == null ? "" : errorMessage, durationMs);
     }
 
     /**

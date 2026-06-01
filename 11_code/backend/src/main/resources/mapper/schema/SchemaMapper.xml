@@ -6,9 +6,9 @@
 
     <resultMap id="SchemaRecordMap" type="com.myagent.schema.repository.SchemaRecord">
         <constructor>
-            <idArg column="id" javaType="long"/>
+            <idArg column="id" javaType="_long"/>
             <arg column="schema_key" javaType="string"/>
-            <arg column="version" javaType="int"/>
+            <arg column="version" javaType="_int"/>
             <arg column="name" javaType="string"/>
             <arg column="description" javaType="string"/>
             <arg column="json_schema" javaType="com.fasterxml.jackson.databind.JsonNode"
@@ -16,7 +16,7 @@
             <arg column="java_type" javaType="string"/>
             <arg column="created_from" javaType="com.myagent.schema.domain.SchemaCreatedFrom"/>
             <arg column="status" javaType="com.myagent.schema.domain.SchemaStatus"/>
-            <arg column="locked" javaType="boolean"/>
+            <arg column="locked" javaType="_boolean"/>
             <arg column="created_at" javaType="java.time.Instant" typeHandler="com.myagent.common.repository.InstantTypeHandler"/>
             <arg column="updated_at" javaType="java.time.Instant" typeHandler="com.myagent.common.repository.InstantTypeHandler"/>
         </constructor>

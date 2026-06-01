@@ -1,6 +1,8 @@
 package com.myagent.workflow.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -35,20 +37,40 @@ public final class ReferencedSchemaVersion {
      * @param schemaKey Schema 业务键
      * @param version Schema 版本号
      */
-    public ReferencedSchemaVersion(long schemaId, String schemaKey, int version) {
+    @JsonCreator
+    public ReferencedSchemaVersion(
+            @JsonProperty(value = "schemaId", required = true) long schemaId,
+            @JsonProperty(value = "schemaKey", required = true) String schemaKey,
+            @JsonProperty(value = "version", required = true) int version
+    ) {
         this.schemaId = schemaId;
         this.schemaKey = schemaKey;
         this.version = version;
     }
 
+    /**
+     * 返回 Schema 主键。
+     *
+     * @return Schema 主键
+     */
     public long getSchemaId() {
         return schemaId;
     }
 
+    /**
+     * 返回 Schema 业务键。
+     *
+     * @return Schema 业务键
+     */
     public String getSchemaKey() {
         return schemaKey;
     }
 
+    /**
+     * 返回 Schema 版本号。
+     *
+     * @return Schema 版本号
+     */
     public int getVersion() {
         return version;
     }

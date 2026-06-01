@@ -39,7 +39,8 @@ class DefaultEvalAssertionEvaluatorTests {
                           {"type": "JSON_PATH_EXISTS", "path": "$.summary"},
                           {"type": "JSON_PATH_NUMBER_RANGE", "path": "$.score", "min": 80, "max": 100}
                         ]
-                        """)
+                        """),
+                null
         );
 
         assertThat(evaluation.passed()).isTrue();
@@ -55,10 +56,73 @@ class DefaultEvalAssertionEvaluatorTests {
     void evaluateFailureSummary() throws Exception {
         EvalAssertionEvaluation evaluation = evaluator.evaluate(
                 objectMapper.readTree("{\"score\": 10}"),
-                objectMapper.readTree("[{\"type\":\"JSON_PATH_EXISTS\",\"path\":\"$.summary\"}]")
+                objectMapper.readTree("[{\"type\":\"JSON_PATH_EXISTS\",\"path\":\"$.summary\"}]"),
+                null
         );
 
         assertThat(evaluation.passed()).isFalse();
         assertThat(evaluation.errorMessage()).isEqualTo("$.summary 字段缺失。");
+    }
+
+    /**
+     * 空断言数组不能被隐式视为通过。
+     */
+    @Test
+    void evaluateRejectsEmptyAssertions() {
+        EvalAssertionEvaluation evaluation = evaluator.evaluate(
+                objectMapper.createObjectNode().put("summary", "ok"),
+                objectMapper.createArrayNode(),
+                null
+        );
+
+        assertThat(evaluation.passed()).isFalse();
+        assertThat(evaluation.errorMessage()).isEqualTo("断言配置不能为空。");
+        assertThat(evaluation.assertionResults().get(0).path("type").asText()).isEqualTo("INVALID_ASSERTIONS");
+    }
+
+    /**
+     * SCHEMA_VALIDATION 必须依赖真实的节点输出 Schema 校验结果。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void schemaValidationAssertionRequiresOutputSchemaValidationResult() throws Exception {
+        EvalAssertionEvaluation evaluation = evaluator.evaluate(
+                objectMapper.createObjectNode().put("summary", "ok"),
+                objectMapper.readTree("[{\"type\":\"SCHEMA_VALIDATION\"}]"),
+                null
+        );
+
+        assertThat(evaluation.passed()).isFalse();
+        assertThat(evaluation.errorMessage()).isEqualTo("未执行节点输出 Schema 校验。");
+    }
+
+    /**
+     * SCHEMA_VALIDATION 在节点输出 Schema 校验成功后才通过。
+     *
+     * @throws Exception JSON 解析失败时抛出
+     */
+    @Test
+    void schemaValidationAssertionPassesWithSuccessfulOutputSchemaValidation() throws Exception {
+        EvalAssertionEvaluation evaluation = evaluator.evaluate(
+                objectMapper.createObjectNode().put("summary", "ok"),
+                objectMapper.readTree("[{\"type\":\"SCHEMA_VALIDATION\"}]"),
+                objectMapper.readTree("""
+                        {
+                          "valid": true,
+                          "results": [
+                            {
+                              "stage": "NODE_OUTPUT",
+                              "valid": true,
+                              "schemaKey": "summary-output",
+                              "version": 1,
+                              "errors": []
+                            }
+                          ]
+                        }
+                        """)
+        );
+
+        assertThat(evaluation.passed()).isTrue();
     }
 }

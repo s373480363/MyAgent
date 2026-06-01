@@ -97,13 +97,13 @@ public class ExternalAgentNodeExecutor extends AbstractNodeExecutorSupport imple
         JsonNode output = result.outputJson() == null || result.outputJson().isNull()
                 ? TextNode.valueOf(result.summary() == null ? "" : result.summary())
                 : result.outputJson();
-        writeTrace(context, adapterKey, runtimeAdapter, result, output);
+        writeTrace(context, adapterKey, runtimeAdapter, input, result, output);
         if (!result.success()) {
             throw new BizException(ErrorCode.EXTERNAL_AGENT_CALL_FAILED, result.errorMessage() == null
                     ? "外部 Agent 调用失败：" + adapterKey
                     : result.errorMessage());
         }
-        validateSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
+        validateOutputSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
         return NodeExecutionResult.success(output, java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt));
     }
 
@@ -112,6 +112,7 @@ public class ExternalAgentNodeExecutor extends AbstractNodeExecutorSupport imple
      *
      * @param context 节点执行上下文
      * @param adapterKey 外部 Agent 标识
+     * @param input 节点输入
      * @param result 执行结果
      * @param output 业务输出
      */
@@ -119,6 +120,7 @@ public class ExternalAgentNodeExecutor extends AbstractNodeExecutorSupport imple
             NodeExecutionContext context,
             String adapterKey,
             ExternalAgentRecord adapter,
+            JsonNode input,
             ExternalAgentTestResult result,
             JsonNode output
     ) {
@@ -139,6 +141,7 @@ public class ExternalAgentNodeExecutor extends AbstractNodeExecutorSupport imple
         if (result.errorMessage() != null) {
             detail.put("errorMessage", result.errorMessage());
         }
+        detail.set("input", input);
         if (adapter.captureStdout() && result.stdout() != null) {
             detail.put("stdout", result.stdout());
         }

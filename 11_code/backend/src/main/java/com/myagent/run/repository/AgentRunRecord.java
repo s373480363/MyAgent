@@ -19,6 +19,7 @@ import java.time.Instant;
  * @param inputJson 输入 JSON
  * @param outputJson 输出 JSON
  * @param status 运行状态
+ * @param errorCode 错误码
  * @param errorMessage 错误消息
  * @param startedAt 开始时间
  * @param finishedAt 完成时间
@@ -35,6 +36,7 @@ public record AgentRunRecord(
         JsonNode inputJson,
         JsonNode outputJson,
         RunStatus status,
+        String errorCode,
         String errorMessage,
         Instant startedAt,
         Instant finishedAt,

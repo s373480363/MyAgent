@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: ${MYAGENT_DATASOURCE_URL:jdbc:postgresql://localhost:5432/myagent}
+    username: ${MYAGENT_DATASOURCE_USERNAME:myagent}
+    password: ${MYAGENT_DATASOURCE_PASSWORD:myagent}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      initialization-fail-timeout: 0
+  flyway:
+    enabled: false
+  ai:
+    openai:
+      api-key: dummy-key
+      chat:
+        options:
+          model: gpt-4.1-mini

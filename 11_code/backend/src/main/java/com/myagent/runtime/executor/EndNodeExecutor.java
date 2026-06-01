@@ -50,7 +50,7 @@ public class EndNodeExecutor extends AbstractNodeExecutorSupport implements Node
         if (output.isMissingNode() || output.isNull()) {
             output = context.workflowContext().root();
         }
-        validateSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), ValidationStage.END_OUTPUT);
+        validateOutputSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), ValidationStage.END_OUTPUT);
         return NodeExecutionResult.success(output, elapsedMillis(startedAt));
     }
 

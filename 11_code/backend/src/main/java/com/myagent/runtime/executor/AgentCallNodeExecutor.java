@@ -15,6 +15,7 @@ import com.myagent.run.repository.AgentMessageRecord;
 import com.myagent.run.repository.AgentMessageRepository;
 import com.myagent.run.repository.AgentRunRecord;
 import com.myagent.run.repository.AgentRunRepository;
+import com.myagent.runtime.ActiveChildRunRegistry;
 import com.myagent.runtime.NodeExecutionContext;
 import com.myagent.runtime.NodeExecutionResult;
 import com.myagent.runtime.NodeExecutor;
@@ -73,6 +74,11 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
     private final ObjectProvider<WorkflowRuntimeEngine> workflowRuntimeEngineProvider;
 
     /**
+     * 活跃子运行登记表。
+     */
+    private final ActiveChildRunRegistry activeChildRunRegistry;
+
+    /**
      * 构造 AGENT_CALL 节点执行器。
      *
      * @param objectMapper JSON 对象映射器
@@ -81,6 +87,7 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
      * @param agentRunRepository AgentRun 仓储
      * @param agentMessageRepository AgentMessage 仓储
      * @param workflowRuntimeEngineProvider 工作流运行引擎延迟提供器
+     * @param activeChildRunRegistry 活跃子运行登记表
      */
     public AgentCallNodeExecutor(
             ObjectMapper objectMapper,
@@ -88,7 +95,8 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
             WorkflowVersionRepository workflowVersionRepository,
             AgentRunRepository agentRunRepository,
             AgentMessageRepository agentMessageRepository,
-            ObjectProvider<WorkflowRuntimeEngine> workflowRuntimeEngineProvider
+            ObjectProvider<WorkflowRuntimeEngine> workflowRuntimeEngineProvider,
+            ActiveChildRunRegistry activeChildRunRegistry
     ) {
         super(objectMapper);
         this.agentRepository = agentRepository;
@@ -96,6 +104,7 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
         this.agentRunRepository = agentRunRepository;
         this.agentMessageRepository = agentMessageRepository;
         this.workflowRuntimeEngineProvider = workflowRuntimeEngineProvider;
+        this.activeChildRunRegistry = activeChildRunRegistry;
     }
 
     /**
@@ -142,43 +151,101 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
         WorkflowVersionRecord targetWorkflowVersion = workflowVersionRepository.findById(targetAgent.currentPublishedWorkflowVersionId())
                 .orElseThrow(() -> new BizException(ErrorCode.TARGET_AGENT_NOT_PUBLISHED, "目标 Agent 当前发布版本不存在：" + targetAgentKey));
         AgentRunRecord childRun = createChildRun(context, targetAgent, targetWorkflowVersion, input);
-        WorkflowRuntimeResult childResult = workflowRuntimeEngineProvider.getObject().execute(
-                childRun.id(),
-                childRun.runNo(),
-                targetAgent,
-                toSnapshot(targetAgent, targetWorkflowVersion),
-                input
-        );
-        agentRunRepository.finishRun(
-                childRun.id(),
-                childResult.status(),
-                childResult.outputJson(),
-                childResult.errorMessage(),
-                childResult.durationMs()
-        );
-        agentMessageRepository.insert(new AgentMessageRecord(
-                0L,
-                context.agentRunDbId(),
-                childRun.id(),
-                context.agentDefinition().id(),
-                targetAgent.id(),
-                input,
-                childResult.outputJson(),
-                childSummary(targetAgentKey, childRun.runNo(), childResult),
-                null
-        ));
-        JsonNode output = childResult.outputJson() == null ? objectMapper.nullNode() : childResult.outputJson();
-        writeTrace(context, targetAgentKey, childRun.runNo(), childDepth, childResult, output);
-        if (childResult.status() != RunStatus.SUCCESS) {
-            return NodeExecutionResult.failure(
+        activeChildRunRegistry.register(context.nodeRunDbId(), childRun);
+        try {
+            WorkflowRuntimeResult childResult = workflowRuntimeEngineProvider.getObject().execute(
+                    childRun.id(),
+                    childRun.runNo(),
+                    targetAgent,
+                    toSnapshot(targetAgent, targetWorkflowVersion),
+                    input
+            );
+            if (Thread.currentThread().isInterrupted()) {
+                String reason = "父节点被中断，级联取消子运行。";
+                agentRunRepository.cancelActiveRun(
+                        childRun.id(),
+                        ErrorCode.RUN_CANCELED.getCode(),
+                        reason,
+                        elapsedMillis(startedAt)
+                );
+                WorkflowRuntimeResult canceledResult = new WorkflowRuntimeResult(
+                        RunStatus.CANCELED,
+                        null,
+                        ErrorCode.RUN_CANCELED.getCode(),
+                        reason,
+                        null,
+                        elapsedMillis(startedAt)
+                );
+                writeTrace(context, targetAgentKey, childRun.runNo(), childDepth, canceledResult, objectMapper.nullNode());
+                return NodeExecutionResult.failure(
+                        RunStatus.CANCELED,
+                        ErrorCode.RUN_CANCELED.getCode(),
+                        reason,
+                        elapsedMillis(startedAt)
+                );
+            }
+            if (!activeChildRunRegistry.isActive(childRun.id())) {
+                WorkflowRuntimeResult canceledResult = new WorkflowRuntimeResult(
+                        RunStatus.CANCELED,
+                        null,
+                        ErrorCode.RUN_CANCELED.getCode(),
+                        "父运行已取消，子运行级联取消。",
+                        null,
+                        elapsedMillis(startedAt)
+                );
+                writeTrace(context, targetAgentKey, childRun.runNo(), childDepth, canceledResult, objectMapper.nullNode());
+                return NodeExecutionResult.failure(
+                        RunStatus.CANCELED,
+                        ErrorCode.RUN_CANCELED.getCode(),
+                        canceledResult.errorMessage(),
+                        elapsedMillis(startedAt)
+                );
+            }
+            agentRunRepository.finishRun(
+                    childRun.id(),
                     childResult.status(),
+                    childResult.outputJson(),
                     childResult.errorCode(),
                     childResult.errorMessage(),
-                    elapsedMillis(startedAt)
+                    childResult.durationMs()
             );
+            agentMessageRepository.insert(new AgentMessageRecord(
+                    0L,
+                    context.agentRunDbId(),
+                    childRun.id(),
+                    context.agentDefinition().id(),
+                    targetAgent.id(),
+                    input,
+                    childResult.outputJson(),
+                    childSummary(targetAgentKey, childRun.runNo(), childResult),
+                    null
+            ));
+            JsonNode output = childResult.outputJson() == null ? objectMapper.nullNode() : childResult.outputJson();
+            writeTrace(context, targetAgentKey, childRun.runNo(), childDepth, childResult, output);
+            if (childResult.status() != RunStatus.SUCCESS) {
+                return NodeExecutionResult.failure(
+                        childResult.status(),
+                        childResult.errorCode(),
+                        childResult.errorMessage(),
+                        childResult.errorDetails(),
+                        elapsedMillis(startedAt)
+                );
+            }
+            validateOutputSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), com.myagent.schema.validation.ValidationStage.NODE_OUTPUT);
+            return NodeExecutionResult.success(output, elapsedMillis(startedAt));
+        } catch (RuntimeException exception) {
+            if (Thread.currentThread().isInterrupted()) {
+                agentRunRepository.cancelActiveRun(
+                        childRun.id(),
+                        ErrorCode.RUN_CANCELED.getCode(),
+                        "父节点被中断，级联取消子运行。",
+                        elapsedMillis(startedAt)
+                );
+            }
+            throw exception;
+        } finally {
+            activeChildRunRegistry.unregister(context.nodeRunDbId(), childRun.id());
         }
-        validateSchema(context, output, context.nodeDefinition().getOutputSchemaRef(), com.myagent.schema.validation.ValidationStage.NODE_OUTPUT);
-        return NodeExecutionResult.success(output, elapsedMillis(startedAt));
     }
 
     /**
@@ -207,6 +274,7 @@ public class AgentCallNodeExecutor extends AbstractNodeExecutorSupport implement
                 input == null ? objectMapper.createObjectNode() : input,
                 null,
                 RunStatus.PENDING,
+                null,
                 "",
                 null,
                 null,

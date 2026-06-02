@@ -72,6 +72,10 @@ class PostgresMigrationTests {
             assertThat(indexExists(connection, "uq_workflow_version_one_published")).isTrue();
             assertThat(foreignKeyExists(connection, "fk_agent_definition_current_draft_workflow")).isTrue();
             assertThat(foreignKeyExists(connection, "fk_trace_event_eval_run")).isTrue();
+            assertThat(recordExists(connection, "schema_definition", "schema_key", "java.sample.echo.input")).isTrue();
+            assertThat(recordExists(connection, "schema_definition", "schema_key", "tool.sample.echo.input")).isTrue();
+            assertThat(recordExists(connection, "java_method_definition", "method_key", "java.sample.echo")).isTrue();
+            assertThat(recordExists(connection, "tool_definition", "tool_key", "tool.sample.echo")).isTrue();
         }
     }
 
@@ -490,6 +494,32 @@ class PostgresMigrationTests {
         try (ResultSet resultSet = statement.executeQuery()) {
             resultSet.next();
             return resultSet.getLong(1);
+        }
+    }
+
+    /**
+     * 判断指定表中是否存在目标记录。
+     *
+     * @param connection 数据库连接
+     * @param tableName 表名
+     * @param columnName 列名
+     * @param expectedValue 目标值
+     * @return 命中记录时返回 true
+     * @throws SQLException 查询失败时抛出
+     */
+    private boolean recordExists(
+            Connection connection,
+            String tableName,
+            String columnName,
+            String expectedValue
+    ) throws SQLException {
+        String sql = "select count(*) from " + tableName + " where " + columnName + " = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, expectedValue);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                resultSet.next();
+                return resultSet.getInt(1) > 0;
+            }
         }
     }
 }

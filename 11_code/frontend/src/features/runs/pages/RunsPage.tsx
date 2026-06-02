@@ -281,11 +281,6 @@ export function RunDetailView({
                     dataIndex: "runId",
                     render: (value) => (value ? <Button type="link" onClick={() => onOpenRun(String(value))}>{String(value)}</Button> : "-")
                   },
-                  { title: "Agent", render: (_, record) => record.agent?.agentName ?? record.agent?.agentKey ?? "-" },
-                  { title: "状态", dataIndex: "status", render: (value) => <StatusTag status={String(value ?? "UNKNOWN")} /> },
-                  { title: "开始时间", dataIndex: "startedAt" },
-                  { title: "结束时间", dataIndex: "finishedAt" },
-                  { title: "耗时(ms)", dataIndex: "durationMs" },
                   { title: "摘要", dataIndex: "summary" }
                 ]}
               />

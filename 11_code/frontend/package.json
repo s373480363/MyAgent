@@ -10,8 +10,9 @@
     "test": "vitest run",
     "typecheck": "tsc -b",
     "openapi:download": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/download-openapi.ps1",
-    "openapi:generate": "npm run openapi:download && openapi-typescript openapi/myagent-openapi.json --output src/api/generated/schema.ts --default-non-nullable=false",
-    "openapi:refresh": "npm run openapi:generate"
+    "openapi:generate": "openapi-typescript openapi/myagent-openapi.json --output src/api/generated/schema.ts --default-non-nullable=false",
+    "openapi:refresh": "npm run openapi:download && npm run openapi:generate",
+    "openapi:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-openapi-sync.ps1"
   },
   "dependencies": {
     "@ant-design/icons": "6.2.5",

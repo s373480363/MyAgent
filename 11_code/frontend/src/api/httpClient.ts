@@ -63,7 +63,7 @@ export interface RequestOptions extends RequestInit {
   query?: Record<string, string | number | boolean | undefined>;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const API_BASE_URL = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 /**
  * 发送统一 HTTP 请求。
@@ -102,15 +102,57 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
  * @returns 完整 URL
  */
 function buildUrl(path: string, query?: RequestOptions["query"]) {
-  const url = new URL(path, API_BASE_URL);
-  if (query) {
-    Object.entries(query).forEach(([key, value]) => {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
-      }
-    });
+  const normalizedPath = normalizePath(path);
+  if (API_BASE_URL) {
+    const url = new URL(normalizedPath, API_BASE_URL);
+    appendQuery(url.searchParams, query);
+    return url.toString();
   }
-  return url.toString();
+  const searchParams = new URLSearchParams();
+  appendQuery(searchParams, query);
+  const queryString = searchParams.toString();
+  return queryString.length === 0 ? normalizedPath : `${normalizedPath}?${queryString}`;
+}
+
+/**
+ * 解析显式 API 基地址覆盖项。
+ *
+ * @param configuredBaseUrl 环境变量中的 API 基地址
+ * @returns 显式覆盖地址；未配置时返回空字符串以保持同源访问
+ */
+function resolveApiBaseUrl(configuredBaseUrl: string | undefined) {
+  if (!configuredBaseUrl) {
+    return "";
+  }
+  const normalized = configuredBaseUrl.trim();
+  return normalized.length === 0 ? "" : normalized;
+}
+
+/**
+ * 归一化接口路径。
+ *
+ * @param path 接口路径
+ * @returns 归一化后的相对路径
+ */
+function normalizePath(path: string) {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+/**
+ * 追加查询参数。
+ *
+ * @param searchParams 查询参数容器
+ * @param query 查询参数
+ */
+function appendQuery(searchParams: URLSearchParams, query?: RequestOptions["query"]) {
+  if (!query) {
+    return;
+  }
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined) {
+      searchParams.set(key, String(value));
+    }
+  });
 }
 
 /**

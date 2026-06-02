@@ -27,10 +27,10 @@ describe("domainApi", () => {
     await runDebugAgent(1, { workflowVersionId: 12, input: { topic: "测试" } });
 
     const calls = fetchCalls();
-    expect(calls[0][0]).toBe("http://localhost:8080/api/agents/1/workflow-draft/validate");
+    expect(calls[0][0]).toBe("/api/agents/1/workflow-draft/validate");
     expect(calls[0][1]).toMatchObject({ method: "POST" });
-    expect(calls[1][0]).toBe("http://localhost:8080/api/agents/1/workflow-versions/12");
-    expect(calls[2][0]).toBe("http://localhost:8080/api/agents/1/debug-runs");
+    expect(calls[1][0]).toBe("/api/agents/1/workflow-versions/12");
+    expect(calls[2][0]).toBe("/api/agents/1/debug-runs");
     expect(calls[2][1]).toMatchObject({ method: "POST" });
   });
 
@@ -38,7 +38,7 @@ describe("domainApi", () => {
     await createEvalCaseFromNodeRun(42, { suiteId: 1, title: "节点用例" });
 
     const [[url, options]] = fetchCalls();
-    expect(url).toBe("http://localhost:8080/api/node-runs/42/eval-cases");
+    expect(url).toBe("/api/node-runs/42/eval-cases");
     expect(options).toMatchObject({ method: "POST" });
     expect(JSON.parse(String(options?.body))).toEqual({ suiteId: 1, title: "节点用例" });
   });
@@ -47,7 +47,32 @@ describe("domainApi", () => {
     await listRuns({ page: 2, pageSize: 20, runType: "EVAL" });
 
     const [[url]] = fetchCalls();
-    expect(url).toBe("http://localhost:8080/api/runs?page=2&pageSize=20&runType=EVAL");
+    expect(url).toBe("/api/runs?page=2&pageSize=20&runType=EVAL");
+  });
+});
+
+describe("domainApi explicit base url override", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("uses VITE_API_BASE_URL when explicitly configured", async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "http://127.0.0.1:8080");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => ({ success: true, data: {} })
+    }));
+
+    vi.resetModules();
+    const { listRuns: listRunsWithOverride } = await import("./domainApi");
+    await listRunsWithOverride({ page: 1, pageSize: 10 });
+
+    const calls = vi.mocked(fetch).mock.calls as Array<[string, RequestInit | undefined]>;
+    expect(calls[0][0]).toBe("http://127.0.0.1:8080/api/runs?page=1&pageSize=10");
   });
 });
 

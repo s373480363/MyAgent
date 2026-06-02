@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.myagent.externalagent.application.result.ExternalAgentTestResult;
-import com.myagent.externalagent.domain.ExternalAgentType;
 import com.myagent.externalagent.repository.ExternalAgentRecord;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -78,8 +78,8 @@ public class ExternalAgentTestExecutor {
             JsonNode input,
             Instant startedAt
     ) {
+        List<String> command = new ArrayList<>();
         try {
-            List<String> command = new ArrayList<>();
             command.add(commandJsonCodec.getCliCommand(record.commandJson()));
             for (String argument : commandJsonCodec.getCliArguments(record.commandJson())) {
                 command.add(renderStringTemplate(argument, prompt, input));
@@ -101,12 +101,17 @@ public class ExternalAgentTestExecutor {
             String stdout = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             String stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
             int exitCode = process.exitValue();
-            ParsedOutput parsedOutput = parseOutput(commandJsonCodec.getResultSourceType(record.commandJson()), stdout, null);
+            ParsedOutput parsedOutput = parseOutput(
+                    commandJsonCodec.getResultSourceType(record.commandJson()),
+                    stdout,
+                    null,
+                    "命令 " + summarizeCliCommand(command)
+            );
 
             boolean success = exitCode == 0 && parsedOutput.errorMessage() == null;
             String errorMessage = parsedOutput.errorMessage();
             if (errorMessage == null && exitCode != 0) {
-                errorMessage = "外部 Agent 进程退出码为 " + exitCode + "。";
+                errorMessage = "外部 Agent 进程退出码异常：" + exitCode + "。";
             }
             return new ExternalAgentTestResult(
                     success,
@@ -121,10 +126,22 @@ public class ExternalAgentTestExecutor {
                     Duration.between(startedAt, Instant.now()).toMillis()
             );
         } catch (IOException exception) {
-            return failedResult("FAILED", null, null, "执行外部 Agent 进程失败：" + exception.getMessage(), startedAt);
+            return failedResult(
+                    "FAILED",
+                    null,
+                    null,
+                    "执行外部 Agent 进程失败，命令：" + summarizeCliCommand(command) + "，原因：" + summarizeThrowable(exception),
+                    startedAt
+            );
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            return failedResult("FAILED", null, null, "测试执行被中断。", startedAt);
+            return failedResult(
+                    "FAILED",
+                    null,
+                    null,
+                    "测试执行被中断，命令：" + summarizeCliCommand(command),
+                    startedAt
+            );
         }
     }
 
@@ -151,7 +168,7 @@ public class ExternalAgentTestExecutor {
             String requestBody = objectMapper.writeValueAsString(requestBodyNode);
 
             java.net.http.HttpRequest.Builder requestBuilder = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(commandJsonCodec.getHttpUrl(record.commandJson())))
+                    .uri(URI.create(commandJsonCodec.getHttpUrl(record.commandJson())))
                     .timeout(Duration.ofSeconds(record.timeoutSeconds()));
 
             for (Map.Entry<String, String> header : commandJsonCodec.mergeHttpHeaders(record.commandJson()).entrySet()) {
@@ -169,12 +186,16 @@ public class ExternalAgentTestExecutor {
             ParsedOutput parsedOutput = parseOutput(
                     commandJsonCodec.getResultSourceType(record.commandJson()),
                     null,
-                    response.body()
+                    response.body(),
+                    "HTTP 响应 " + summarizeHttpTarget(record)
             );
-            boolean success = response.statusCode() >= 200 && response.statusCode() < 300 && parsedOutput.errorMessage() == null;
+            boolean success = response.statusCode() >= 200
+                    && response.statusCode() < 300
+                    && parsedOutput.errorMessage() == null;
             String errorMessage = parsedOutput.errorMessage();
             if (errorMessage == null && !success) {
-                errorMessage = "外部 HTTP Agent 返回状态码 " + response.statusCode() + "。";
+                errorMessage = "外部 HTTP Agent 返回非成功状态码：HTTP " + response.statusCode()
+                        + "，目标：" + summarizeHttpTarget(record);
             }
             return new ExternalAgentTestResult(
                     success,
@@ -189,10 +210,23 @@ public class ExternalAgentTestExecutor {
                     Duration.between(startedAt, Instant.now()).toMillis()
             );
         } catch (IOException exception) {
-            return failedResult("FAILED", null, null, "调用外部 HTTP Agent 失败：" + exception.getMessage(), startedAt);
+            return failedResult(
+                    "FAILED",
+                    null,
+                    null,
+                    "调用外部 HTTP Agent 失败，目标：" + summarizeHttpTarget(record)
+                            + "，原因：" + summarizeThrowable(exception),
+                    startedAt
+            );
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            return failedResult("FAILED", null, null, "测试执行被中断。", startedAt);
+            return failedResult(
+                    "FAILED",
+                    null,
+                    null,
+                    "测试执行被中断，目标：" + summarizeHttpTarget(record),
+                    startedAt
+            );
         }
     }
 
@@ -202,9 +236,10 @@ public class ExternalAgentTestExecutor {
      * @param resultSourceType resultSource 类型
      * @param stdout stdout
      * @param httpBody HTTP 响应体
+     * @param sourceLabel 输出来源标签
      * @return 解析结果
      */
-    private ParsedOutput parseOutput(String resultSourceType, String stdout, String httpBody) {
+    private ParsedOutput parseOutput(String resultSourceType, String stdout, String httpBody, String sourceLabel) {
         String raw = stdout != null ? stdout : httpBody;
         try {
             return switch (resultSourceType) {
@@ -214,7 +249,11 @@ public class ExternalAgentTestExecutor {
                 default -> parseTextOutput(raw);
             };
         } catch (Exception exception) {
-            return new ParsedOutput(null, truncate(raw), null);
+            return new ParsedOutput(
+                    null,
+                    truncate(raw),
+                    "外部 Agent 输出解析失败，来源：" + sourceLabel + "，原因：" + summarizeThrowable(exception)
+            );
         }
     }
 
@@ -227,7 +266,7 @@ public class ExternalAgentTestExecutor {
      */
     private ParsedOutput parseJsonOutput(String raw) throws IOException {
         if (raw == null || raw.isBlank()) {
-            return new ParsedOutput(null, "", null);
+            throw new IOException("未返回可解析的 JSON 文本。");
         }
         JsonNode jsonNode = objectMapper.readTree(raw);
         return new ParsedOutput(jsonNode, truncate(raw), null);
@@ -242,7 +281,7 @@ public class ExternalAgentTestExecutor {
      */
     private ParsedOutput parseLastLineJsonOutput(String raw) throws IOException {
         if (raw == null || raw.isBlank()) {
-            return new ParsedOutput(null, "", null);
+            throw new IOException("未返回可解析的最后一行 JSON 文本。");
         }
         String[] lines = raw.split("\\R");
         for (int index = lines.length - 1; index >= 0; index--) {
@@ -251,7 +290,7 @@ public class ExternalAgentTestExecutor {
                 return new ParsedOutput(jsonNode, truncate(lines[index]), null);
             }
         }
-        return new ParsedOutput(null, "", null);
+        throw new IOException("未返回可解析的最后一行 JSON 文本。");
     }
 
     /**
@@ -360,6 +399,84 @@ public class ExternalAgentTestExecutor {
             return normalized;
         }
         return normalized.substring(0, 1000);
+    }
+
+    /**
+     * 提取可读的异常摘要。
+     *
+     * @param throwable 异常
+     * @return 可定位的异常摘要
+     */
+    private String summarizeThrowable(Throwable throwable) {
+        Throwable current = throwable;
+        Throwable candidate = throwable;
+        while (current != null) {
+            if (current.getMessage() != null && !current.getMessage().isBlank()) {
+                candidate = current;
+            }
+            current = current.getCause();
+        }
+        if (candidate.getMessage() != null && !candidate.getMessage().isBlank()) {
+            return candidate.getClass().getSimpleName() + "：" + candidate.getMessage();
+        }
+        return candidate.getClass().getSimpleName();
+    }
+
+    /**
+     * 提取 CLI 命令摘要。
+     *
+     * @param command 命令参数
+     * @return 命令摘要
+     */
+    private String summarizeCliCommand(List<String> command) {
+        if (command == null || command.isEmpty() || command.get(0) == null || command.get(0).isBlank()) {
+            return "(未知命令)";
+        }
+        return command.get(0);
+    }
+
+    /**
+     * 提取 HTTP 目标摘要。
+     *
+     * @param record 外部 Agent 记录
+     * @return HTTP 目标摘要
+     */
+    private String summarizeHttpTarget(ExternalAgentRecord record) {
+        String method = commandJsonCodec.getHttpMethod(record.commandJson());
+        String url = commandJsonCodec.getHttpUrl(record.commandJson());
+        return method + " " + sanitizeUrl(url);
+    }
+
+    /**
+     * 脱敏 HTTP URL，仅保留协议、主机、端口和路径。
+     *
+     * @param rawUrl 原始 URL
+     * @return 脱敏后的 URL
+     */
+    private String sanitizeUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.isBlank()) {
+            return "(未配置URL)";
+        }
+        try {
+            URI uri = URI.create(rawUrl);
+            StringBuilder builder = new StringBuilder();
+            if (uri.getScheme() != null && !uri.getScheme().isBlank()) {
+                builder.append(uri.getScheme()).append("://");
+            }
+            if (uri.getHost() == null || uri.getHost().isBlank()) {
+                return rawUrl;
+            }
+            builder.append(uri.getHost());
+            if (uri.getPort() >= 0) {
+                builder.append(":").append(uri.getPort());
+            }
+            if (uri.getPath() != null && !uri.getPath().isBlank()) {
+                builder.append(uri.getPath());
+            }
+            return builder.toString();
+        } catch (Exception exception) {
+            return rawUrl;
+        }
     }
 
     /**

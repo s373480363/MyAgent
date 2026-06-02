@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EvalsPage } from "./EvalsPage";
+import { EvalsPage, isArchivedEvalSuite, isReadOnlyEvalCase } from "./EvalsPage";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import {
   archiveEvalCase,
@@ -152,5 +152,13 @@ describe("EvalsPage", () => {
     expect(screen.getByText("CASE-7")).toBeInTheDocument();
     expect(screen.getByText("关键摘要")).toBeInTheDocument();
     expect(screen.getByText("摘要缺少关键字段")).toBeInTheDocument();
+  });
+
+  it("closes archived suite and archived case mutation actions", async () => {
+    expect(isArchivedEvalSuite("ARCHIVED")).toBe(true);
+    expect(isArchivedEvalSuite("CONFIRMED")).toBe(false);
+    expect(isReadOnlyEvalCase("ARCHIVED", "USER_CREATED")).toBe(true);
+    expect(isReadOnlyEvalCase("CONFIRMED", "ARCHIVED")).toBe(true);
+    expect(isReadOnlyEvalCase("CONFIRMED", "USER_CONFIRMED")).toBe(false);
   });
 });

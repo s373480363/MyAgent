@@ -40,6 +40,27 @@ type CaseFormValues = {
 };
 
 /**
+ * 判断套件是否已经进入归档只读状态。
+ *
+ * @param status 套件状态
+ * @returns 归档时返回 true
+ */
+export function isArchivedEvalSuite(status?: string | null) {
+  return status === "ARCHIVED";
+}
+
+/**
+ * 判断用例是否应进入只读状态。
+ *
+ * @param suiteStatus 套件状态
+ * @param confirmStatus 用例确认状态
+ * @returns 归档套件或归档用例均返回 true
+ */
+export function isReadOnlyEvalCase(suiteStatus?: string | null, confirmStatus?: string | null) {
+  return isArchivedEvalSuite(suiteStatus) || confirmStatus === "ARCHIVED";
+}
+
+/**
  * 节点验收页面。
  */
 export function EvalsPage() {
@@ -296,6 +317,7 @@ function SuiteDrawer({
 }) {
   const { message } = App.useApp();
   const suiteId = suite?.suiteId;
+  const suiteArchived = isArchivedEvalSuite(suite?.status);
   const [caseMode, setCaseMode] = useState<CaseFormMode | null>(null);
   const [editingCase, setEditingCase] = useState<Schema["EvalCaseResult"] | null>(null);
   const [caseForm] = Form.useForm<CaseFormValues>();
@@ -355,7 +377,7 @@ function SuiteDrawer({
             label: "用例",
             children: (
               <Space direction="vertical" style={{ width: "100%" }}>
-                <Button type="primary" disabled={!suiteId} onClick={() => openCreateCase()}>创建用例</Button>
+                <Button type="primary" disabled={!suiteId || suiteArchived} onClick={() => openCreateCase()}>创建用例</Button>
                 <Table<Schema["EvalCaseResult"]>
                   rowKey={(record) => String(record.caseId)}
                   loading={casesQuery.isLoading}
@@ -384,26 +406,29 @@ function SuiteDrawer({
                     { title: "来源 NodeRun", dataIndex: "sourceNodeRunId" },
                     {
                       title: "操作",
-                      render: (_, record) => (
-                        <Space>
-                          <Button type="link" onClick={() => openEditCase(record)}>编辑</Button>
-                          <Button
-                            type="link"
-                            disabled={!suiteId || !record.caseId || record.confirmStatus === "USER_CONFIRMED"}
-                            onClick={() => suiteId && record.caseId && confirmCaseMutation.mutate({ targetSuiteId: suiteId, caseId: record.caseId })}
-                          >
-                            确认
-                          </Button>
-                          <Button
-                            type="link"
-                            danger
-                            disabled={!suiteId || !record.caseId || record.confirmStatus === "ARCHIVED"}
-                            onClick={() => suiteId && record.caseId && archiveCaseMutation.mutate({ targetSuiteId: suiteId, caseId: record.caseId })}
-                          >
-                            归档
-                          </Button>
-                        </Space>
-                      )
+                      render: (_, record) => {
+                        const caseReadOnly = isReadOnlyEvalCase(suite?.status, record.confirmStatus);
+                        return (
+                          <Space>
+                            <Button type="link" disabled={caseReadOnly} onClick={() => openEditCase(record)}>编辑</Button>
+                            <Button
+                              type="link"
+                              disabled={!suiteId || !record.caseId || record.confirmStatus === "USER_CONFIRMED" || caseReadOnly}
+                              onClick={() => suiteId && record.caseId && confirmCaseMutation.mutate({ targetSuiteId: suiteId, caseId: record.caseId })}
+                            >
+                              确认
+                            </Button>
+                            <Button
+                              type="link"
+                              danger
+                              disabled={!suiteId || !record.caseId || caseReadOnly}
+                              onClick={() => suiteId && record.caseId && archiveCaseMutation.mutate({ targetSuiteId: suiteId, caseId: record.caseId })}
+                            >
+                              归档
+                            </Button>
+                          </Space>
+                        );
+                      }
                     }
                   ]}
                 />
@@ -507,6 +532,10 @@ function SuiteDrawer({
    * 打开创建用例表单。
    */
   function openCreateCase() {
+    if (suiteArchived) {
+      message.warning("归档套件不允许继续创建用例。");
+      return;
+    }
     setEditingCase(null);
     caseForm.resetFields();
     caseForm.setFieldsValue({
@@ -525,6 +554,10 @@ function SuiteDrawer({
    * @param record 用例
    */
   function openEditCase(record: Schema["EvalCaseResult"]) {
+    if (suiteArchived || record.confirmStatus === "ARCHIVED") {
+      message.warning("归档用例不允许继续编辑。");
+      return;
+    }
     setEditingCase(record);
     caseForm.setFieldsValue({
       title: record.title ?? "",
@@ -555,6 +588,10 @@ function SuiteDrawer({
   function submitCase(values: CaseFormValues) {
     if (!suiteId) {
       message.error("缺少套件主键，无法提交用例。");
+      return;
+    }
+    if (suiteArchived) {
+      message.error("归档套件不允许继续修改用例。");
       return;
     }
     try {

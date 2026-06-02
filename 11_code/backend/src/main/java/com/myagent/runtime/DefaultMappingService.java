@@ -57,7 +57,7 @@ public class DefaultMappingService implements MappingService {
             return readRequired(workflowContext, pathNode.asText()).deepCopy();
         }
         ObjectNode input = objectMapper.createObjectNode();
-        Iterator<Map.Entry<String, JsonNode>> fields = inputMapping.fields();
+        Iterator<Map.Entry<String, JsonNode>> fields = inputMapping.properties().iterator();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
             JsonNode mappingValue = field.getValue();
@@ -92,7 +92,7 @@ public class DefaultMappingService implements MappingService {
         if (!outputMapping.isObject()) {
             throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "输出映射必须是 JSON 对象或路径字符串。");
         }
-        Iterator<Map.Entry<String, JsonNode>> fields = outputMapping.fields();
+        Iterator<Map.Entry<String, JsonNode>> fields = outputMapping.properties().iterator();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
             JsonNode mappingValue = field.getValue();

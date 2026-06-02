@@ -67,7 +67,7 @@ public class SchemaDefinitionValidator {
             if (!propertiesNode.isObject()) {
                 details.add(ApiError.Detail.of(path + ".properties", "type", "properties 必须是对象。"));
             } else {
-                propertiesNode.fields().forEachRemaining(entry -> {
+                propertiesNode.properties().forEach(entry -> {
                     if (!entry.getValue().isObject()) {
                         details.add(ApiError.Detail.of(path + ".properties." + entry.getKey(), "type", "字段 Schema 必须是对象。"));
                     } else {

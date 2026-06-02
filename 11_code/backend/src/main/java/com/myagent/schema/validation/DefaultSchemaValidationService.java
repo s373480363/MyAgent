@@ -255,7 +255,7 @@ public class DefaultSchemaValidationService implements SchemaValidationService {
         }
         JsonNode propertiesNode = schemaNode.get("properties");
         if (propertiesNode != null && propertiesNode.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> fields = propertiesNode.fields();
+            Iterator<Map.Entry<String, JsonNode>> fields = propertiesNode.properties().iterator();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
                 if (payloadNode.has(entry.getKey())) {

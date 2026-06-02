@@ -303,7 +303,7 @@ public class ExternalAgentTestExecutor {
         }
         if (template.isObject()) {
             com.fasterxml.jackson.databind.node.ObjectNode result = objectMapper.createObjectNode();
-            template.fields().forEachRemaining(entry -> result.set(entry.getKey(), renderJsonTemplate(entry.getValue(), prompt, input)));
+            template.properties().forEach(entry -> result.set(entry.getKey(), renderJsonTemplate(entry.getValue(), prompt, input)));
             return result;
         }
         if (template.isArray()) {

@@ -81,7 +81,7 @@ public class WorkflowMappingValidationService {
             return;
         }
         Set<String> mappedFields = new HashSet<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = inputMapping.fields();
+        Iterator<Map.Entry<String, JsonNode>> fields = inputMapping.properties().iterator();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
             mappedFields.add(field.getKey());
@@ -132,7 +132,7 @@ public class WorkflowMappingValidationService {
             issues.add(issue("$.nodes[*].outputMapping", "outputMapping 必须是对象或 JSONPath 字符串。", node.getNodeId()));
             return;
         }
-        Iterator<Map.Entry<String, JsonNode>> fields = outputMapping.fields();
+        Iterator<Map.Entry<String, JsonNode>> fields = outputMapping.properties().iterator();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
             String targetPath = field.getKey();

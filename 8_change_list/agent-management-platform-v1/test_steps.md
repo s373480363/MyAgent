@@ -391,7 +391,7 @@ LLM 相关验收分为两层：
 - 必要的本地测试替身或测试配置。
 - 部署说明和配置说明。
 - 已知问题清单。
-- 测试结果记录，写入 `12_test_result\`。
+- 测试结果记录，写入 `8_change_list\agent-management-platform-v1\test_result\`。
 
 ## 13. 需澄清或准备的事项
 
@@ -402,7 +402,7 @@ LLM 相关验收分为两层：
 - 用户将提供真实 OpenAI API Key 用于连通性冒烟；测试执行前需要提醒用户配置该 Key，且 Key 不得写入测试报告正文、日志截图或前端可见响应。
 - 当前本机作为 Codex CLI 和 OpenCode CLI 的可执行环境；正式执行前需要由测试人员确认命令可调用、版本可识别、工作目录可访问。
 - 需要开发提供至少一个显式注册的 Java 方法测试 Bean 和一个工具测试实现，用于 JAVA_METHOD 与 TOOL 节点的确定性流程验收。
-- 已在 `12_test_result\` 中补充正式测试报告模板，执行验收后应按模板记录结果。
+- 已在 `8_change_list\agent-management-platform-v1\test_result\` 中补充正式测试报告模板，执行验收后应按模板记录结果。
 
 这些事项不改变 V1 验收口径，只影响具体执行环境和测试数据准备方式。
 
@@ -440,7 +440,7 @@ LLM 相关验收分为两层：
 
 ## 1. 文档目的
 
-本文档将 `8_change_list\agent-management-platform-v1\test_steps.md` 拆解为可执行测试用例。测试人员执行验收时，应按本文档记录用例结果，并在 `12_test_result` 的验收报告中引用用例编号。
+本文档将 `8_change_list\agent-management-platform-v1\test_steps.md` 拆解为可执行测试用例。测试人员执行验收时，应按本文档记录用例结果，并在 `8_change_list\agent-management-platform-v1\test_result` 的验收报告中引用用例编号。
 
 本文档只验证平台框架能力，不验证具体业务 Agent 的业务语义效果。
 
@@ -673,7 +673,7 @@ LLM 相关验收分为两层：
 
 ## 16. 执行记录建议
 
-测试人员执行时，建议在 `12_test_result` 的报告中记录：
+测试人员执行时，建议在 `8_change_list\agent-management-platform-v1\test_result` 的报告中记录：
 
 - 已执行用例编号。
 - 每个用例的通过、不通过或未测状态。

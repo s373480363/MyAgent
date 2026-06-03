@@ -648,19 +648,20 @@ Move-Item -Path $tempFile -Destination $OutputPath -Force
 
 ### 10.1 结构收口结果
 
-- 已按最新 `AGENTS.md` 将项目根目录收口为 `0_specifications` 至 `14_user_manual` 的编号目录结构。
+- 已按最新 `AGENTS.md` 收口项目根目录和 `8_change_list` 下的变更目录结构。
 - 已新增最高优先级规则：尊重用户需求，严禁自作主张的设计；需求存在模糊点时必须主动向用户确认。
 - 已将旧开发计划、测试计划、计划执行进程目录中的 V1 文档合并迁移到 `8_change_list\agent-management-platform-v1`。
-- `8_change_list\agent-management-platform-v1` 仅保留 `purpose.md`、`plan.md`、`design.md`、`steps.md`、`test_steps.md`、`status.md` 六个约定文件。
+- `8_change_list\agent-management-platform-v1` 保留 `purpose.md`、`plan.md`、`design.md`、`steps.md`、`test_steps.md`、`status.md` 六个约定文件，并允许 `test_result\` 作为实际测试结果目录。
 - 已删除被替换的旧计划、测试、执行进程、错误集目录。
 - 已将根目录旧工具缓存目录移入 `9_dependency\tools`，并在 `9_dependency\README.md` 中说明工具链依赖规则。
 - 已创建 `10_error_list\README.md`，作为错误列表目录的空目录占位说明。
 - 已同步更新历史测试报告、部署说明、代码说明和脚本中的旧路径引用。
+- 已将实际测试结果从根目录迁移到 `8_change_list\agent-management-platform-v1\test_result\`，根目录不再保留全局测试结果入口。
 
 ### 10.2 验证结果
 
 - 旧路径引用检索：无命中，排除了工具缓存、前端依赖、前端构建产物、OpenAPI 生成产物和后端构建产物。
-- `rg --files D:\myproject\MyAgent\8_change_list\agent-management-platform-v1`：仅返回六个约定文件。
+- `rg --files D:\myproject\MyAgent\8_change_list\agent-management-platform-v1\test_result`：返回已迁移的测试报告文件。
 - 根目录旧工具缓存目录存在性检查：不存在。
 - `Test-Path 9_dependency\tools`：`True`。
 - 使用 `9_dependency\tools` 中的工具链执行 `java -version`、`mvn -version`：JDK `21.0.11`、Maven `3.9.11` 可用。

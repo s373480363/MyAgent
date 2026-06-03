@@ -1205,7 +1205,7 @@
 - 前端 `npm test -- --run` 已通过。
 - 前端 `npm run build` 已通过。
 - 后端 `mvn -q test` 已通过，Docker/Testcontainers 已实际启动 PostgreSQL 16 容器并执行 Flyway 迁移验证。
-- 最终验证结果已记录到 `12_test_result/11-步骤17测试联调与发布准备收口验证记录-v1.md`。
+- 最终验证结果已记录到 `8_change_list/agent-management-platform-v1/test_result/11-步骤17测试联调与发布准备收口验证记录-v1.md`。
 
 ## 9. 遗留环境项
 

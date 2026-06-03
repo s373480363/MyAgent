@@ -6,5 +6,5 @@
 
 - 以正式文档约定作为唯一事实来源，避免目录、接口、运行语义和测试口径分叉。
 - 以 `11_code` 中的后端、前端和脚本作为可运行实现，支撑本地开发、测试、联调和发布准备。
-- 以 `12_test_result` 和 `13_release` 中的记录作为验收和发布依据，保证关键链路可复查。
+- 以 `8_change_list\agent-management-platform-v1\test_result` 和 `13_release` 中的记录作为验收和发布依据，保证关键链路可复查。
 - 以 Run、NodeRun、TraceEvent、EvalRun 等核心运行事实支撑问题定位、验收判断和历史回放。

@@ -18,8 +18,8 @@
 - `8_change_list\agent-management-platform-v1\test_steps.md`
 - `8_change_list\agent-management-platform-v1\test_steps.md`
 - `8_change_list\agent-management-platform-v1\test_steps.md`
-- `12_test_result\02-步骤01工程骨架与公共基线初始化验证记录-v1.md` 至 `12_test_result\11-步骤17测试联调与发布准备收口验证记录-v1.md`
-- `12_test_result\12-V1二轮正式验收遗留问题复验记录-v1.md`
+- `8_change_list\agent-management-platform-v1\test_result\02-步骤01工程骨架与公共基线初始化验证记录-v1.md` 至 `8_change_list\agent-management-platform-v1\test_result\11-步骤17测试联调与发布准备收口验证记录-v1.md`
+- `8_change_list\agent-management-platform-v1\test_result\12-V1二轮正式验收遗留问题复验记录-v1.md`
 
 ## 3. 环境与资源确认
 

@@ -19,9 +19,9 @@
 - `8_change_list\agent-management-platform-v1\test_steps.md`
 - `8_change_list\agent-management-platform-v1\test_steps.md`
 - `8_change_list\agent-management-platform-v1\test_steps.md`
-- `12_test_result\13-Agent管理平台V1完整正式验收报告-v1.md`
-- `12_test_result\14-Agent管理平台V1完整正式验收复验报告-v1.md`
-- `12_test_result\15-Agent管理平台V1遗留问题修复复验记录-v1.md`
+- `8_change_list\agent-management-platform-v1\test_result\13-Agent管理平台V1完整正式验收报告-v1.md`
+- `8_change_list\agent-management-platform-v1\test_result\14-Agent管理平台V1完整正式验收复验报告-v1.md`
+- `8_change_list\agent-management-platform-v1\test_result\15-Agent管理平台V1遗留问题修复复验记录-v1.md`
 
 口径说明：
 
@@ -122,7 +122,7 @@
 
 ## 8. 缺陷清单
 
-本轮终验未发现未关闭的阻断缺陷；上一轮遗留问题已在 `12_test_result\15-Agent管理平台V1遗留问题修复复验记录-v1.md` 中确认关闭。
+本轮终验未发现未关闭的阻断缺陷；上一轮遗留问题已在 `8_change_list\agent-management-platform-v1\test_result\15-Agent管理平台V1遗留问题修复复验记录-v1.md` 中确认关闭。
 
 | 编号 | 优先级 | 模块 | 标题 | 状态 | 影响 | 处理结论 |
 |------|--------|------|------|------|------|----------|

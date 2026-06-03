@@ -28,7 +28,7 @@
 - `8_change_list\agent-management-platform-v1\test_steps.md`
 - `8_change_list\agent-management-platform-v1\test_steps.md`
 - `8_change_list\agent-management-platform-v1\test_steps.md`
-- `12_test_result\13-Agent管理平台V1完整正式验收报告-v1.md`
+- `8_change_list\agent-management-platform-v1\test_result\13-Agent管理平台V1完整正式验收报告-v1.md`
 
 ## 4. 环境与资源确认
 

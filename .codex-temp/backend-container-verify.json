@@ -1,8 +1,0 @@
-﻿{
-    "externalErrorMessage":  "è°ç¨å¤é¨ HTTP Agent å¤±è´¥ï¼ç®æ ï¼POST http://127.0.0.1:9/should-not-call-updatedï¼åå ï¼ConnectException",
-    "toolKey":  "tool.sample.echo",
-    "externalSuccess":  false,
-    "toolTotal":  1,
-    "javaMethodKey":  "java.sample.echo",
-    "javaMethodTotal":  1
-}

@@ -6,6 +6,7 @@ target/
 
 # Log file
 *.log
+tmp_acceptance_logs/
 
 # BlueJ files
 *.ctxt
@@ -34,6 +35,8 @@ npm-debug.log*
 dist/
 .vite/
 openapi/
+11_code/backend/logs/
+11_code/frontend/logs/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
@@ -44,3 +47,4 @@ openapi/
 
 # Local tool cache
 .tools/
+.codex-temp/

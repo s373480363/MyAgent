@@ -1,4 +1,4 @@
-# Agent管理平台 V1 完整正式验收报告 v1
+﻿# Agent管理平台 V1 完整正式验收报告 v1
 
 ## 1. 报告信息
 
@@ -14,10 +14,10 @@
 
 ## 2. 验收依据
 
-- `9_test_plan\01-Agent管理平台V1测试验收计划-v1.md`
-- `9_test_plan\02-Agent管理平台V1测试用例清单-v1.md`
-- `9_test_plan\03-Agent管理平台V1独立测试方案-v1.md`
-- `9_test_plan\04-Agent管理平台V1独立测试用例清单-v1.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
 - `12_test_result\02-步骤01工程骨架与公共基线初始化验证记录-v1.md` 至 `12_test_result\11-步骤17测试联调与发布准备收口验证记录-v1.md`
 - `12_test_result\12-V1二轮正式验收遗留问题复验记录-v1.md`
 

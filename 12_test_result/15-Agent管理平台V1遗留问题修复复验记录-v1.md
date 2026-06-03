@@ -1,4 +1,4 @@
-# Agent管理平台V1遗留问题修复复验记录-v1
+﻿# Agent管理平台V1遗留问题修复复验记录-v1
 
 ## 1. 复验目标
 
@@ -33,8 +33,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-back
 
 ```powershell
 $repoRoot='D:\myproject\MyAgent'
-$env:JAVA_HOME = Join-Path $repoRoot '.tools\jdk21\jdk-21.0.11+10'
-$mavenBin = Join-Path $repoRoot '.tools\maven-3.9.11\apache-maven-3.9.11\bin'
+$env:JAVA_HOME = Join-Path $repoRoot '9_dependency\tools\jdk21\jdk-21.0.11+10'
+$mavenBin = Join-Path $repoRoot '9_dependency\tools\maven-3.9.11\apache-maven-3.9.11\bin'
 $env:Path = "$env:JAVA_HOME\bin;$mavenBin;$env:Path"
 mvn -q "-Dtest=PostgresMigrationTests,MasterDataCatalogAvailabilityTests,ExternalAgentTestExecutorTests" test
 ```

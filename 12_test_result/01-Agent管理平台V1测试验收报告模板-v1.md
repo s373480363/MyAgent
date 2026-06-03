@@ -1,4 +1,4 @@
-# Agent 管理平台 V1 测试验收报告模板 v1
+﻿# Agent 管理平台 V1 测试验收报告模板 v1
 
 ## 1. 报告信息
 
@@ -15,12 +15,12 @@
 
 ## 2. 验收依据
 
-- `9_test_plan\01-Agent管理平台V1测试验收计划-v1.md`
-- `8_dev_plan\01-完整V1开发实施方案-v1.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\plan.md`
 - `3_product_design\Agent管理平台-产品设计-总纲-v1.md`
 - `4_arch_design\Agent管理平台-架构设计-总纲-v1.md`
 - `7_interface_design\02-对外REST接口-v1.md`
-- `10_plan_process\01-V1技术实现问题列表-v1.md`
+- `8_change_list\agent-management-platform-v1\design.md`
 
 ## 3. 环境与资源确认
 

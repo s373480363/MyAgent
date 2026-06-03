@@ -1,8 +1,8 @@
-# 步骤 03 公共领域模型、DTO、错误码与 OpenAPI 基线验证记录 v1
+﻿# 步骤 03 公共领域模型、DTO、错误码与 OpenAPI 基线验证记录 v1
 
 ## 1. 验证范围
 
-本记录对应 `10_plan_process/02-V1开发执行步骤拆解-v1.md` 中的步骤 03：公共领域模型、DTO、错误码与 OpenAPI 基线。
+本记录对应 `8_change_list/agent-management-platform-v1/steps.md` 中的步骤 03：公共领域模型、DTO、错误码与 OpenAPI 基线。
 
 ## 2. 已完成内容
 
@@ -31,7 +31,7 @@
 
 ## 4. 当前环境限制
 
-- 当前机器可通过 `.tools` 下的 Maven 和 JDK 21 完成后端验证，但终端默认环境未安装 `mvn` 命令。
+- 当前机器可通过 `9_dependency\tools` 下的 Maven 和 JDK 21 完成后端验证，但终端默认环境未安装 `mvn` 命令。
 - `PostgresMigrationTests` 在当前环境未启用 Docker Desktop 时会自动跳过，这是容器环境限制。
 
 ## 5. 结论

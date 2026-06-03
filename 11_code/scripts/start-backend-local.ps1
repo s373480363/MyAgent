@@ -9,8 +9,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-$env:JAVA_HOME = Join-Path $repoRoot ".tools\jdk21\jdk-21.0.11+10"
-$mavenBin = Join-Path $repoRoot ".tools\maven-3.9.11\apache-maven-3.9.11\bin"
+$env:JAVA_HOME = Join-Path $repoRoot "9_dependency\tools\jdk21\jdk-21.0.11+10"
+$mavenBin = Join-Path $repoRoot "9_dependency\tools\maven-3.9.11\apache-maven-3.9.11\bin"
 $env:Path = "$env:JAVA_HOME\bin;$mavenBin;$env:Path"
 
 if (-not [string]::IsNullOrWhiteSpace($DatasourceUrl)) {

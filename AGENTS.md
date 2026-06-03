@@ -1,12 +1,11 @@
 ## 最高优先级
-- 务必优先参考[项目结构说明]和[重要文档说明]中的内容来获取和更新信息
+- 务必优先参考[项目结构说明]和[重要文档说明]中的目录和文件来获取和更新信息
 - 优先级（冲突处理）：用户的明确指令 > 本 `AGENTS.md` > 其他仓库文档/现有代码习惯
 - 优先使用尽可能简单的解决方案
+- 尊重用户需求，严禁自作主张的设计；如果认为需求存在模糊点，必须主动向用户确认，而不是自行决定
 
 ## 项目结构说明
-数字编号目录即工作流顺序，执行任务时按编号定位：
-
-| 目录 | 职责 | 写入时机 |
+| 目录 | 职责 | 读写时机 |
 |------|------|----------|
 | `0_specifications\` | 规范与注意事项 | 执行任何任务前先检索需遵守的规则 |
 | `1_context\` | 项目依赖的上下文 | 需要补充上下文时查找线索 |
@@ -14,18 +13,23 @@
 | `3_product_design\` | 产品设计文档 | 查询/更新产品设计 |
 | `4_arch_design\` | 架构设计文档 | 查询/更新架构设计 |
 | `5_ui_design\` | 界面设计文档 | 查询/更新界面设计 |
-| `6_schema_design\` | 数据结构设计 | 查询/更新数据结构 |
-| `7_interface_design\` | 公共接口设计 | 查询/更新公共接口 |
-| `8_dev_plan\` | 开发计划 | 查询/更新开发计划 |
-| `9_test_plan\` | 测试计划 | 查询/更新测试计划 |
-| `10_plan_process\` | 计划执行进程 | 计划完成/流程变更后更新；确认下一步计划时优先检查 |
+| `6_schema_design\` | 数据结构设计文档 | 查询/更新数据结构 |
+| `7_interface_design\` | 公共接口设计文档 | 查询/更新公共接口 |
+| `8_change_list\` | 项目变更列表 | 查询/更新所有的项目变动信息 |
+| `9_dependency\` | 项目依赖 | 查询/更新项目依赖信息 |
+| `10_error_list\` | 错误列表 | 查询历史错误/记录新错误 |
 | `11_code\` | 源代码 | 所有项目代码及直接依赖 |
 | `12_test_result\` | 测试结果 | 查询/更新测试结果 |
 | `13_release\` | 发布产物 | 发布后内容 |
 | `14_user_manual\` | 用户手册 | 提供给用户的教程说明 |
-| `15_error_list\` | 错误集 | 查询历史错误/记录新错误 |
 
 ## 重要文档说明
 - `0_specifications\develop_specification.md` — 开发规范
 - `0_specifications\ui_deisgn_specification.md` — 前端设计规范
 - `0_specifications\code_review_specification.md` — 代码审查规范
+- `8_change_list\${change-name}\purpose.md` — 描述本次变更最终需要达成什么样的目的
+- `8_change_list\${change-name}\plan.md` — 描述本次变更预期的修改计划
+- `8_change_list\${change-name}\design.md` — 描述本次变更对于项目设计的调整，可能会包含 product、arch、ui、schema、interface 等多个维度的调整
+- `8_change_list\${change-name}\steps.md` — 描述本次变更的具体执行步骤
+- `8_change_list\${change-name}\test_steps.md` — 描述本次变更的具体验收步骤
+- `8_change_list\${change-name}\status.md` — 描述本次变更的目前处于的状态，例如设计完成、架构审核完成、开发审核完成、开发完成、验收完成

@@ -1,8 +1,8 @@
-# 步骤 04 Schema 管理全链路验证记录 v1
+﻿# 步骤 04 Schema 管理全链路验证记录 v1
 
 ## 1. 验证范围
 
-本记录对应 `10_plan_process/02-V1开发执行步骤拆解-v1.md` 中的步骤 04：Schema 管理全链路。
+本记录对应 `8_change_list/agent-management-platform-v1/steps.md` 中的步骤 04：Schema 管理全链路。
 
 ## 2. 已完成内容
 

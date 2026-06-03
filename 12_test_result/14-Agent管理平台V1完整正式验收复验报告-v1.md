@@ -1,4 +1,4 @@
-# Agent管理平台 V1 完整正式验收复验报告 v1
+﻿# Agent管理平台 V1 完整正式验收复验报告 v1
 
 ## 1. 报告信息
 
@@ -24,10 +24,10 @@
 
 ## 3. 验收依据
 
-- `9_test_plan\01-Agent管理平台V1测试验收计划-v1.md`
-- `9_test_plan\02-Agent管理平台V1测试用例清单-v1.md`
-- `9_test_plan\03-Agent管理平台V1独立测试方案-v1.md`
-- `9_test_plan\04-Agent管理平台V1独立测试用例清单-v1.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
 - `12_test_result\13-Agent管理平台V1完整正式验收报告-v1.md`
 
 ## 4. 环境与资源确认
@@ -204,4 +204,4 @@
 1. 由开发补齐至少 1 个正式可用的 `Java Method` 主数据、至少 1 个正式可用的 `Tool` 主数据，并确保对应实现已在主代码中交付。
 2. 修复外部 HTTP Agent 不可达时的失败摘要问题，至少返回可识别的异常原因、目标地址或底层错误摘要。
 3. 收口归档 `EvalCase` 的前端按钮状态，确保归档用例不再展示可执行的 `编辑 / 确认` 操作。
-4. 完成以上三项后，再按 `9_test_plan` 对完整 V1 做最终全量终验。
+4. 完成以上三项后，再按 `8_change_list\agent-management-platform-v1\test_steps.md` 对完整 V1 做最终全量终验。

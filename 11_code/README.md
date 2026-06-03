@@ -1,4 +1,4 @@
-# MyAgent V1 代码目录
+﻿# MyAgent V1 代码目录
 
 本目录承载 MyAgent V1 的正式实现代码。当前代码范围已经覆盖 V1 主链路，不再是“步骤 01 工程骨架”阶段。
 
@@ -50,7 +50,7 @@ cd D:\myproject\MyAgent
 powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-backend-local.ps1
 ```
 
-该脚本会固定使用仓库内 `.tools` 下的 JDK 21 与 Maven 3.9.11。
+该脚本会固定使用仓库内 `9_dependency\tools` 下的 JDK 21 与 Maven 3.9.11。
 
 可选覆盖项：
 
@@ -118,8 +118,8 @@ npm run openapi:check
 
 ```powershell
 cd D:\myproject\MyAgent\11_code\backend
-$env:JAVA_HOME='D:\myproject\MyAgent\.tools\jdk21\jdk-21.0.11+10'
-$env:Path='D:\myproject\MyAgent\.tools\jdk21\jdk-21.0.11+10\bin;D:\myproject\MyAgent\.tools\maven-3.9.11\apache-maven-3.9.11\bin;' + $env:Path
+$env:JAVA_HOME='D:\myproject\MyAgent\9_dependency\tools\jdk21\jdk-21.0.11+10'
+$env:Path='D:\myproject\MyAgent\9_dependency\tools\jdk21\jdk-21.0.11+10\bin;D:\myproject\MyAgent\9_dependency\tools\maven-3.9.11\apache-maven-3.9.11\bin;' + $env:Path
 mvn -q test
 ```
 

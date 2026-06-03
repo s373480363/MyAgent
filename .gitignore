@@ -46,5 +46,5 @@ openapi/
 .vscode/
 
 # Local tool cache
-.tools/
+9_dependency/tools/
 .codex-temp/

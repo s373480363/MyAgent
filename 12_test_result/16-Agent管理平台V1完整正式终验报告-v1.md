@@ -1,4 +1,4 @@
-# Agent管理平台 V1 完整正式终验报告 v1
+﻿# Agent管理平台 V1 完整正式终验报告 v1
 
 ## 1. 报告信息
 
@@ -15,10 +15,10 @@
 
 ## 2. 验收依据
 
-- `9_test_plan\01-Agent管理平台V1测试验收计划-v1.md`
-- `9_test_plan\02-Agent管理平台V1测试用例清单-v1.md`
-- `9_test_plan\03-Agent管理平台V1独立测试方案-v1.md`
-- `9_test_plan\04-Agent管理平台V1独立测试用例清单-v1.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
+- `8_change_list\agent-management-platform-v1\test_steps.md`
 - `12_test_result\13-Agent管理平台V1完整正式验收报告-v1.md`
 - `12_test_result\14-Agent管理平台V1完整正式验收复验报告-v1.md`
 - `12_test_result\15-Agent管理平台V1遗留问题修复复验记录-v1.md`
@@ -153,7 +153,7 @@
 本次验收结论：通过
 
 结论依据：
-1. `9_test_plan` 要求的完整 V1 范围已具备交付前提，上一轮 3 项遗留问题已经在当前代码上全部关闭；`JAVA_METHOD / TOOL / EXTERNAL_AGENT / Eval 归档态` 均有实时证据。
+1. `8_change_list\agent-management-platform-v1\test_steps.md` 要求的完整 V1 范围已具备交付前提，上一轮 3 项遗留问题已经在当前代码上全部关闭；`JAVA_METHOD / TOOL / EXTERNAL_AGENT / Eval 归档态` 均有实时证据。
 2. 自动化质量闸门全部通过：`mvn -q test`、`npm test -- --run`、`npm run build`、`npm run openapi:check` 全绿；真实运行、数据库核对和前端联调未发现阻断缺陷。
 3. 全节点执行、Run/Trace/Eval、ID 语义、安全边界和性能门槛均已通过本轮终态复核，其中 `LLM P90=1309ms`、`JAVA P90=54ms`、`HTTP P90=50ms`、`10` 条正式 Eval 用例耗时 `12064ms`。
 

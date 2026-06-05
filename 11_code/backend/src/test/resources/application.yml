@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${MYAGENT_DATASOURCE_URL:jdbc:postgresql://localhost:5432/myagent}
-    username: ${MYAGENT_DATASOURCE_USERNAME:myagent}
-    password: ${MYAGENT_DATASOURCE_PASSWORD:myagent}
+    url: ${AGENT_STUDIO_DATASOURCE_URL:jdbc:postgresql://localhost:5432/agent_studio}
+    username: ${AGENT_STUDIO_DATASOURCE_USERNAME:agent_studio}
+    password: ${AGENT_STUDIO_DATASOURCE_PASSWORD:agent_studio}
     driver-class-name: org.postgresql.Driver
     hikari:
       initialization-fail-timeout: 0
@@ -10,7 +10,4 @@ spring:
     enabled: false
   ai:
     openai:
-      api-key: dummy-key
-      chat:
-        options:
-          model: gpt-4.1-mini
+      api-key: test-key

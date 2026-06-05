@@ -27,7 +27,7 @@
 |------|------|
 | 部署边界 | 本机或内网单用户部署，可在信任环境内共享访问，不做公网 SaaS 安全边界 |
 | 用户权限 | v1 不做登录、角色、权限、多租户 |
-| 模型供应商 | v1 只支持 OpenAI 官方 API，Azure OpenAI 放到后续版本 |
+| 模型供应商 | v1 通过页面维护 OpenAI-compatible 供应商目录，非 OpenAI-compatible 协议放到后续版本 |
 | 前端画布 | 默认采用 React Flow |
 | 工作流执行 | 使用 LangGraph4j |
 | AI 能力底座 | 使用 Spring AI |
@@ -75,10 +75,10 @@ v1 架构必须覆盖以下能力：
       -> Application Service：用例编排、事务边界
       -> Domain：Agent、WorkflowVersion、SchemaDefinition、AgentRun、EvalSuite
       -> Runtime：WorkflowCompiler、WorkflowValidator、NodeExecutor、TraceWriter
-      -> Registry：JavaMethodRegistry、ModelConfigRegistry、ToolRegistry、ExternalAgentRegistry
-      -> Infrastructure：PostgreSQL、OpenAI、JSON Schema、JSONPath、Jackson、CLI/HTTP Adapter
+      -> Registry：JavaMethodRegistry、ModelOfferingRegistry、ToolRegistry、ExternalAgentRegistry
+      -> Infrastructure：PostgreSQL、OpenAI-compatible 客户端、JSON Schema、JSONPath、Jackson、CLI/HTTP Adapter
   -> PostgreSQL
-  -> OpenAI 官方 API
+  -> OpenAI-compatible 模型供应商
   -> 已注册 Java 方法 / 已注册工具 / 外部 Agent
 ```
 

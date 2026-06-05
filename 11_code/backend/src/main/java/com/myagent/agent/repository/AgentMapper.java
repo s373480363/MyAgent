@@ -35,7 +35,7 @@ public interface AgentMapper {
             @Arg(column = "description", javaType = String.class),
             @Arg(column = "status", javaType = EnableStatus.class),
             @Arg(column = "system_prompt", javaType = String.class),
-            @Arg(column = "default_model", javaType = String.class),
+            @Arg(column = "default_model_offering_key", javaType = String.class),
             @Arg(column = "temperature", javaType = BigDecimal.class),
             @Arg(column = "timeout_seconds", javaType = int.class),
             @Arg(column = "max_steps", javaType = int.class),
@@ -46,7 +46,7 @@ public interface AgentMapper {
     })
     @Select({
             "<script>",
-            "select id, agent_key, name, description, status, system_prompt, default_model, temperature,",
+            "select id, agent_key, name, description, status, system_prompt, default_model_offering_key, temperature,",
             "       timeout_seconds, max_steps, current_draft_workflow_version_id,",
             "       current_published_workflow_version_id, created_at, updated_at",
             "from agent_definition",
@@ -113,7 +113,7 @@ public interface AgentMapper {
             @Arg(column = "description", javaType = String.class),
             @Arg(column = "status", javaType = EnableStatus.class),
             @Arg(column = "system_prompt", javaType = String.class),
-            @Arg(column = "default_model", javaType = String.class),
+            @Arg(column = "default_model_offering_key", javaType = String.class),
             @Arg(column = "temperature", javaType = BigDecimal.class),
             @Arg(column = "timeout_seconds", javaType = int.class),
             @Arg(column = "max_steps", javaType = int.class),
@@ -123,7 +123,7 @@ public interface AgentMapper {
             @Arg(column = "updated_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class)
     })
     @Select("""
-            select id, agent_key, name, description, status, system_prompt, default_model, temperature,
+            select id, agent_key, name, description, status, system_prompt, default_model_offering_key, temperature,
                    timeout_seconds, max_steps, current_draft_workflow_version_id,
                    current_published_workflow_version_id, created_at, updated_at
             from agent_definition
@@ -144,7 +144,7 @@ public interface AgentMapper {
             @Arg(column = "description", javaType = String.class),
             @Arg(column = "status", javaType = EnableStatus.class),
             @Arg(column = "system_prompt", javaType = String.class),
-            @Arg(column = "default_model", javaType = String.class),
+            @Arg(column = "default_model_offering_key", javaType = String.class),
             @Arg(column = "temperature", javaType = BigDecimal.class),
             @Arg(column = "timeout_seconds", javaType = int.class),
             @Arg(column = "max_steps", javaType = int.class),
@@ -154,7 +154,7 @@ public interface AgentMapper {
             @Arg(column = "updated_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class)
     })
     @Select("""
-            select id, agent_key, name, description, status, system_prompt, default_model, temperature,
+            select id, agent_key, name, description, status, system_prompt, default_model_offering_key, temperature,
                    timeout_seconds, max_steps, current_draft_workflow_version_id,
                    current_published_workflow_version_id, created_at, updated_at
             from agent_definition
@@ -170,7 +170,7 @@ public interface AgentMapper {
      */
     @Insert("""
             insert into agent_definition(
-              agent_key, name, description, status, system_prompt, default_model, temperature,
+              agent_key, name, description, status, system_prompt, default_model_offering_key, temperature,
               timeout_seconds, max_steps, current_draft_workflow_version_id, current_published_workflow_version_id
             )
             values (
@@ -179,7 +179,7 @@ public interface AgentMapper {
               #{record.description},
               #{record.status},
               #{record.systemPrompt},
-              #{record.defaultModel},
+              #{record.defaultModelOfferingKey},
               #{record.temperature},
               #{record.timeoutSeconds},
               #{record.maxSteps},
@@ -200,7 +200,7 @@ public interface AgentMapper {
             set name = #{record.name},
                 description = #{record.description},
                 system_prompt = #{record.systemPrompt},
-                default_model = #{record.defaultModel},
+                default_model_offering_key = #{record.defaultModelOfferingKey},
                 temperature = #{record.temperature},
                 timeout_seconds = #{record.timeoutSeconds},
                 max_steps = #{record.maxSteps},

@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,6 +34,8 @@ class PostgresMigrationTests {
             "agent_definition",
             "workflow_version",
             "system_setting",
+            "model_provider",
+            "model_offering",
             "agent_run",
             "node_run",
             "trace_event",
@@ -114,6 +117,42 @@ class PostgresMigrationTests {
     }
 
     /**
+     * 验证旧 system_setting 键会在新增迁移中被统一改写为正式键名。
+     *
+     * @throws SQLException 数据库访问失败时抛出
+     */
+    @Test
+    void migrationRenamesLegacySystemSettingKeys() throws SQLException {
+        Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .locations("classpath:db/migration")
+                .cleanDisabled(false)
+                .load()
+                .clean();
+
+        Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .locations("classpath:db/migration")
+                .target("2")
+                .load()
+                .migrate();
+
+        try (Connection connection = openConnection()) {
+            insertLegacySystemSetting(connection, "myagent.openai.default-model", "gpt-4.1-mini");
+            insertLegacySystemSetting(connection, "myagent.runtime.default-max-steps", "30");
+        }
+
+        migrate();
+
+        try (Connection connection = openConnection()) {
+            Set<String> settingKeys = readSystemSettingKeys(connection);
+            assertThat(settingKeys)
+                    .contains("agent.studio.runtime.default-max-steps")
+                    .doesNotContain("myagent.openai.default-model", "myagent.runtime.default-max-steps");
+        }
+    }
+
+    /**
      * 执行 Flyway 迁移。
      */
     private void migrate() {
@@ -153,6 +192,48 @@ class PostgresMigrationTests {
             try (ResultSet resultSet = statement.executeQuery()) {
                 resultSet.next();
                 return resultSet.getInt(1) == 1;
+            }
+        }
+    }
+
+    /**
+     * 插入旧版系统设置键。
+     *
+     * @param connection 数据库连接
+     * @param settingKey 设置键
+     * @param settingValue 设置值
+     * @throws SQLException 插入失败时抛出
+     */
+    private void insertLegacySystemSetting(Connection connection, String settingKey, String settingValue) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                insert into system_setting(setting_key, setting_value, value_type, description, editable)
+                values (?, ?, 'STRING', 'legacy', true)
+                """)) {
+            statement.setString(1, settingKey);
+            statement.setString(2, settingValue);
+            statement.executeUpdate();
+        }
+    }
+
+    /**
+     * 读取全部系统设置键。
+     *
+     * @param connection 数据库连接
+     * @return 设置键集合
+     * @throws SQLException 查询失败时抛出
+     */
+    private Set<String> readSystemSettingKeys(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                select setting_key
+                from system_setting
+                order by setting_key
+                """)) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                java.util.LinkedHashSet<String> keys = new java.util.LinkedHashSet<>();
+                while (resultSet.next()) {
+                    keys.add(resultSet.getString(1));
+                }
+                return keys;
             }
         }
     }

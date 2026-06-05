@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const BACKEND_DEV_TARGET = process.env.MYAGENT_BACKEND_DEV_TARGET ?? "http://127.0.0.1:8080";
+const BACKEND_DEV_TARGET = process.env.AGENT_STUDIO_BACKEND_DEV_TARGET ?? "http://127.0.0.1:8080";
 
 /**
  * Vite 基线配置。

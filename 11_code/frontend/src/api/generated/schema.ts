@@ -52,6 +52,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/model-providers/{providerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询模型供应商详情
+         * @description 返回模型供应商安全详情，不回显 API Key 明文。
+         */
+        get: operations["getModelProvider"];
+        /**
+         * 更新模型供应商
+         * @description 只更新名称、描述和 Base URL 等非敏感字段。
+         */
+        put: operations["updateModelProvider"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-providers/{providerId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 修改模型供应商状态
+         * @description 启用或停用模型供应商。
+         */
+        put: operations["changeModelProviderStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-providers/{providerId}/secrets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 更新模型供应商密钥
+         * @description 替换或清空 API Key，不通过普通更新接口处理敏感字段。
+         */
+        put: operations["updateModelProviderSecrets"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-offerings/{offeringId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 更新模型供应项
+         * @description 更新模型供应项普通字段。
+         */
+        put: operations["updateModelOffering"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-offerings/{offeringId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 修改模型供应项状态
+         * @description 启用或停用模型供应项。
+         */
+        put: operations["changeModelOfferingStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/external-agents/{adapterId}": {
         parameters: {
             query?: never;
@@ -345,6 +449,74 @@ export interface paths {
          * @description nodeRunId 必须使用 node_run.id。
          */
         post: operations["createEvalCaseFromNodeRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询模型供应商列表
+         * @description 按分页、关键词和状态筛选模型供应商。
+         */
+        get: operations["listModelProviders"];
+        put?: never;
+        /**
+         * 创建模型供应商
+         * @description 创建模型供应商并可选写入初始 API Key。
+         */
+        post: operations["createModelProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-providers/{providerId}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 测试模型供应商连接
+         * @description 使用指定供应项发起轻量连接测试，不创建正式 AgentRun。
+         */
+        post: operations["testModelProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-offerings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询模型供应项列表
+         * @description 分页查询模型供应项，默认只返回当前可选项。
+         */
+        get: operations["listModelOfferings"];
+        put?: never;
+        /**
+         * 创建模型供应项
+         * @description 创建供应商下的模型供应项入口。
+         */
+        post: operations["createModelOffering"];
         delete?: never;
         options?: never;
         head?: never;
@@ -673,6 +845,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/model-offerings/{offeringKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 按键查询模型供应项
+         * @description 按 offeringKey 返回模型供应项详情，可用于编辑页当前绑定值回填。
+         */
+        get: operations["getModelOffering"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/model-offerings/by-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 按键批量查询模型供应项
+         * @description 按 offeringKey 批量回填当前绑定的模型供应项。
+         */
+        get: operations["getModelOfferingsByKeys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/java-methods": {
         parameters: {
             query?: never;
@@ -934,7 +1146,7 @@ export interface components {
             /**
              * @description Java 类型。
              * @default
-             * @example com.myagent.schema.SummaryInput
+             * @example syc.agentstudio.example.SummaryInput
              */
             javaType?: string;
         };
@@ -1030,6 +1242,97 @@ export interface components {
              * @default
              */
             error?: components["schemas"]["ApiError"];
+        };
+        UpdateModelProviderRequest: {
+            name: string;
+            baseUrl: string;
+            description?: string;
+        };
+        /**
+         * @description 模型供应商详情统一响应。
+         * @default null
+         */
+        ModelProviderDetailApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["ModelProviderResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 模型供应商结果。
+         * @default null
+         */
+        ModelProviderResult: {
+            /** Format: int64 */
+            providerId?: number;
+            providerKey?: string;
+            name?: string;
+            /** @enum {string} */
+            providerType?: "OPENAI_COMPATIBLE";
+            baseUrl?: string;
+            apiKeyConfigured?: boolean;
+            apiKeyMask?: string;
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            description?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ChangeModelProviderStatusRequest: {
+            /** @enum {string} */
+            status: "ENABLED" | "DISABLED";
+        };
+        UpdateModelProviderSecretsRequest: {
+            apiKey?: string;
+            clearApiKey?: boolean;
+        };
+        UpdateModelOfferingRequest: {
+            providerKey: string;
+            modelKey: string;
+            displayName: string;
+            upstreamModelName: string;
+            defaultTemperature?: number;
+            description?: string;
+        };
+        /**
+         * @description 模型供应项安全描述。
+         * @default null
+         */
+        ModelOfferingDescriptor: {
+            /** Format: int64 */
+            offeringId?: number;
+            offeringKey?: string;
+            providerKey?: string;
+            providerName?: string;
+            modelKey?: string;
+            displayName?: string;
+            upstreamModelName?: string;
+            defaultTemperature?: number;
+            /** @enum {string} */
+            status?: "ENABLED" | "DISABLED";
+            /** @enum {string} */
+            providerStatus?: "ENABLED" | "DISABLED";
+            selectable?: boolean;
+            unavailableReason?: string;
+            description?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /**
+         * @description 模型供应项详情统一响应。
+         * @default null
+         */
+        ModelOfferingDetailApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["ModelOfferingDescriptor"];
+            error?: components["schemas"]["ApiError"];
+        };
+        ChangeModelOfferingStatusRequest: {
+            /** @enum {string} */
+            status: "ENABLED" | "DISABLED";
         };
         ExternalAgentSecretHeaderRequest: {
             headerName: string;
@@ -1187,7 +1490,7 @@ export interface components {
             name: string;
             description?: string;
             systemPrompt?: string;
-            defaultModel?: string;
+            defaultModelOfferingKey?: string;
             temperature?: number;
             /** Format: int32 */
             timeoutSeconds?: number;
@@ -1256,11 +1559,11 @@ export interface components {
              */
             systemPrompt?: string;
             /**
-             * @description 默认模型。
+             * @description 默认模型供应项标识。
              * @default
-             * @example gpt-4.1-mini
+             * @example openai.gpt_4_1_mini
              */
-            defaultModel: string;
+            defaultModelOfferingKey?: string;
             /**
              * @description 温度。
              * @default
@@ -1761,7 +2064,7 @@ export interface components {
             /**
              * @description Java 类型。
              * @default
-             * @example com.myagent.schema.SummaryInput
+             * @example syc.agentstudio.example.SummaryInput
              */
             javaType?: string;
             /**
@@ -1802,7 +2105,7 @@ export interface components {
             /**
              * @description Java 类型。
              * @default
-             * @example com.myagent.schema.SummaryInput
+             * @example syc.agentstudio.example.SummaryInput
              */
             javaType?: string;
         };
@@ -1810,6 +2113,50 @@ export interface components {
             /** Format: int64 */
             suiteId?: number;
             title: string;
+            description?: string;
+        };
+        CreateModelProviderRequest: {
+            providerKey: string;
+            name: string;
+            /** @enum {string} */
+            providerType: "OPENAI_COMPATIBLE";
+            baseUrl: string;
+            apiKey?: string;
+            description?: string;
+        };
+        TestModelProviderRequest: {
+            offeringKey: string;
+            prompt?: string;
+        };
+        /**
+         * @description 模型供应商连接测试统一响应。
+         * @default null
+         */
+        ModelProviderTestApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["ModelProviderTestResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 模型供应商连接测试结果。
+         * @default null
+         */
+        ModelProviderTestResult: {
+            providerKey?: string;
+            offeringKey?: string;
+            modelKey?: string;
+            upstreamModelName?: string;
+            /** Format: int64 */
+            durationMs?: number;
+            message?: string;
+        };
+        CreateModelOfferingRequest: {
+            offeringKey: string;
+            providerKey: string;
+            modelKey: string;
+            displayName: string;
+            upstreamModelName: string;
+            defaultTemperature?: number;
             description?: string;
         };
         CreateExternalAgentRequest: {
@@ -1923,7 +2270,7 @@ export interface components {
             name: string;
             description?: string;
             systemPrompt?: string;
-            defaultModel?: string;
+            defaultModelOfferingKey?: string;
             temperature?: number;
             /** Format: int32 */
             timeoutSeconds?: number;
@@ -2579,7 +2926,7 @@ export interface components {
             /**
              * @description 服务名称。
              * @default
-             * @example myagent-backend
+             * @example agent-studio-api
              */
             serviceName?: string;
             /**
@@ -2594,6 +2941,105 @@ export interface components {
              * @example /v3/api-docs
              */
             openApiPath?: string;
+        };
+        /**
+         * @description 模型供应商分页统一响应。
+         * @default null
+         */
+        ModelProviderPageApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PageResponseModelProviderResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseModelProviderResult: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["ModelProviderResult"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        /**
+         * @description 模型供应项分页统一响应。
+         * @default null
+         */
+        ModelOfferingPageApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PageResponseModelOfferingDescriptor"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 统一分页响应对象。
+         * @default null
+         */
+        PageResponseModelOfferingDescriptor: {
+            /**
+             * @description 当前页数据。
+             * @default
+             */
+            items: components["schemas"]["ModelOfferingDescriptor"][];
+            /**
+             * Format: int64
+             * @description 页码，从 1 开始。
+             * @default
+             * @example 1
+             */
+            page: number;
+            /**
+             * Format: int64
+             * @description 每页条数。
+             * @default
+             * @example 20
+             */
+            pageSize: number;
+            /**
+             * Format: int64
+             * @description 总记录数。
+             * @default
+             * @example 0
+             */
+            total: number;
+        };
+        /**
+         * @description 模型供应项批量查询统一响应。
+         * @default null
+         */
+        ModelOfferingBatchApiResponse: {
+            success?: boolean;
+            data?: components["schemas"]["ModelOfferingBatchResult"];
+            error?: components["schemas"]["ApiError"];
+        };
+        /**
+         * @description 按键批量查询模型供应项结果。
+         * @default null
+         */
+        ModelOfferingBatchResult: {
+            items?: components["schemas"]["ModelOfferingDescriptor"][];
+            missingKeys?: string[];
         };
         JavaMethodListItemResult: {
             /** Format: int64 */
@@ -3516,6 +3962,158 @@ export interface operations {
             };
         };
     };
+    getModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelProviderDetailApiResponse"];
+                };
+            };
+        };
+    };
+    updateModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateModelProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelProviderDetailApiResponse"];
+                };
+            };
+        };
+    };
+    changeModelProviderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeModelProviderStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelProviderDetailApiResponse"];
+                };
+            };
+        };
+    };
+    updateModelProviderSecrets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateModelProviderSecretsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelProviderDetailApiResponse"];
+                };
+            };
+        };
+    };
+    updateModelOffering: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offeringId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateModelOfferingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelOfferingDetailApiResponse"];
+                };
+            };
+        };
+    };
+    changeModelOfferingStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offeringId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeModelOfferingStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelOfferingDetailApiResponse"];
+                };
+            };
+        };
+    };
     getExternalAgent: {
         parameters: {
             query?: never;
@@ -4002,6 +4600,131 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["EvalCaseApiResponse"];
+                };
+            };
+        };
+    };
+    listModelProviders: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                keyword?: string;
+                status?: "ENABLED" | "DISABLED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelProviderPageApiResponse"];
+                };
+            };
+        };
+    };
+    createModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateModelProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelProviderDetailApiResponse"];
+                };
+            };
+        };
+    };
+    testModelProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestModelProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelProviderTestApiResponse"];
+                };
+            };
+        };
+    };
+    listModelOfferings: {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+                providerKey?: string;
+                keyword?: string;
+                status?: "ENABLED" | "DISABLED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelOfferingPageApiResponse"];
+                };
+            };
+        };
+    };
+    createModelOffering: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateModelOfferingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelOfferingDetailApiResponse"];
                 };
             };
         };
@@ -4533,6 +5256,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponse"];
+                };
+            };
+        };
+    };
+    getModelOffering: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offeringKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelOfferingDetailApiResponse"];
+                };
+            };
+        };
+    };
+    getModelOfferingsByKeys: {
+        parameters: {
+            query: {
+                offeringKeys: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ModelOfferingBatchApiResponse"];
                 };
             };
         };

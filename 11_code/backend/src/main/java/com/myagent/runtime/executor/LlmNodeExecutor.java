@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myagent.model.ModelInvocationRequest;
 import com.myagent.model.ModelInvocationResult;
+import com.myagent.model.ModelResponseTracePayload;
 import com.myagent.model.OpenAiModelGateway;
 import com.myagent.run.domain.TraceEventType;
 import com.myagent.runtime.NodeExecutionContext;
@@ -60,7 +61,7 @@ public class LlmNodeExecutor extends AbstractNodeExecutorSupport implements Node
         JsonNode config = context.nodeDefinition().getConfig();
         boolean structuredOutput = context.nodeDefinition().getOutputSchemaRef() != null;
         ModelInvocationRequest request = new ModelInvocationRequest(
-                readText(config, "model", context.agentDefinition().defaultModel()),
+                resolveModelOfferingKey(context),
                 renderSystemPromptTemplate(context, input),
                 renderUserPromptTemplate(context, input),
                 input,
@@ -72,8 +73,8 @@ public class LlmNodeExecutor extends AbstractNodeExecutorSupport implements Node
                 context.nodeRunDbId(),
                 null,
                 TraceEventType.MODEL_REQUEST,
-                "调用模型：" + request.model(),
-                objectMapper.valueToTree(request)
+                "调用模型供应项：" + request.modelOfferingKey(),
+                objectMapper.valueToTree(modelGateway.resolveRequestTracePayload(request))
         ));
         ModelInvocationResult result = modelGateway.invoke(request);
         context.traceWriter().writeEvent(new TraceEventRecord(
@@ -82,7 +83,7 @@ public class LlmNodeExecutor extends AbstractNodeExecutorSupport implements Node
                 null,
                 TraceEventType.MODEL_RESPONSE,
                 "模型调用完成。",
-                objectMapper.valueToTree(result)
+                objectMapper.valueToTree(ModelResponseTracePayload.from(result))
         ));
         validateOutputSchema(context, result.output(), context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
         return NodeExecutionResult.success(result.output(), result.durationMs());

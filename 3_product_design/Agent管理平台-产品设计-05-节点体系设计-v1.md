@@ -10,7 +10,7 @@
 |---|---|---|
 | START | 工作流入口。 | 初始上下文。 |
 | END | 工作流出口。 | AgentRunResult。 |
-| LLM | 调用 OpenAI 生成文本或结构化结果。 | 模型输出。 |
+| LLM | 通过已注册模型供应项调用 OpenAI-compatible 模型生成文本或结构化结果。 | 模型输出。 |
 | CONDITION | 根据上下文决定下一条路径。 | 命中分支。 |
 | JAVA_METHOD | 调用平台显式注册的 Java 方法。 | Java 方法返回结果。 |
 | EXTERNAL_AGENT | 调用 Codex、OpenCode、自定义 CLI 或 HTTP Agent。 | 外部 Agent 最终结果。 |
@@ -49,7 +49,7 @@
 
 职责：
 
-- 调用 OpenAI 官方 API。
+- 通过模型供应项调用 OpenAI-compatible 供应商。
 - 支持普通文本输出。
 - 支持配置 outputSchema 后进行结构化输出校验。
 - 支持允许工具列表。
@@ -58,7 +58,7 @@
 
 - 系统提示词
 - 用户提示词模板
-- 模型
+- 模型供应项
 - 温度
 - inputSchema
 - outputSchema

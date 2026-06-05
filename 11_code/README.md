@@ -1,87 +1,77 @@
-﻿# MyAgent V1 代码目录
+# Agent Studio V1 代码目录
 
-本目录承载 MyAgent V1 的正式实现代码。当前代码范围已经覆盖 V1 主链路，不再是“步骤 01 工程骨架”阶段。
+本目录承载 Agent Studio V1 的正式代码实现。
 
 ## 目录结构
 
 ```text
 11_code/
-  backend/   Spring Boot 后端工程
-  frontend/  React + Vite 前端工程
-  scripts/   本地启动与联调辅助脚本
+  backend/   Spring Boot API 工程
+  frontend/  React + Vite Web 工程
+  scripts/   开发态启动与联调脚本
 ```
 
-## 当前实现范围
+## 正式部署入口
 
-- 后端：
-  - Schema 管理
-  - Java 方法、工具与外部 Agent 主数据
-  - Agent 与 WorkflowVersion 管理
-  - DebugRun、Run、Trace、NodeRun 查询
-  - EvalSuite、EvalCase、EvalRun、EvalCaseResult
-  - Flyway 迁移、OpenAPI 输出、Testcontainers 测试
-- 前端：
-  - Settings、Schemas、External Agents、Agents
-  - Workflow 画布与版本管理
-  - Debug、Runs、Evals
-  - API 类型统一消费 OpenAPI 生成产物
-- 联调与契约：
-  - 浏览器默认通过相对路径访问 `/api`
-  - Vite dev server 代理 `/api`、`/v3/api-docs`、`/swagger-ui.html`
-  - OpenAPI 快照与 TypeScript 类型通过统一脚本刷新
-
-## 环境要求
-
-- Node.js `24.x` 或兼容版本
-- npm `11.x` 或兼容版本
-- JDK `21`
-- Maven `3.9.11`
-- PostgreSQL `15+`
-- Docker Desktop
-
-## 标准启动方式
-
-### 后端
-
-标准入口：
+唯一正式部署入口：
 
 ```powershell
 cd D:\myproject\MyAgent
+$env:AGENT_STUDIO_POSTGRES_PASSWORD='agent_studio_dev_password'
+$env:AGENT_STUDIO_SECRET_KEY='<base64-32-byte-secret>'
+$env:AGENT_STUDIO_OPENAI_API_KEY='<your-openai-api-key>'
+docker compose up -d --build
+```
+
+唯一正式浏览器入口：
+
+- [http://127.0.0.1:18080](http://127.0.0.1:18080)
+
+正式部署契约：
+
+- Web 通过 `18080:80` 对外暴露。
+- API 不直接暴露宿主机端口。
+- PostgreSQL 不直接暴露宿主机端口。
+- Compose 顶层项目名固定为 `agent-studio`。
+- `AGENT_STUDIO_SECRET_KEY` 是正式部署必填项，必须是 Base64 编码的 32 字节随机值；缺失时 `docker compose config` 必须失败。
+
+## 开发态入口
+
+后端开发脚本：
+
+```powershell
+cd D:\myproject\MyAgent
+$env:AGENT_STUDIO_SECRET_KEY='<base64-32-byte-secret>'
+$env:AGENT_STUDIO_OPENAI_API_KEY='<your-openai-api-key>'
 powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-backend-local.ps1
 ```
 
-该脚本会固定使用仓库内 `9_dependency\tools` 下的 JDK 21 与 Maven 3.9.11。
+后端开发态可选覆盖项：
 
-可选覆盖项：
+- `AGENT_STUDIO_DATASOURCE_URL`
+- `AGENT_STUDIO_DATASOURCE_USERNAME`
+- `AGENT_STUDIO_DATASOURCE_PASSWORD`
+- `AGENT_STUDIO_SERVER_PORT`
+- `AGENT_STUDIO_SECRET_KEY`
+- `AGENT_STUDIO_OPENAI_BASE_URL`
+- `AGENT_STUDIO_OPENAI_DEFAULT_MODEL`
 
-- `MYAGENT_DATASOURCE_URL`
-- `MYAGENT_DATASOURCE_USERNAME`
-- `MYAGENT_DATASOURCE_PASSWORD`
-- `MYAGENT_SERVER_PORT`
-- `OPENAI_API_KEY`
-- `SPRING_AI_OPENAI_BASE_URL`
-- `MYAGENT_OPENAI_DEFAULT_MODEL`
-
-### 前端
-
-标准入口：
+前端开发脚本：
 
 ```powershell
 cd D:\myproject\MyAgent
 powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-frontend-dev.ps1
 ```
 
-默认访问地址：
+默认开发入口：
 
 - [http://127.0.0.1:5173](http://127.0.0.1:5173)
 
-默认浏览器访问语义：
+开发态代理说明：
 
-- 页面只请求相对路径 `/api`
-- 本地开发通过 Vite 代理转发到 `http://127.0.0.1:8080`
-- `MYAGENT_BACKEND_DEV_TARGET` 可作为本地排障覆盖项，临时改写 Vite 代理目标，例如指向 `http://127.0.0.1:18081`
-- 上述覆盖项只影响 dev server 代理，不改变浏览器默认仍通过相对路径 `/api` 访问后端的正式口径
-- `VITE_API_BASE_URL` 仅作为显式覆盖项，用于特殊联调环境，不是标准启动前提
+- 浏览器仍通过相对路径访问 `/api`。
+- Vite dev server 默认代理到 `http://127.0.0.1:8080`。
+- `AGENT_STUDIO_BACKEND_DEV_TARGET` 只用于开发态临时改写代理目标。
 
 ## OpenAPI 产物
 
@@ -89,7 +79,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-fron
 
 前端保留两个派生产物：
 
-- `frontend/openapi/myagent-openapi.json`
+- `frontend/openapi/agent-studio-openapi.json`
 - `frontend/src/api/generated/schema.ts`
 
 刷新命令：
@@ -99,10 +89,10 @@ cd D:\myproject\MyAgent\11_code\frontend
 npm run openapi:refresh
 ```
 
-如后端不在默认 `http://127.0.0.1:8080`，可先设置：
+默认从正式 Web 入口下载 OpenAPI；如需指向本地开发态 API，可显式设置：
 
 ```powershell
-$env:MYAGENT_OPENAPI_BASE_URL='http://127.0.0.1:18080'
+$env:AGENT_STUDIO_OPENAPI_BASE_URL='http://127.0.0.1:8080'
 ```
 
 一致性检查：
@@ -130,9 +120,3 @@ cd D:\myproject\MyAgent\11_code\frontend
 npm test -- --run
 npm run build
 ```
-
-## 当前说明
-
-- 后端 `local` profile 会启用 Flyway 并依赖 PostgreSQL。
-- Docker Desktop 用于 PostgreSQL Testcontainers 测试与本地验收辅助。
-- Poe 可作为 OpenAI-compatible 网关；如必须验证供应商强制结构化输出，需要使用支持 `response_format` 的兼容服务。

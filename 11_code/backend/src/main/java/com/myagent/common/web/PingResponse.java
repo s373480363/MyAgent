@@ -13,7 +13,7 @@ public final class PingResponse {
     /**
      * 服务名称。
      */
-    @Schema(description = "服务名称。", example = "myagent-backend")
+    @Schema(description = "服务名称。", example = "agent-studio-api")
     private final String serviceName;
 
     /**

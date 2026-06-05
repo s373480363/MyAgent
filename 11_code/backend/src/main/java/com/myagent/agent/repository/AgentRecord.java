@@ -14,7 +14,7 @@ import java.time.Instant;
  * @param description 描述
  * @param status 状态
  * @param systemPrompt 系统提示词
- * @param defaultModel 默认模型
+ * @param defaultModelOfferingKey 默认模型供应项标识
  * @param temperature 温度
  * @param timeoutSeconds Agent 默认总超时
  * @param maxSteps Agent 默认最大步数
@@ -30,7 +30,7 @@ public record AgentRecord(
         String description,
         EnableStatus status,
         String systemPrompt,
-        String defaultModel,
+        String defaultModelOfferingKey,
         BigDecimal temperature,
         int timeoutSeconds,
         int maxSteps,

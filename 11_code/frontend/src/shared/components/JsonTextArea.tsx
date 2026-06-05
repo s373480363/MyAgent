@@ -10,12 +10,14 @@ export function JsonTextArea({
   value = "",
   onChange,
   rows = 8,
-  placeholder
+  placeholder,
+  dataTestId
 }: {
   value?: string;
   onChange?: (value: string) => void;
   rows?: number;
   placeholder?: string;
+  dataTestId?: string;
 }) {
   return (
     <Input.TextArea
@@ -25,6 +27,7 @@ export function JsonTextArea({
       spellCheck={false}
       placeholder={placeholder ?? "{\n  \"type\": \"object\"\n}"}
       className="json-editor-textarea"
+      data-testid={dataTestId}
     />
   );
 }

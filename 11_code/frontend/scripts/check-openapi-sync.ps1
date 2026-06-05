@@ -1,13 +1,13 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$openApiPath = "openapi/myagent-openapi.json"
+$openApiPath = "openapi/agent-studio-openapi.json"
 $schemaPath = "src/api/generated/schema.ts"
-$tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("myagent-openapi-check-" + [System.Guid]::NewGuid().ToString("N"))
+$tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("agent-studio-openapi-check-" + [System.Guid]::NewGuid().ToString("N"))
 
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 try {
-    $openApiBackup = Join-Path $tempDir "myagent-openapi.json"
+    $openApiBackup = Join-Path $tempDir "agent-studio-openapi.json"
     $schemaBackup = Join-Path $tempDir "schema.ts"
     Copy-Item -Path $openApiPath -Destination $openApiBackup -Force
     Copy-Item -Path $schemaPath -Destination $schemaBackup -Force

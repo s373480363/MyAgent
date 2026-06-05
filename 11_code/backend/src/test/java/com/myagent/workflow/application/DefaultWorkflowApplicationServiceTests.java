@@ -16,6 +16,7 @@ import com.myagent.externalagent.repository.ExternalAgentRepository;
 import com.myagent.method.application.query.ListJavaMethodsQuery;
 import com.myagent.method.repository.JavaMethodRecord;
 import com.myagent.method.repository.JavaMethodRepository;
+import com.myagent.modelcatalog.application.ModelRouteResolver;
 import com.myagent.schema.application.SchemaApplicationService;
 import com.myagent.schema.application.command.CreateSchemaCommand;
 import com.myagent.schema.application.command.CreateSchemaVersionCommand;
@@ -64,6 +65,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 
 /**
  * 工作流应用服务测试。
@@ -102,7 +106,7 @@ class DefaultWorkflowApplicationServiceTests {
                 "",
                 EnableStatus.ENABLED,
                 "默认提示词",
-                "gpt-4.1-mini",
+                "openai.gpt_4_1_mini",
                 null,
                 600,
                 30,
@@ -162,7 +166,7 @@ class DefaultWorkflowApplicationServiceTests {
         RecordingSchemaApplicationService schemaApplicationService = new RecordingSchemaApplicationService(schemaRepository);
         AgentRecord agent = agentRepository.insert(new AgentRecord(
                 0L, "summary-agent", "摘要 Agent", "", EnableStatus.ENABLED, "",
-                "gpt-4.1-mini", null, 600, 30, null, null, null, null
+                "openai.gpt_4_1_mini", null, 600, 30, null, null, null, null
         ));
         schemaRepository.insert(schemaRecord("agent-input", 1, 1L));
         schemaRepository.insert(schemaRecord("agent-output", 1, 2L));
@@ -202,7 +206,7 @@ class DefaultWorkflowApplicationServiceTests {
         RecordingSchemaApplicationService schemaApplicationService = new RecordingSchemaApplicationService(schemaRepository);
         AgentRecord agent = agentRepository.insert(new AgentRecord(
                 0L, "summary-agent", "摘要 Agent", "", EnableStatus.ENABLED, "",
-                "gpt-4.1-mini", null, 600, 30, null, null, null, null
+                "openai.gpt_4_1_mini", null, 600, 30, null, null, null, null
         ));
         schemaRepository.insert(schemaRecord("agent-input", 1, 1L));
         schemaRepository.insert(schemaRecord("agent-output", 1, 2L));
@@ -245,7 +249,7 @@ class DefaultWorkflowApplicationServiceTests {
         InMemorySystemSettingRepository systemSettingRepository = new InMemorySystemSettingRepository();
         AgentRecord agent = agentRepository.insert(new AgentRecord(
                 0L, "summary-agent", "摘要 Agent", "默认提示词", EnableStatus.ENABLED, "默认提示词",
-                "gpt-4.1-mini", null, 999, 88, null, null, null, null
+                "openai.gpt_4_1_mini", null, 999, 88, null, null, null, null
         ));
         schemaRepository.insert(schemaRecord("agent-input", 1, 1L));
         schemaRepository.insert(schemaRecord("agent-output", 1, 2L));
@@ -343,6 +347,8 @@ class DefaultWorkflowApplicationServiceTests {
             RecordingSchemaApplicationService schemaApplicationService,
             InMemorySystemSettingRepository systemSettingRepository
     ) {
+        ModelRouteResolver modelRouteResolver = mock(ModelRouteResolver.class);
+        doNothing().when(modelRouteResolver).validatePublishable(anyString());
         return new DefaultWorkflowApplicationService(
                 agentRepository,
                 workflowRepository,
@@ -355,6 +361,7 @@ class DefaultWorkflowApplicationServiceTests {
                         new EmptyToolRepository(),
                         new EmptyExternalAgentRepository(),
                         agentRepository,
+                        modelRouteResolver,
                         new com.myagent.workflow.validation.WorkflowMappingValidationService(schemaRepository)
                 )
         );
@@ -367,7 +374,6 @@ class DefaultWorkflowApplicationServiceTests {
      */
     private MyAgentSettingsProperties settingsProperties() {
         MyAgentSettingsProperties properties = new MyAgentSettingsProperties();
-        properties.getOpenai().setDefaultModel("gpt-4.1-mini");
         properties.getRuntime().setDefaultAgentTimeoutSeconds(600);
         properties.getRuntime().setDefaultMaxSteps(30);
         properties.getRuntime().setDefaultMaxAgentCallDepth(3);
@@ -462,6 +468,7 @@ class DefaultWorkflowApplicationServiceTests {
         node.setName("LLM");
         node.setConfig(OBJECT_MAPPER.readTree("""
                 {
+                  "modelOfferingKey": "openai.gpt_4_1_mini",
                   "userPromptTemplate": "请总结输入 {inputJson}"
                 }
                 """));
@@ -550,7 +557,7 @@ class DefaultWorkflowApplicationServiceTests {
                     record.description(),
                     record.status(),
                     record.systemPrompt(),
-                    record.defaultModel(),
+                    record.defaultModelOfferingKey(),
                     record.temperature(),
                     record.timeoutSeconds(),
                     record.maxSteps(),
@@ -577,7 +584,7 @@ class DefaultWorkflowApplicationServiceTests {
             }
             records.put(agentId, new AgentRecord(
                     existing.id(), existing.agentKey(), existing.name(), existing.description(),
-                    status, existing.systemPrompt(), existing.defaultModel(), existing.temperature(),
+                    status, existing.systemPrompt(), existing.defaultModelOfferingKey(), existing.temperature(),
                     existing.timeoutSeconds(), existing.maxSteps(), existing.currentDraftWorkflowVersionId(),
                     existing.currentPublishedWorkflowVersionId(), existing.createdAt(), Instant.now()
             ));
@@ -589,7 +596,7 @@ class DefaultWorkflowApplicationServiceTests {
             AgentRecord existing = records.get(agentId);
             records.put(agentId, new AgentRecord(
                     existing.id(), existing.agentKey(), existing.name(), existing.description(),
-                    existing.status(), existing.systemPrompt(), existing.defaultModel(), existing.temperature(),
+                    existing.status(), existing.systemPrompt(), existing.defaultModelOfferingKey(), existing.temperature(),
                     existing.timeoutSeconds(), existing.maxSteps(), workflowVersionId,
                     existing.currentPublishedWorkflowVersionId(), existing.createdAt(), Instant.now()
             ));
@@ -601,7 +608,7 @@ class DefaultWorkflowApplicationServiceTests {
             AgentRecord existing = records.get(agentId);
             records.put(agentId, new AgentRecord(
                     existing.id(), existing.agentKey(), existing.name(), existing.description(),
-                    existing.status(), existing.systemPrompt(), existing.defaultModel(), existing.temperature(),
+                    existing.status(), existing.systemPrompt(), existing.defaultModelOfferingKey(), existing.temperature(),
                     existing.timeoutSeconds(), existing.maxSteps(), existing.currentDraftWorkflowVersionId(),
                     workflowVersionId, existing.createdAt(), Instant.now()
             ));
@@ -619,7 +626,7 @@ class DefaultWorkflowApplicationServiceTests {
             AgentRecord existing = records.get(agentId);
             records.put(agentId, new AgentRecord(
                     existing.id(), existing.agentKey(), existing.name(), existing.description(),
-                    existing.status(), existing.systemPrompt(), existing.defaultModel(), existing.temperature(),
+                    existing.status(), existing.systemPrompt(), existing.defaultModelOfferingKey(), existing.temperature(),
                     timeoutSeconds, maxSteps, existing.currentDraftWorkflowVersionId(),
                     existing.currentPublishedWorkflowVersionId(), existing.createdAt(), Instant.now()
             ));

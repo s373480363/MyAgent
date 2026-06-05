@@ -120,6 +120,7 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
     public EvalCaseResult createCase(CreateEvalCaseCommand command) {
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         requireSuiteNotArchived(suite);
+        validateScoreRule(command.scoreRule());
         EvalCaseRecord record = new EvalCaseRecord(
                 0L,
                 suite.id(),
@@ -190,6 +191,7 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         if (current.confirmStatus() == EvalCaseConfirmStatus.ARCHIVED) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收用例不可更新。");
         }
+        validateScoreRule(command.scoreRule());
         EvalCaseRecord updated = evalCaseRepository.update(new EvalCaseRecord(
                 command.caseId(),
                 command.suiteId(),
@@ -312,6 +314,23 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
     private boolean isFormalCase(EvalCaseRecord record) {
         return record.confirmStatus() == EvalCaseConfirmStatus.USER_CREATED
                 || record.confirmStatus() == EvalCaseConfirmStatus.USER_CONFIRMED;
+    }
+
+    /**
+     * 校验评分规则契约。
+     *
+     * @param scoreRule 评分规则
+     */
+    private void validateScoreRule(JsonNode scoreRule) {
+        if (scoreRule == null || scoreRule.isNull() || scoreRule.isMissingNode()) {
+            return;
+        }
+        if (!scoreRule.isObject()) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "scoreRule 必须是 JSON 对象。");
+        }
+        if (scoreRule.has("model")) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "scoreRule 不允许使用旧 model 字段，请改用 modelOfferingKey。");
+        }
     }
 
     /**

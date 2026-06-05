@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myagent.model.ModelInvocationRequest;
 import com.myagent.model.ModelInvocationResult;
+import com.myagent.model.ModelResponseTracePayload;
 import com.myagent.model.OpenAiModelGateway;
 import com.myagent.run.domain.TraceEventType;
 import com.myagent.runtime.NodeExecutionContext;
@@ -59,7 +60,7 @@ public class ReviewNodeExecutor extends AbstractNodeExecutorSupport implements N
         validateSchema(context, input, context.nodeDefinition().getInputSchemaRef(), ValidationStage.NODE_INPUT);
         JsonNode config = context.nodeDefinition().getConfig();
         ModelInvocationRequest request = new ModelInvocationRequest(
-                readText(config, "model", context.agentDefinition().defaultModel()),
+                resolveModelOfferingKey(context),
                 renderSystemPromptTemplate(context, input),
                 renderUserPromptTemplate(context, input),
                 input,
@@ -71,8 +72,8 @@ public class ReviewNodeExecutor extends AbstractNodeExecutorSupport implements N
                 context.nodeRunDbId(),
                 null,
                 TraceEventType.MODEL_REQUEST,
-                "审核节点调用模型：" + request.model(),
-                objectMapper.valueToTree(request)
+                "审核节点调用模型供应项：" + request.modelOfferingKey(),
+                objectMapper.valueToTree(modelGateway.resolveRequestTracePayload(request))
         ));
         ModelInvocationResult result = modelGateway.invoke(request);
         context.traceWriter().writeEvent(new TraceEventRecord(
@@ -81,7 +82,7 @@ public class ReviewNodeExecutor extends AbstractNodeExecutorSupport implements N
                 null,
                 TraceEventType.MODEL_RESPONSE,
                 "审核节点模型输出完成。",
-                objectMapper.valueToTree(result)
+                objectMapper.valueToTree(ModelResponseTracePayload.from(result))
         ));
         validateOutputSchema(context, result.output(), context.nodeDefinition().getOutputSchemaRef(), ValidationStage.NODE_OUTPUT);
         return NodeExecutionResult.success(result.output(), result.durationMs());

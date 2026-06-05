@@ -59,6 +59,156 @@ export function getRunDetail(runId: string) {
 }
 
 /**
+ * 查询模型供应商列表。
+ *
+ * @param query 查询条件
+ */
+export function listModelProviders(query: PageQuery) {
+  return request<Schema["PageResponseModelProviderResult"]>("/api/model-providers", { query });
+}
+
+/**
+ * 创建模型供应商。
+ *
+ * @param body 请求体
+ */
+export function createModelProvider(body: Schema["CreateModelProviderRequest"]) {
+  return request<Schema["ModelProviderResult"]>("/api/model-providers", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+/**
+ * 查询模型供应商详情。
+ *
+ * @param providerId 供应商主键
+ */
+export function getModelProvider(providerId: number) {
+  return request<Schema["ModelProviderResult"]>(`/api/model-providers/${providerId}`);
+}
+
+/**
+ * 更新模型供应商。
+ *
+ * @param providerId 供应商主键
+ * @param body 请求体
+ */
+export function updateModelProvider(providerId: number, body: Schema["UpdateModelProviderRequest"]) {
+  return request<Schema["ModelProviderResult"]>(`/api/model-providers/${providerId}`, {
+    method: "PUT",
+    body: JSON.stringify(body)
+  });
+}
+
+/**
+ * 更新模型供应商状态。
+ *
+ * @param providerId 供应商主键
+ * @param status 目标状态
+ */
+export function changeModelProviderStatus(providerId: number, status: Schema["ChangeModelProviderStatusRequest"]["status"]) {
+  return request<Schema["ModelProviderResult"]>(`/api/model-providers/${providerId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status })
+  });
+}
+
+/**
+ * 更新模型供应商密钥。
+ *
+ * @param providerId 供应商主键
+ * @param body 请求体
+ */
+export function updateModelProviderSecrets(providerId: number, body: Schema["UpdateModelProviderSecretsRequest"]) {
+  return request<Schema["ModelProviderResult"]>(`/api/model-providers/${providerId}/secrets`, {
+    method: "PUT",
+    body: JSON.stringify(body)
+  });
+}
+
+/**
+ * 测试模型供应商连接。
+ *
+ * @param providerId 供应商主键
+ * @param body 请求体
+ */
+export function testModelProvider(providerId: number, body: Schema["TestModelProviderRequest"]) {
+  return request<Schema["ModelProviderTestResult"]>(`/api/model-providers/${providerId}/test`, {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+/**
+ * 查询模型供应项列表。
+ *
+ * @param query 查询条件
+ */
+export function listModelOfferings(query: PageQuery) {
+  return request<Schema["PageResponseModelOfferingDescriptor"]>("/api/model-offerings", { query });
+}
+
+/**
+ * 查询单个模型供应项详情。
+ *
+ * @param offeringKey 供应项标识
+ */
+export function getModelOffering(offeringKey: string) {
+  return request<Schema["ModelOfferingDescriptor"]>(`/api/model-offerings/${encodeURIComponent(offeringKey)}`);
+}
+
+/**
+ * 按键批量查询模型供应项。
+ *
+ * @param offeringKeys 供应项标识列表
+ */
+export function getModelOfferingsByKeys(offeringKeys: string[]) {
+  const queryString = offeringKeys
+    .map((offeringKey) => `offeringKeys=${encodeURIComponent(offeringKey)}`)
+    .join("&");
+  return request<Schema["ModelOfferingBatchResult"]>(`/api/model-offerings/by-keys${queryString ? `?${queryString}` : ""}`);
+}
+
+/**
+ * 创建模型供应项。
+ *
+ * @param body 请求体
+ */
+export function createModelOffering(body: Schema["CreateModelOfferingRequest"]) {
+  return request<Schema["ModelOfferingDescriptor"]>("/api/model-offerings", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+/**
+ * 更新模型供应项。
+ *
+ * @param offeringId 供应项主键
+ * @param body 请求体
+ */
+export function updateModelOffering(offeringId: number, body: Schema["UpdateModelOfferingRequest"]) {
+  return request<Schema["ModelOfferingDescriptor"]>(`/api/model-offerings/${offeringId}`, {
+    method: "PUT",
+    body: JSON.stringify(body)
+  });
+}
+
+/**
+ * 更新模型供应项状态。
+ *
+ * @param offeringId 供应项主键
+ * @param status 目标状态
+ */
+export function changeModelOfferingStatus(offeringId: number, status: Schema["ChangeModelOfferingStatusRequest"]["status"]) {
+  return request<Schema["ModelOfferingDescriptor"]>(`/api/model-offerings/${offeringId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status })
+  });
+}
+
+/**
  * 查询 Agent 列表。
  *
  * @param query 查询条件

@@ -151,7 +151,7 @@ class WorkflowVersionCurrentPointerPostgresTests {
                 "用于验证当前工作流版本指针。",
                 EnableStatus.ENABLED,
                 "",
-                "test-model",
+                null,
                 BigDecimal.ZERO,
                 600,
                 30,

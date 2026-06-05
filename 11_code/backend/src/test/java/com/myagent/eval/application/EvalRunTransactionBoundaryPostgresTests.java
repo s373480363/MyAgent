@@ -15,6 +15,7 @@ import com.myagent.eval.repository.EvalRunRepository;
 import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
 import com.myagent.model.ModelInvocationResult;
+import com.myagent.model.ModelRequestTracePayload;
 import com.myagent.model.OpenAiModelGateway;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.domain.TraceEventType;
@@ -213,7 +214,7 @@ class EvalRunTransactionBoundaryPostgresTests {
                 "用于验证 EvalRun 事务边界。",
                 EnableStatus.ENABLED,
                 "你是测试模型。",
-                "test-model",
+                null,
                 BigDecimal.ZERO,
                 600,
                 30,
@@ -237,7 +238,7 @@ class EvalRunTransactionBoundaryPostgresTests {
         node.setName("LLM 验收节点");
         node.setInputMapping(objectMapper.getNodeFactory().textNode("$.input"));
         node.setConfig(objectMapper.createObjectNode()
-                .put("model", "test-model")
+                .put("modelOfferingKey", "test-model")
                 .put("userPromptTemplate", "请根据输入返回 JSON：{inputJson}")
                 .put("temperature", 0));
         WorkflowVersionRecord workflowVersion = workflowVersionRepository.insert(new WorkflowVersionRecord(
@@ -365,11 +366,29 @@ class EvalRunTransactionBoundaryPostgresTests {
         @Bean
         @Primary
         OpenAiModelGateway testOpenAiModelGateway(ObjectMapper objectMapper) {
-            return request -> new ModelInvocationResult(
-                    objectMapper.createObjectNode().put("answer", "ok"),
-                    "{\"answer\":\"ok\"}",
-                    12L
-            );
+            return new OpenAiModelGateway() {
+                @Override
+                public ModelRequestTracePayload resolveRequestTracePayload(com.myagent.model.ModelInvocationRequest request) {
+                    return new ModelRequestTracePayload(
+                            "openai",
+                            "OpenAI",
+                            request.modelOfferingKey(),
+                            "gpt_4_1_mini",
+                            "gpt-4.1-mini",
+                            BigDecimal.ZERO,
+                            request.structuredOutput()
+                    );
+                }
+
+                @Override
+                public ModelInvocationResult invoke(com.myagent.model.ModelInvocationRequest request) {
+                    return new ModelInvocationResult(
+                            objectMapper.createObjectNode().put("answer", "ok"),
+                            "{\"answer\":\"ok\"}",
+                            12L
+                    );
+                }
+            };
         }
     }
 }

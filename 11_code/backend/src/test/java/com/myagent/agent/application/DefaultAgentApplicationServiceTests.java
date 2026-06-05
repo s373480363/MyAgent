@@ -58,7 +58,7 @@ class DefaultAgentApplicationServiceTests {
 
         assertThat(detail.getAgentId()).isEqualTo(1L);
         assertThat(detail.getAgentKey()).isEqualTo("summary-agent");
-        assertThat(detail.getDefaultModel()).isEqualTo("gpt-4.1-mini");
+        assertThat(detail.getDefaultModelOfferingKey()).isNull();
         assertThat(detail.getCurrentDraftWorkflow()).isNotNull();
         assertThat(detail.getCurrentDraftWorkflow().getVersionNo()).isEqualTo(1);
         assertThat(detail.getCurrentPublishedWorkflow()).isNull();
@@ -79,7 +79,6 @@ class DefaultAgentApplicationServiceTests {
      */
     private MyAgentSettingsProperties settingsProperties(int defaultMaxAgentCallDepth) {
         MyAgentSettingsProperties properties = new MyAgentSettingsProperties();
-        properties.getOpenai().setDefaultModel("gpt-4.1-mini");
         properties.getRuntime().setDefaultAgentTimeoutSeconds(600);
         properties.getRuntime().setDefaultMaxSteps(30);
         properties.getRuntime().setDefaultMaxAgentCallDepth(defaultMaxAgentCallDepth);
@@ -127,7 +126,7 @@ class DefaultAgentApplicationServiceTests {
                     record.description(),
                     record.status(),
                     record.systemPrompt(),
-                    record.defaultModel(),
+                    record.defaultModelOfferingKey(),
                     record.temperature(),
                     record.timeoutSeconds(),
                     record.maxSteps(),
@@ -152,7 +151,7 @@ class DefaultAgentApplicationServiceTests {
                     record.description(),
                     record.status(),
                     record.systemPrompt(),
-                    record.defaultModel(),
+                    record.defaultModelOfferingKey(),
                     record.temperature(),
                     record.timeoutSeconds(),
                     record.maxSteps(),
@@ -177,7 +176,7 @@ class DefaultAgentApplicationServiceTests {
                     existing.description(),
                     status,
                     existing.systemPrompt(),
-                    existing.defaultModel(),
+                    existing.defaultModelOfferingKey(),
                     existing.temperature(),
                     existing.timeoutSeconds(),
                     existing.maxSteps(),
@@ -199,7 +198,7 @@ class DefaultAgentApplicationServiceTests {
                     existing.description(),
                     existing.status(),
                     existing.systemPrompt(),
-                    existing.defaultModel(),
+                    existing.defaultModelOfferingKey(),
                     existing.temperature(),
                     existing.timeoutSeconds(),
                     existing.maxSteps(),
@@ -221,7 +220,7 @@ class DefaultAgentApplicationServiceTests {
                     existing.description(),
                     existing.status(),
                     existing.systemPrompt(),
-                    existing.defaultModel(),
+                    existing.defaultModelOfferingKey(),
                     existing.temperature(),
                     existing.timeoutSeconds(),
                     existing.maxSteps(),

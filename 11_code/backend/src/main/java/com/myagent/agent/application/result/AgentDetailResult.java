@@ -50,10 +50,10 @@ public final class AgentDetailResult {
     private final String systemPrompt;
 
     /**
-     * 默认模型。
+     * 默认模型供应项标识。
      */
-    @Schema(description = "默认模型。", example = "gpt-4.1-mini", requiredMode = Schema.RequiredMode.REQUIRED)
-    private final String defaultModel;
+    @Schema(description = "默认模型供应项标识。", example = "openai.gpt_4_1_mini")
+    private final String defaultModelOfferingKey;
 
     /**
      * 温度。
@@ -106,7 +106,7 @@ public final class AgentDetailResult {
      * @param description 描述
      * @param status 状态
      * @param systemPrompt 系统提示词
-     * @param defaultModel 默认模型
+     * @param defaultModelOfferingKey 默认模型供应项标识
      * @param temperature 温度
      * @param timeoutSeconds Agent 默认总超时
      * @param maxSteps Agent 默认最大步数
@@ -122,7 +122,7 @@ public final class AgentDetailResult {
             String description,
             EnableStatus status,
             String systemPrompt,
-            String defaultModel,
+            String defaultModelOfferingKey,
             BigDecimal temperature,
             int timeoutSeconds,
             int maxSteps,
@@ -137,7 +137,7 @@ public final class AgentDetailResult {
         this.description = description;
         this.status = status;
         this.systemPrompt = systemPrompt;
-        this.defaultModel = defaultModel;
+        this.defaultModelOfferingKey = defaultModelOfferingKey;
         this.temperature = temperature;
         this.timeoutSeconds = timeoutSeconds;
         this.maxSteps = maxSteps;
@@ -171,8 +171,8 @@ public final class AgentDetailResult {
         return systemPrompt;
     }
 
-    public String getDefaultModel() {
-        return defaultModel;
+    public String getDefaultModelOfferingKey() {
+        return defaultModelOfferingKey;
     }
 
     public BigDecimal getTemperature() {

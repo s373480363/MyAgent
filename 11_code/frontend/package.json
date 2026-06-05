@@ -1,5 +1,5 @@
 {
-  "name": "myagent-frontend",
+  "name": "agent-studio-web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc -b",
     "openapi:download": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/download-openapi.ps1",
-    "openapi:generate": "openapi-typescript openapi/myagent-openapi.json --output src/api/generated/schema.ts --default-non-nullable=false",
+    "openapi:generate": "openapi-typescript openapi/agent-studio-openapi.json --output src/api/generated/schema.ts --default-non-nullable=false",
     "openapi:refresh": "npm run openapi:download && npm run openapi:generate",
     "openapi:check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-openapi-sync.ps1"
   },
@@ -34,7 +34,7 @@
     "@vitejs/plugin-react": "6.0.2",
     "jsdom": "^29.1.1",
     "openapi-typescript": "^7.13.0",
-    "typescript": "6.0.3",
+    "typescript": "5.9.3",
     "vite": "8.0.14",
     "vitest": "^4.1.7"
   }

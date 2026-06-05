@@ -86,7 +86,7 @@ public class DefaultAgentApplicationService implements AgentApplicationService {
                 normalizedText(command.description()),
                 EnableStatus.ENABLED,
                 normalizedText(command.systemPrompt()),
-                normalizedDefaultModel(command.defaultModel(), null),
+                normalizedDefaultModelOfferingKey(command.defaultModelOfferingKey(), null),
                 normalizedTemperature(command.temperature()),
                 normalizedTimeoutSeconds(command.timeoutSeconds(), null),
                 normalizedMaxSteps(command.maxSteps(), null),
@@ -136,7 +136,7 @@ public class DefaultAgentApplicationService implements AgentApplicationService {
                 normalizedText(command.description()),
                 existing.status(),
                 normalizedTextOrExisting(command.systemPrompt(), existing.systemPrompt()),
-                normalizedDefaultModel(command.defaultModel(), existing.defaultModel()),
+                normalizedDefaultModelOfferingKey(command.defaultModelOfferingKey(), existing.defaultModelOfferingKey()),
                 normalizedTemperature(command.temperature()),
                 normalizedTimeoutSeconds(command.timeoutSeconds(), existing.timeoutSeconds()),
                 normalizedMaxSteps(command.maxSteps(), existing.maxSteps()),
@@ -208,7 +208,7 @@ public class DefaultAgentApplicationService implements AgentApplicationService {
                 agent.description(),
                 agent.status(),
                 agent.systemPrompt(),
-                agent.defaultModel(),
+                agent.defaultModelOfferingKey(),
                 agent.temperature(),
                 agent.timeoutSeconds(),
                 agent.maxSteps(),
@@ -273,18 +273,18 @@ public class DefaultAgentApplicationService implements AgentApplicationService {
     }
 
     /**
-     * 规范化默认模型。
+     * 规范化默认模型供应项标识。
      *
      * @param requestedValue 请求值
      * @param existingValue 现有值
      * @return 规范化结果
      */
-    private String normalizedDefaultModel(String requestedValue, String existingValue) {
+    private String normalizedDefaultModelOfferingKey(String requestedValue, String existingValue) {
         if (requestedValue == null) {
-            return existingValue == null ? platformSettingsResolver.resolveDefaultModel() : existingValue;
+            return existingValue;
         }
         if (requestedValue.isBlank()) {
-            return platformSettingsResolver.resolveDefaultModel();
+            return null;
         }
         return requestedValue.trim();
     }

@@ -14,9 +14,10 @@
 | 工具管理 | `/tools` | 查看平台已注册工具。 |
 | Java 方法管理 | `/methods` | 查看已注册 Java 方法、入参、出参和启用状态。 |
 | 外部 Agent 管理 | `/external-agents` | 查看 Codex、OpenCode、自定义 CLI 和 HTTP 适配器。 |
+| 模型供应商 | `/model-providers` | 维护 OpenAI-compatible 供应商、密钥状态和模型供应项。 |
 | Schema 管理 | `/schemas` | 维护 JSON Schema、版本和引用关系。 |
 | 节点验收 | `/evals` | 管理 EvalSuite、EvalCase、EvalRun。 |
-| 系统设置 | `/settings` | 配置 OpenAI、默认模型、运行限制。 |
+| 系统设置 | `/settings` | 配置运行限制；模型供应商和模型供应项通过独立页面维护。 |
 
 ## 2. 导航结构
 
@@ -34,6 +35,7 @@ Agent 管理平台
   ├─ 工具管理
   ├─ Java 方法管理
   ├─ 外部 Agent 管理
+  ├─ 模型供应商
   ├─ Schema 管理
   ├─ 节点验收
   └─ 系统设置
@@ -43,8 +45,10 @@ Agent 管理平台
 
 | 对象 | 关键内容 | 目的 |
 |---|---|---|
-| Agent 定义 | 名称、标识、描述、默认模型、状态。 | Agent 管理和调用。 |
+| Agent 定义 | 名称、标识、描述、可选默认模型供应项、状态。 | Agent 管理和调用。 |
 | 工作流版本 | 节点、边、版本号、状态、发布时间。 | 画布编辑、发布、历史版本。 |
+| 模型供应商 | 供应商标识、名称、OpenAI-compatible Base URL、密钥配置状态、启停状态。 | 模型运行路由。 |
+| 模型供应项 | 供应商、模型标识、上游模型名、默认温度、启停状态。 | Agent 默认值和 LLM 类节点运行目标；通过 `modelKey` 跨供应商表达同一模型身份。 |
 | 工具定义 | 名称、描述、参数 Schema、返回 Schema。 | 工具节点和 LLM 工具调用。 |
 | Java 方法定义 | 方法标识、入参 Schema、出参 Schema、Java 类型。 | JAVA_METHOD 节点。 |
 | 外部 Agent 定义 | 适配器标识、类型、默认命令或 URL、可用状态。 | EXTERNAL_AGENT 节点。 |
@@ -124,7 +128,7 @@ Agent 管理平台
 - 人工审批节点。
 - 完整工作流验收。
 - 运行过程实时推送。
-- 更多模型供应商。
+- 更多非 OpenAI-compatible 模型供应商协议。
 - 外部 Agent 深度集成。
 - 插件市场。
 - Agent 模板市场。

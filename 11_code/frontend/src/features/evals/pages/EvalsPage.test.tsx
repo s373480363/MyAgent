@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EvalsPage, isArchivedEvalSuite, isReadOnlyEvalCase } from "./EvalsPage";
 import { renderWithProviders } from "../../../test/renderWithProviders";
@@ -10,12 +10,15 @@ import {
   createEvalCase,
   createEvalSuite,
   getEvalRun,
+  getModelOfferingsByKeys,
   listEvalCases,
+  listModelOfferings,
   listEvalRunHistory,
   listEvalRunResults,
   listEvalRuns,
   listEvalSuites,
   runEvalSuite,
+  type Schema,
   updateEvalCase,
   updateEvalSuite
 } from "../../../api/domainApi";
@@ -31,7 +34,9 @@ vi.mock("../../../api/domainApi", async (importOriginal) => {
     createEvalCase: vi.fn(),
     createEvalSuite: vi.fn(),
     getEvalRun: vi.fn(),
+    getModelOfferingsByKeys: vi.fn(),
     listEvalCases: vi.fn(),
+    listModelOfferings: vi.fn(),
     listEvalRunHistory: vi.fn(),
     listEvalRunResults: vi.fn(),
     listEvalRuns: vi.fn(),
@@ -129,6 +134,16 @@ describe("EvalsPage", () => {
       pageSize: 50,
       total: 1
     });
+    vi.mocked(listModelOfferings).mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0
+    });
+    vi.mocked(getModelOfferingsByKeys).mockResolvedValue({
+      items: [],
+      missingKeys: []
+    });
     vi.mocked(archiveEvalCase).mockResolvedValue({});
     vi.mocked(archiveEvalSuite).mockResolvedValue({});
     vi.mocked(confirmEvalCase).mockResolvedValue({});
@@ -161,4 +176,170 @@ describe("EvalsPage", () => {
     expect(isReadOnlyEvalCase("CONFIRMED", "ARCHIVED")).toBe(true);
     expect(isReadOnlyEvalCase("CONFIRMED", "USER_CONFIRMED")).toBe(false);
   });
+
+  it("uses the paged model offering selector when creating scoreRule", async () => {
+    vi.mocked(listModelOfferings)
+      .mockResolvedValueOnce({
+        items: [
+          createOfferingDescriptor({
+            offeringId: 101,
+            offeringKey: "page-one.offering",
+            providerKey: "page-one",
+            providerName: "第一页供应商",
+            modelKey: "page-one-model",
+            displayName: "第一页模型",
+            upstreamModelName: "page-one-upstream"
+          })
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 21
+      })
+      .mockResolvedValueOnce({
+        items: [
+          createOfferingDescriptor({
+            offeringId: 102,
+            offeringKey: "openai.gpt_4_1_mini",
+            providerKey: "openai",
+            providerName: "OpenAI",
+            modelKey: "gpt_4_1_mini",
+            displayName: "GPT-4.1 Mini",
+            upstreamModelName: "gpt-4.1-mini"
+          })
+        ],
+        page: 2,
+        pageSize: 20,
+        total: 21
+      });
+
+    renderEvalsPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "详情" }));
+    fireEvent.click(await screen.findByRole("button", { name: "创建用例" }));
+    const scoreRuleCheckbox = screen.getByRole<HTMLInputElement>("checkbox", { name: "启用 LLM 辅助评分" });
+    fireEvent.click(scoreRuleCheckbox);
+    expect(scoreRuleCheckbox.checked).toBe(true);
+
+    await screen.findByTestId("eval-score-rule-model-offering-select");
+    openSelect("eval-score-rule-model-offering-select");
+    await waitFor(() => {
+      expect(hasPagedQueryCall(vi.mocked(listModelOfferings), 1)).toBe(true);
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "加载下一页" }));
+    await waitFor(() => {
+      expect(hasPagedQueryCall(vi.mocked(listModelOfferings), 2)).toBe(true);
+    });
+    selectDropdownOption("OpenAI / GPT-4.1 Mini (gpt-4.1-mini)");
+
+    fireEvent.change(screen.getByLabelText("用例编号"), { target: { value: "CASE-NEW" } });
+    fireEvent.change(screen.getByLabelText("标题"), { target: { value: "新的评分用例" } });
+    clickModalOkButton();
+
+    await waitFor(() => {
+      expect(lastMockCall(vi.mocked(createEvalCase))?.[0]).toBe(1);
+      expect(lastMockCall(vi.mocked(createEvalCase))?.[1]).toEqual(expect.objectContaining({
+        caseNo: "CASE-NEW",
+        title: "新的评分用例",
+        scoreRule: expect.objectContaining({
+          enabled: true,
+          modelOfferingKey: "openai.gpt_4_1_mini"
+        })
+      }));
+    });
+  }, 10000);
 });
+
+/**
+ * 渲染 Eval 页面。
+ */
+function renderEvalsPage() {
+  return renderWithProviders(<EvalsPage />, {
+    route: "/evals",
+    path: "/evals"
+  });
+}
+
+/**
+ * 打开基于 Ant Design Select 的下拉框。
+ *
+ * @param testId 选择器测试标识
+ */
+function openSelect(testId: string) {
+  const selectRoot = screen.getByTestId(testId);
+  const selector = selectRoot.querySelector(".ant-select-selector");
+  fireEvent.mouseDown(selector ?? selectRoot);
+  fireEvent.click(selector ?? selectRoot);
+}
+
+/**
+ * 点击下拉选项。
+ *
+ * @param label 选项文案
+ */
+function selectDropdownOption(label: string) {
+  const option = Array.from(document.querySelectorAll<HTMLElement>(".ant-select-item-option"))
+    .find((item) => item.textContent?.includes(label));
+  if (!option) {
+    throw new Error(`未找到下拉选项：${label}`);
+  }
+  fireEvent.mouseDown(option);
+  fireEvent.click(option);
+}
+
+/**
+ * 点击当前可见弹窗的主确认按钮。
+ */
+function clickModalOkButton() {
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(".ant-modal .ant-btn-primary"));
+  const button = buttons.at(-1);
+  if (!button) {
+    throw new Error("未找到弹窗确认按钮。");
+  }
+  fireEvent.click(button);
+}
+
+/**
+ * 判断远程分页查询是否已请求指定页码。
+ *
+ * @param queryMock 查询 mock
+ * @param page 页码
+ * @returns 命中时返回 true
+ */
+function hasPagedQueryCall(queryMock: ReturnType<typeof vi.fn>, page: number) {
+  return queryMock.mock.calls.some(([query]) => query?.page === page);
+}
+
+/**
+ * 读取 mock 最近一次调用参数。
+ *
+ * @param mockFn mock 函数
+ * @returns 调用参数
+ */
+function lastMockCall(mockFn: ReturnType<typeof vi.fn>) {
+  return mockFn.mock.calls.at(-1);
+}
+
+/**
+ * 构造模型供应项描述。
+ *
+ * @param overrides 覆盖字段
+ * @returns 描述对象
+ */
+function createOfferingDescriptor(
+  overrides: Partial<Schema["ModelOfferingDescriptor"]>
+): Schema["ModelOfferingDescriptor"] {
+  return {
+    offeringId: 1,
+    offeringKey: "openai.gpt_4_1_mini",
+    providerKey: "openai",
+    providerName: "OpenAI",
+    modelKey: "gpt_4_1_mini",
+    displayName: "GPT-4.1 Mini",
+    upstreamModelName: "gpt-4.1-mini",
+    status: "ENABLED",
+    providerStatus: "ENABLED",
+    selectable: true,
+    description: "",
+    ...overrides
+  };
+}

@@ -1,7 +1,6 @@
 package com.myagent.config;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.annotation.Validated;
@@ -11,27 +10,13 @@ import org.springframework.validation.annotation.Validated;
  */
 @Component
 @Validated
-@ConfigurationProperties(prefix = "myagent")
+@ConfigurationProperties(prefix = "agent.studio")
 public class MyAgentSettingsProperties {
-
-    /**
-     * OpenAI 配置。
-     */
-    private final Openai openai = new Openai();
 
     /**
      * 运行时配置。
      */
     private final Runtime runtime = new Runtime();
-
-    /**
-     * 返回 OpenAI 配置。
-     *
-     * @return OpenAI 配置
-     */
-    public Openai getOpenai() {
-        return openai;
-    }
 
     /**
      * 返回运行时配置。
@@ -40,36 +25,6 @@ public class MyAgentSettingsProperties {
      */
     public Runtime getRuntime() {
         return runtime;
-    }
-
-    /**
-     * OpenAI 配置对象。
-     */
-    public static class Openai {
-
-        /**
-         * 默认模型。
-         */
-        @NotBlank
-        private String defaultModel = "gpt-4.1-mini";
-
-        /**
-         * 返回默认模型。
-         *
-         * @return 默认模型
-         */
-        public String getDefaultModel() {
-            return defaultModel;
-        }
-
-        /**
-         * 设置默认模型。
-         *
-         * @param defaultModel 默认模型
-         */
-        public void setDefaultModel(String defaultModel) {
-            this.defaultModel = defaultModel;
-        }
     }
 
     /**

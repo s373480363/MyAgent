@@ -5,6 +5,7 @@ import com.myagent.agent.repository.AgentRecord;
 import com.myagent.common.domain.EnableStatus;
 import com.myagent.externalagent.repository.ExternalAgentRepository;
 import com.myagent.method.repository.JavaMethodRepository;
+import com.myagent.modelcatalog.application.ModelRouteResolver;
 import com.myagent.schema.domain.SchemaCreatedFrom;
 import com.myagent.schema.domain.SchemaStatus;
 import com.myagent.schema.repository.SchemaRecord;
@@ -26,6 +27,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -222,12 +225,15 @@ class DefaultWorkflowDraftValidationServiceTests {
      */
     private WorkflowValidationResult validate(WorkflowNodeDefinition llm) throws Exception {
         SchemaRepository schemaRepository = schemaRepository();
+        ModelRouteResolver modelRouteResolver = mock(ModelRouteResolver.class);
+        doNothing().when(modelRouteResolver).validatePublishable(anyString());
         DefaultWorkflowDraftValidationService service = new DefaultWorkflowDraftValidationService(
                 schemaRepository,
                 mock(JavaMethodRepository.class),
                 mock(ToolRepository.class),
                 mock(ExternalAgentRepository.class),
                 mock(com.myagent.agent.repository.AgentRepository.class),
+                modelRouteResolver,
                 new WorkflowMappingValidationService(schemaRepository)
         );
         return service.validate(agent(), new WorkflowVersionRecord(
@@ -255,12 +261,15 @@ class DefaultWorkflowDraftValidationServiceTests {
      */
     private WorkflowValidationResult validateCondition(com.fasterxml.jackson.databind.JsonNode condition) throws Exception {
         SchemaRepository schemaRepository = schemaRepository();
+        ModelRouteResolver modelRouteResolver = mock(ModelRouteResolver.class);
+        doNothing().when(modelRouteResolver).validatePublishable(anyString());
         DefaultWorkflowDraftValidationService service = new DefaultWorkflowDraftValidationService(
                 schemaRepository,
                 mock(JavaMethodRepository.class),
                 mock(ToolRepository.class),
                 mock(ExternalAgentRepository.class),
                 mock(com.myagent.agent.repository.AgentRepository.class),
+                modelRouteResolver,
                 new WorkflowMappingValidationService(schemaRepository)
         );
         WorkflowNodeDefinition conditionNode = new WorkflowNodeDefinition();
@@ -364,7 +373,7 @@ class DefaultWorkflowDraftValidationServiceTests {
                 "",
                 EnableStatus.ENABLED,
                 "系统提示词",
-                "gpt-4.1-mini",
+                "openai.gpt_4_1_mini",
                 null,
                 600,
                 30,
@@ -404,6 +413,7 @@ class DefaultWorkflowDraftValidationServiceTests {
         node.setOutputSchemaRef(schemaRef("output"));
         node.setConfig(OBJECT_MAPPER.readTree("""
                 {
+                  "modelOfferingKey": "openai.gpt_4_1_mini",
                   "userPromptTemplate": "请处理 {inputJson}"
                 }
                 """));

@@ -10,6 +10,7 @@ import { MethodsPage } from "../features/methods/pages/MethodsPage";
 import { ToolsPage } from "../features/tools/pages/ToolsPage";
 import { ExternalAgentsPage } from "../features/externalAgents/pages/ExternalAgentsPage";
 import { EvalsPage } from "../features/evals/pages/EvalsPage";
+import { ModelProvidersPage } from "../features/modelProviders/pages/ModelProvidersPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
 
 /**
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
       {
         path: "external-agents",
         element: <ExternalAgentsPage />
+      },
+      {
+        path: "model-providers",
+        element: <ModelProvidersPage />
       },
       {
         path: "evals",

@@ -58,7 +58,8 @@ class DefaultEvalScoreEvaluatorTests {
         DefaultEvalScoreEvaluator evaluator = new DefaultEvalScoreEvaluator(objectMapper, modelGateway);
         JsonNode scoreRule = objectMapper.readTree("""
                 {
-                  "model": "gpt-score",
+                  "enabled": true,
+                  "modelOfferingKey": "openai.gpt_score",
                   "temperature": 0.2,
                   "promptTemplate": "评分输入 {payload}"
                 }
@@ -73,10 +74,10 @@ class DefaultEvalScoreEvaluatorTests {
 
         assertThat(result.get("scored").asBoolean()).isTrue();
         assertThat(result.get("status").asText()).isEqualTo("SUCCESS");
-        assertThat(result.get("model").asText()).isEqualTo("gpt-score");
+        assertThat(result.get("modelOfferingKey").asText()).isEqualTo("openai.gpt_score");
         assertThat(result.get("output").get("score").decimalValue()).isEqualByComparingTo("0.8");
         verify(modelGateway).invoke(argThat(request ->
-                "gpt-score".equals(request.model())
+                "openai.gpt_score".equals(request.modelOfferingKey())
                         && request.structuredOutput()
                         && request.userPrompt().contains("\"assertionPassed\":true")
         ));
@@ -91,7 +92,7 @@ class DefaultEvalScoreEvaluatorTests {
     void evaluateRecordsScoreFailureWithoutThrowing() throws Exception {
         OpenAiModelGateway modelGateway = mock(OpenAiModelGateway.class);
         DefaultEvalScoreEvaluator evaluator = new DefaultEvalScoreEvaluator(objectMapper, modelGateway);
-        JsonNode scoreRule = objectMapper.readTree("{\"model\":\"gpt-score\"}");
+        JsonNode scoreRule = objectMapper.readTree("{\"enabled\":true,\"modelOfferingKey\":\"openai.gpt_score\"}");
         when(modelGateway.invoke(any())).thenThrow(new BizException(ErrorCode.NODE_EXECUTION_FAILED, "模型不可用。"));
 
         JsonNode result = evaluator.evaluate(request(scoreRule));
@@ -134,7 +135,7 @@ class DefaultEvalScoreEvaluatorTests {
                 "",
                 EnableStatus.ENABLED,
                 "系统提示词",
-                "gpt-default",
+                "openai.gpt_default",
                 BigDecimal.ZERO,
                 600,
                 30,

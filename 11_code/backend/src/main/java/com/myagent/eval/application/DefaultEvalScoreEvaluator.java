@@ -50,6 +50,9 @@ public class DefaultEvalScoreEvaluator implements EvalScoreEvaluator {
                 || (request.scoreRule().isObject() && request.scoreRule().isEmpty())) {
             return null;
         }
+        if (!request.scoreRule().path("enabled").asBoolean(false)) {
+            return null;
+        }
         ObjectNode promptPayload = objectMapper.createObjectNode();
         promptPayload.set("scoreRule", request.scoreRule());
         promptPayload.set("input", nullToJsonNull(request.input()));
@@ -57,7 +60,13 @@ public class DefaultEvalScoreEvaluator implements EvalScoreEvaluator {
         promptPayload.set("output", nullToJsonNull(request.output()));
         promptPayload.set("assertionResults", nullToJsonNull(request.assertionResults()));
         promptPayload.put("assertionPassed", request.assertionPassed());
-        String model = readText(request.scoreRule(), "model", request.agent().defaultModel());
+        String modelOfferingKey = readText(request.scoreRule(), "modelOfferingKey", request.agent().defaultModelOfferingKey());
+        if (modelOfferingKey == null || modelOfferingKey.isBlank()) {
+            return objectMapper.createObjectNode()
+                    .put("scored", true)
+                    .put("status", "FAILED")
+                    .put("errorMessage", "LLM 评分未配置模型供应项，且 Agent 默认模型供应项为空。");
+        }
         String prompt = readText(
                 request.scoreRule(),
                 "promptTemplate",
@@ -65,7 +74,7 @@ public class DefaultEvalScoreEvaluator implements EvalScoreEvaluator {
         ).replace("{payload}", promptPayload.toString());
         try {
             ModelInvocationResult result = modelGateway.invoke(new ModelInvocationRequest(
-                    model,
+                    modelOfferingKey,
                     "你是节点验收辅助评分器。只输出 JSON 评分结论，不能覆盖确定性断言结果。",
                     prompt,
                     promptPayload,
@@ -75,7 +84,7 @@ public class DefaultEvalScoreEvaluator implements EvalScoreEvaluator {
             ObjectNode scoreResult = objectMapper.createObjectNode()
                     .put("scored", true)
                     .put("status", "SUCCESS")
-                    .put("model", model)
+                    .put("modelOfferingKey", modelOfferingKey)
                     .put("rawText", result.rawText())
                     .put("durationMs", result.durationMs());
             scoreResult.set("output", nullToJsonNull(result.output()));
@@ -84,14 +93,14 @@ public class DefaultEvalScoreEvaluator implements EvalScoreEvaluator {
             return objectMapper.createObjectNode()
                     .put("scored", true)
                     .put("status", "FAILED")
-                    .put("model", model)
+                    .put("modelOfferingKey", modelOfferingKey)
                     .put("errorCode", exception.getErrorCode().getCode())
                     .put("errorMessage", exception.getMessage());
         } catch (RuntimeException exception) {
             return objectMapper.createObjectNode()
                     .put("scored", true)
                     .put("status", "FAILED")
-                    .put("model", model)
+                    .put("modelOfferingKey", modelOfferingKey)
                     .put("errorMessage", "LLM 评分失败：" + exception.getMessage());
         }
     }

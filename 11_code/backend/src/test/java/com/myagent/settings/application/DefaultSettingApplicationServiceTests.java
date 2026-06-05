@@ -36,10 +36,10 @@ class DefaultSettingApplicationServiceTests {
     void getSettingsReturnsWhitelistWithCorrectSource() {
         InMemorySystemSettingRepository repository = new InMemorySystemSettingRepository();
         repository.upsert(new SystemSettingRecord(
-                "myagent.openai.default-model",
-                "gpt-5-mini",
-                SettingValueType.STRING,
-                "默认模型",
+                "agent.studio.runtime.default-max-steps",
+                "60",
+                SettingValueType.NUMBER,
+                "默认最大步数",
                 true,
                 Instant.now()
         ));
@@ -47,15 +47,13 @@ class DefaultSettingApplicationServiceTests {
 
         var settings = service.getSettings();
 
-        assertThat(settings).hasSize(7);
-        assertThat(settings.getFirst().settingKey()).isEqualTo("myagent.openai.default-model");
-        assertThat(settings.getFirst().settingValue()).isEqualTo("gpt-5-mini");
-        assertThat(settings.getFirst().source()).isEqualTo(SettingSource.SYSTEM_SETTING);
+        assertThat(settings).hasSize(6);
+        assertThat(settings.getFirst().settingKey()).isEqualTo("agent.studio.runtime.default-agent-timeout-seconds");
         assertThat(settings.stream()
-                .filter(item -> item.settingKey().equals("myagent.runtime.default-agent-timeout-seconds"))
+                .filter(item -> item.settingKey().equals("agent.studio.runtime.default-max-steps"))
                 .findFirst()
                 .orElseThrow()
-                .source()).isEqualTo(SettingSource.APPLICATION_CONFIG);
+                .source()).isEqualTo(SettingSource.SYSTEM_SETTING);
     }
 
     /**
@@ -68,13 +66,13 @@ class DefaultSettingApplicationServiceTests {
 
         service.updateSettings(new UpdateSettingsCommand(List.of(
                 new UpdateSettingsCommand.Item(
-                        "myagent.runtime.default-max-steps",
+                        "agent.studio.runtime.default-max-steps",
                         "60",
                         SettingValueType.NUMBER
                 )
         )));
 
-        SystemSettingRecord record = repository.records.get("myagent.runtime.default-max-steps");
+        SystemSettingRecord record = repository.records.get("agent.studio.runtime.default-max-steps");
         assertThat(record).isNotNull();
         assertThat(record.settingValue()).isEqualTo("60");
         assertThat(record.valueType()).isEqualTo(SettingValueType.NUMBER);
@@ -94,7 +92,7 @@ class DefaultSettingApplicationServiceTests {
                         SettingValueType.NUMBER
                 )
         )))).isInstanceOf(BizException.class)
-                .hasMessageContaining("已废弃");
+                .hasMessageContaining("白名单");
     }
 
     /**
@@ -106,7 +104,7 @@ class DefaultSettingApplicationServiceTests {
 
         assertThatThrownBy(() -> service.updateSettings(new UpdateSettingsCommand(List.of(
                 new UpdateSettingsCommand.Item(
-                        "myagent.openai.api-key",
+                        "agent.studio.openai.api-key",
                         "secret",
                         SettingValueType.STRING
                 )
@@ -123,9 +121,9 @@ class DefaultSettingApplicationServiceTests {
 
         assertThatThrownBy(() -> service.updateSettings(new UpdateSettingsCommand(List.of(
                 new UpdateSettingsCommand.Item(
-                        "myagent.openai.default-model",
+                        "agent.studio.runtime.default-max-steps",
                         "123",
-                        SettingValueType.NUMBER
+                        SettingValueType.STRING
                 )
         )))).isInstanceOf(BizException.class)
                 .hasMessageContaining("值类型");
@@ -139,7 +137,6 @@ class DefaultSettingApplicationServiceTests {
      */
     private DefaultSettingApplicationService newService(InMemorySystemSettingRepository repository) {
         MyAgentSettingsProperties properties = new MyAgentSettingsProperties();
-        properties.getOpenai().setDefaultModel("gpt-4.1-mini");
         properties.getRuntime().setDefaultAgentTimeoutSeconds(600);
         properties.getRuntime().setDefaultLlmTimeoutSeconds(120);
         properties.getRuntime().setDefaultJavaMethodTimeoutSeconds(30);

@@ -13,7 +13,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -21,11 +20,6 @@ import java.util.Optional;
  */
 @Component
 public class SettingsCatalog {
-
-    /**
-     * 已废弃的旧超时键。
-     */
-    public static final String DEPRECATED_RUNTIME_TIMEOUT_KEY = "myagent.runtime.default-timeout-seconds";
 
     /**
      * 白名单项映射。
@@ -46,49 +40,42 @@ public class SettingsCatalog {
         this.objectMapper = objectMapper;
         Map<String, SettingCatalogItem> catalog = new LinkedHashMap<>();
         register(catalog, new SettingCatalogItem(
-                "myagent.openai.default-model",
-                SettingValueType.STRING,
-                true,
-                "默认模型",
-                properties -> properties.getOpenai().getDefaultModel()
-        ));
-        register(catalog, new SettingCatalogItem(
-                "myagent.runtime.default-agent-timeout-seconds",
+                "agent.studio.runtime.default-agent-timeout-seconds",
                 SettingValueType.NUMBER,
                 true,
                 "Agent 默认总超时（秒）",
                 properties -> String.valueOf(properties.getRuntime().getDefaultAgentTimeoutSeconds())
         ));
         register(catalog, new SettingCatalogItem(
-                "myagent.runtime.default-llm-timeout-seconds",
+                "agent.studio.runtime.default-llm-timeout-seconds",
                 SettingValueType.NUMBER,
                 true,
                 "LLM 节点默认超时（秒）",
                 properties -> String.valueOf(properties.getRuntime().getDefaultLlmTimeoutSeconds())
         ));
         register(catalog, new SettingCatalogItem(
-                "myagent.runtime.default-java-method-timeout-seconds",
+                "agent.studio.runtime.default-java-method-timeout-seconds",
                 SettingValueType.NUMBER,
                 true,
                 "Java 方法节点默认超时（秒）",
                 properties -> String.valueOf(properties.getRuntime().getDefaultJavaMethodTimeoutSeconds())
         ));
         register(catalog, new SettingCatalogItem(
-                "myagent.runtime.default-external-agent-timeout-seconds",
+                "agent.studio.runtime.default-external-agent-timeout-seconds",
                 SettingValueType.NUMBER,
                 true,
                 "外部 Agent 节点默认超时（秒）",
                 properties -> String.valueOf(properties.getRuntime().getDefaultExternalAgentTimeoutSeconds())
         ));
         register(catalog, new SettingCatalogItem(
-                "myagent.runtime.default-max-steps",
+                "agent.studio.runtime.default-max-steps",
                 SettingValueType.NUMBER,
                 true,
                 "默认最大步数",
                 properties -> String.valueOf(properties.getRuntime().getDefaultMaxSteps())
         ));
         register(catalog, new SettingCatalogItem(
-                "myagent.runtime.default-max-agent-call-depth",
+                "agent.studio.runtime.default-max-agent-call-depth",
                 SettingValueType.NUMBER,
                 true,
                 "默认最大 Agent 调用深度",
@@ -123,12 +110,6 @@ public class SettingsCatalog {
      * @return 白名单项
      */
     public SettingCatalogItem getRequired(String settingKey) {
-        if (Objects.equals(DEPRECATED_RUNTIME_TIMEOUT_KEY, settingKey)) {
-            throw new BizException(
-                    ErrorCode.INVALID_ARGUMENT,
-                    "旧配置键 myagent.runtime.default-timeout-seconds 已废弃，必须改用细分后的运行时配置键。"
-            );
-        }
         SettingCatalogItem item = items.get(settingKey);
         if (item == null) {
             throw new BizException(
@@ -161,10 +142,12 @@ public class SettingsCatalog {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, "设置值不能为空。");
         }
         switch (item.getValueType()) {
-            case STRING -> validateString(item, settingValue);
             case NUMBER -> validateNumber(item, settingValue);
             case BOOLEAN -> validateBoolean(settingValue);
             case JSON -> validateJson(settingValue);
+            case STRING -> {
+                throw new BizException(ErrorCode.INVALID_ARGUMENT, "当前白名单不支持字符串类型设置。");
+            }
             default -> throw new BizException(ErrorCode.INVALID_ARGUMENT, "未知的设置值类型。");
         }
     }
@@ -177,18 +160,6 @@ public class SettingsCatalog {
      */
     private void register(Map<String, SettingCatalogItem> catalog, SettingCatalogItem item) {
         catalog.put(item.getSettingKey(), item);
-    }
-
-    /**
-     * 校验字符串值。
-     *
-     * @param item 白名单项
-     * @param settingValue 设置值
-     */
-    private void validateString(SettingCatalogItem item, String settingValue) {
-        if (settingValue.isBlank()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, item.getDescription() + "不能为空。");
-        }
     }
 
     /**

@@ -5,6 +5,7 @@ import {
   ApiOutlined,
   AppstoreOutlined,
   BranchesOutlined,
+  CloudServerOutlined,
   DatabaseOutlined,
   ExperimentOutlined,
   PlayCircleOutlined,
@@ -23,6 +24,7 @@ const menuItems = [
   { key: "/methods", icon: <ApiOutlined />, label: "Java 方法" },
   { key: "/tools", icon: <ApartmentOutlined />, label: "工具目录" },
   { key: "/external-agents", icon: <BranchesOutlined />, label: "外部 Agent" },
+  { key: "/model-providers", icon: <CloudServerOutlined />, label: "模型供应商" },
   { key: "/evals", icon: <ExperimentOutlined />, label: "节点验收" },
   { key: "/settings", icon: <SettingOutlined />, label: "系统设置" }
 ];
@@ -43,10 +45,10 @@ export function AppLayout({ children }: PropsWithChildren) {
         <div className="brand-panel">
           <Typography.Text className="brand-kicker">V1 管理控制台</Typography.Text>
           <Typography.Title level={4} className="brand-title">
-            MyAgent 管理台
+            Agent Studio 管理台
           </Typography.Title>
           <Typography.Paragraph className="brand-desc">
-            统一管理 Agent、工作流版本、运行记录、节点验收与平台主数据。
+            统一管理 Agent、工作流版本、运行记录、模型目录、节点验收与平台主数据。
           </Typography.Paragraph>
         </div>
         <Menu

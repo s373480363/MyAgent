@@ -27,9 +27,9 @@ public final class UpdateAgentRequest {
     private String systemPrompt;
 
     /**
-     * 默认模型。
+     * 默认模型供应项标识。
      */
-    private String defaultModel;
+    private String defaultModelOfferingKey;
 
     /**
      * 温度。
@@ -72,12 +72,12 @@ public final class UpdateAgentRequest {
         this.systemPrompt = systemPrompt;
     }
 
-    public String getDefaultModel() {
-        return defaultModel;
+    public String getDefaultModelOfferingKey() {
+        return defaultModelOfferingKey;
     }
 
-    public void setDefaultModel(String defaultModel) {
-        this.defaultModel = defaultModel;
+    public void setDefaultModelOfferingKey(String defaultModelOfferingKey) {
+        this.defaultModelOfferingKey = defaultModelOfferingKey;
     }
 
     public BigDecimal getTemperature() {

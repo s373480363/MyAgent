@@ -28,7 +28,7 @@ public class PingController {
      *
      * @param serviceName 当前服务名称
      */
-    public PingController(@Value("${spring.application.name:myagent-backend}") String serviceName) {
+    public PingController(@Value("${spring.application.name:agent-studio-api}") String serviceName) {
         this.serviceName = serviceName;
     }
 

@@ -1,13 +1,13 @@
 param(
-    [string]$BaseUrl = $env:MYAGENT_OPENAPI_BASE_URL,
-    [string]$OutputPath = "openapi/myagent-openapi.json"
+    [string]$BaseUrl = $env:AGENT_STUDIO_OPENAPI_BASE_URL,
+    [string]$OutputPath = "openapi/agent-studio-openapi.json"
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
-    $BaseUrl = "http://127.0.0.1:8080"
+    $BaseUrl = "http://127.0.0.1:18080"
 }
 
 $outputDir = Split-Path -Parent $OutputPath

@@ -48,7 +48,7 @@ class DefaultSchemaApplicationServiceTests {
                 "摘要输入",
                 "摘要输入结构",
                 objectSchema(),
-                "com.myagent.schema.SummaryInput",
+                "syc.agentstudio.example.SummaryInput",
                 SchemaCreatedFrom.AGENT_INPUT,
                 null
         ));

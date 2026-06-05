@@ -1,21 +1,9 @@
 package com.myagent.model;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.ResponseFormat;
-import org.springframework.beans.factory.ObjectProvider;
+import com.myagent.modelcatalog.application.ModelRouteResolver;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 默认 OpenAI 模型网关。
@@ -24,27 +12,41 @@ import java.util.List;
 public class DefaultOpenAiModelGateway implements OpenAiModelGateway {
 
     /**
-     * JSON 对象映射器。
+     * 模型运行路由解析器。
      */
-    private final ObjectMapper objectMapper;
+    private final ModelRouteResolver modelRouteResolver;
 
     /**
-     * OpenAI ChatModel 延迟提供器。
+     * OpenAI-compatible 模型调用器。
      */
-    private final ObjectProvider<OpenAiChatModel> chatModelProvider;
+    private final OpenAiCompatibleModelInvoker openAiCompatibleModelInvoker;
 
     /**
      * 构造模型网关。
      *
-     * @param objectMapper JSON 对象映射器
-     * @param chatModelProvider OpenAI ChatModel 延迟提供器
+     * @param modelRouteResolver 模型运行路由解析器
+     * @param openAiCompatibleModelInvoker OpenAI-compatible 模型调用器
      */
     public DefaultOpenAiModelGateway(
-            ObjectMapper objectMapper,
-            ObjectProvider<OpenAiChatModel> chatModelProvider
+            ModelRouteResolver modelRouteResolver,
+            OpenAiCompatibleModelInvoker openAiCompatibleModelInvoker
     ) {
-        this.objectMapper = objectMapper;
-        this.chatModelProvider = chatModelProvider;
+        this.modelRouteResolver = modelRouteResolver;
+        this.openAiCompatibleModelInvoker = openAiCompatibleModelInvoker;
+    }
+
+    @Override
+    public ModelRequestTracePayload resolveRequestTracePayload(ModelInvocationRequest request) {
+        ResolvedModelRoute route = resolveRoute(request);
+        return new ModelRequestTracePayload(
+                route.providerKey(),
+                route.providerName(),
+                route.offeringKey(),
+                route.modelKey(),
+                route.upstreamModelName(),
+                resolvedTemperature(request, route),
+                request.structuredOutput()
+        );
     }
 
     /**
@@ -55,74 +57,33 @@ public class DefaultOpenAiModelGateway implements OpenAiModelGateway {
      */
     @Override
     public ModelInvocationResult invoke(ModelInvocationRequest request) {
-        long startedAt = System.nanoTime();
-        OpenAiChatModel chatModel = chatModelProvider.getIfAvailable();
-        if (chatModel == null) {
-            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "OpenAI 模型客户端未配置。");
-        }
-        try {
-            ChatResponse response = chatModel.call(toPrompt(request));
-            String rawText = response.getResult().getOutput().getText();
-            return new ModelInvocationResult(
-                    parseOutput(rawText, request.structuredOutput()),
-                    rawText,
-                    elapsedMillis(startedAt)
-            );
-        } catch (BizException exception) {
-            throw exception;
-        } catch (Exception exception) {
-            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "模型调用失败：" + exception.getMessage());
-        }
+        return openAiCompatibleModelInvoker.invoke(resolveRoute(request), request);
     }
 
     /**
-     * 构造 Spring AI Prompt。
+     * 解析正式运行路由。
      *
      * @param request 模型调用请求
-     * @return Prompt
+     * @return 已解析路由
      */
-    private Prompt toPrompt(ModelInvocationRequest request) {
-        List<Message> messages = new ArrayList<>();
-        if (request.systemPrompt() != null && !request.systemPrompt().isBlank()) {
-            messages.add(new SystemMessage(request.systemPrompt()));
+    private ResolvedModelRoute resolveRoute(ModelInvocationRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "模型调用请求不能为空。");
         }
-        messages.add(new UserMessage(request.userPrompt() == null ? "" : request.userPrompt()));
-        OpenAiChatOptions.Builder optionsBuilder = OpenAiChatOptions.builder()
-                .model(request.model());
-        if (request.temperature() != null) {
-            optionsBuilder.temperature(request.temperature().doubleValue());
+        if (request.modelOfferingKey() == null || request.modelOfferingKey().isBlank()) {
+            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "模型供应项未配置，无法执行当前模型调用。");
         }
-        if (request.structuredOutput()) {
-            optionsBuilder.responseFormat(ResponseFormat.builder().type(ResponseFormat.Type.JSON_OBJECT).build());
-        }
-        return new Prompt(messages, optionsBuilder.build());
+        return modelRouteResolver.resolveForInvocation(request.modelOfferingKey().trim());
     }
 
     /**
-     * 解析模型输出。
+     * 计算最终温度。
      *
-     * @param rawText 模型原始文本
-     * @param structuredOutput 是否结构化输出
-     * @return 业务输出 JSON
+     * @param request 模型调用请求
+     * @param route 已解析路由
+     * @return 最终温度
      */
-    private com.fasterxml.jackson.databind.JsonNode parseOutput(String rawText, boolean structuredOutput) {
-        if (!structuredOutput) {
-            return objectMapper.getNodeFactory().textNode(rawText == null ? "" : rawText);
-        }
-        try {
-            return objectMapper.readTree(rawText == null ? "" : rawText);
-        } catch (Exception exception) {
-            throw new BizException(ErrorCode.NODE_EXECUTION_FAILED, "模型结构化输出解析失败：" + exception.getMessage());
-        }
-    }
-
-    /**
-     * 计算耗时毫秒。
-     *
-     * @param startedAtNanos 开始纳秒
-     * @return 耗时毫秒
-     */
-    private long elapsedMillis(long startedAtNanos) {
-        return java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos);
+    private java.math.BigDecimal resolvedTemperature(ModelInvocationRequest request, ResolvedModelRoute route) {
+        return request.temperature() == null ? route.defaultTemperature() : request.temperature();
     }
 }

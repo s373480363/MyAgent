@@ -5,9 +5,11 @@ import com.myagent.agent.repository.AgentRecord;
 import com.myagent.agent.repository.AgentRepository;
 import com.myagent.common.api.ApiError;
 import com.myagent.common.domain.EnableStatus;
+import com.myagent.common.error.BizException;
 import com.myagent.common.error.ErrorCode;
 import com.myagent.externalagent.repository.ExternalAgentRepository;
 import com.myagent.method.repository.JavaMethodRepository;
+import com.myagent.modelcatalog.application.ModelRouteResolver;
 import com.myagent.schema.repository.SchemaRepository;
 import com.myagent.tool.repository.ToolRepository;
 import com.myagent.workflow.application.result.WorkflowValidationIssueResult;
@@ -59,6 +61,11 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
     private final AgentRepository agentRepository;
 
     /**
+     * 模型路由解析器。
+     */
+    private final ModelRouteResolver modelRouteResolver;
+
+    /**
      * 映射校验服务。
      */
     private final WorkflowMappingValidationService workflowMappingValidationService;
@@ -71,6 +78,7 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
      * @param toolRepository 工具仓储
      * @param externalAgentRepository 外部 Agent 仓储
      * @param agentRepository Agent 仓储
+     * @param modelRouteResolver 模型路由解析器
      * @param workflowMappingValidationService 映射校验服务
      */
     public DefaultWorkflowDraftValidationService(
@@ -79,6 +87,7 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
             ToolRepository toolRepository,
             ExternalAgentRepository externalAgentRepository,
             AgentRepository agentRepository,
+            ModelRouteResolver modelRouteResolver,
             WorkflowMappingValidationService workflowMappingValidationService
     ) {
         this.schemaRepository = schemaRepository;
@@ -86,6 +95,7 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
         this.toolRepository = toolRepository;
         this.externalAgentRepository = externalAgentRepository;
         this.agentRepository = agentRepository;
+        this.modelRouteResolver = modelRouteResolver;
         this.workflowMappingValidationService = workflowMappingValidationService;
     }
 
@@ -403,8 +413,32 @@ public class DefaultWorkflowDraftValidationService implements WorkflowDraftValid
         if (hasField(config, "prompt") || hasField(config, "promptTemplate")) {
             issues.add(issue("$.nodes", "提示词节点不允许使用旧 prompt/promptTemplate 字段。", detail("$.nodes[*].config", "deprecated_field", "请改用 userPromptTemplate/systemPromptTemplate。", node.getNodeId())));
         }
+        if (hasField(config, "model")) {
+            issues.add(issue("$.nodes", "提示词节点不允许使用旧 model 字段。", detail("$.nodes[*].config.model", "deprecated_field", "请改用 modelOfferingKey。", node.getNodeId())));
+        }
         if (!hasText(config, "userPromptTemplate")) {
             issues.add(issue("$.nodes", "提示词节点必须配置 userPromptTemplate。", detail("$.nodes[*].config.userPromptTemplate", "missing_prompt", "用户提示词模板缺失。", node.getNodeId())));
+        }
+        String modelOfferingKey = textValue(config, "modelOfferingKey");
+        if (isBlank(modelOfferingKey)) {
+            modelOfferingKey = agent.defaultModelOfferingKey();
+        }
+        if (isBlank(modelOfferingKey)) {
+            issues.add(issue(
+                    "$.nodes",
+                    "提示词节点缺少可解析的模型供应项。",
+                    detail("$.nodes[*].config.modelOfferingKey", "required", "请配置节点 modelOfferingKey 或 Agent 默认模型供应项。", node.getNodeId())
+            ));
+            return;
+        }
+        try {
+            modelRouteResolver.validatePublishable(modelOfferingKey);
+        } catch (BizException exception) {
+            issues.add(issue(
+                    "$.nodes",
+                    "提示词节点引用的模型供应项不可发布。",
+                    detail("$.nodes[*].config.modelOfferingKey", "not_publishable", exception.getMessage(), modelOfferingKey)
+            ));
         }
     }
 

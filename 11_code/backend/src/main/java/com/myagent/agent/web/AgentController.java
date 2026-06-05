@@ -107,7 +107,7 @@ public class AgentController {
                         request.getName(),
                         request.getDescription(),
                         request.getSystemPrompt(),
-                        request.getDefaultModel(),
+                        request.getDefaultModelOfferingKey(),
                         request.getTemperature(),
                         request.getTimeoutSeconds(),
                         request.getMaxSteps()
@@ -143,7 +143,7 @@ public class AgentController {
                         request.getName(),
                         request.getDescription(),
                         request.getSystemPrompt(),
-                        request.getDefaultModel(),
+                        request.getDefaultModelOfferingKey(),
                         request.getTemperature(),
                         request.getTimeoutSeconds(),
                         request.getMaxSteps()

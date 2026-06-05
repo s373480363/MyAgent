@@ -31,7 +31,7 @@ public final class CreateSchemaRequest {
     private JsonNode jsonSchema;
 
     @Size(max = 255, message = "Java 类型不能超过 255 个字符。")
-    @Schema(description = "Java 类型。", example = "com.myagent.schema.SummaryInput", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "Java 类型。", example = "syc.agentstudio.example.SummaryInput", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String javaType;
 
     @NotNull(message = "Schema 来源不能为空。")

@@ -14,39 +14,34 @@ import java.util.Map;
 public class PlatformSettingsResolver {
 
     /**
-     * 默认模型设置键。
-     */
-    public static final String DEFAULT_MODEL_KEY = "myagent.openai.default-model";
-
-    /**
      * Agent 默认总超时设置键。
      */
-    public static final String DEFAULT_AGENT_TIMEOUT_KEY = "myagent.runtime.default-agent-timeout-seconds";
+    public static final String DEFAULT_AGENT_TIMEOUT_KEY = "agent.studio.runtime.default-agent-timeout-seconds";
 
     /**
      * LLM 默认节点超时设置键。
      */
-    public static final String DEFAULT_LLM_TIMEOUT_KEY = "myagent.runtime.default-llm-timeout-seconds";
+    public static final String DEFAULT_LLM_TIMEOUT_KEY = "agent.studio.runtime.default-llm-timeout-seconds";
 
     /**
      * Java 方法默认节点超时设置键。
      */
-    public static final String DEFAULT_JAVA_METHOD_TIMEOUT_KEY = "myagent.runtime.default-java-method-timeout-seconds";
+    public static final String DEFAULT_JAVA_METHOD_TIMEOUT_KEY = "agent.studio.runtime.default-java-method-timeout-seconds";
 
     /**
      * 外部 Agent 默认节点超时设置键。
      */
-    public static final String DEFAULT_EXTERNAL_AGENT_TIMEOUT_KEY = "myagent.runtime.default-external-agent-timeout-seconds";
+    public static final String DEFAULT_EXTERNAL_AGENT_TIMEOUT_KEY = "agent.studio.runtime.default-external-agent-timeout-seconds";
 
     /**
      * 默认最大步数设置键。
      */
-    public static final String DEFAULT_MAX_STEPS_KEY = "myagent.runtime.default-max-steps";
+    public static final String DEFAULT_MAX_STEPS_KEY = "agent.studio.runtime.default-max-steps";
 
     /**
      * 默认最大 Agent 调用深度设置键。
      */
-    public static final String DEFAULT_MAX_AGENT_CALL_DEPTH_KEY = "myagent.runtime.default-max-agent-call-depth";
+    public static final String DEFAULT_MAX_AGENT_CALL_DEPTH_KEY = "agent.studio.runtime.default-max-agent-call-depth";
 
     /**
      * 系统设置仓储。
@@ -70,20 +65,6 @@ public class PlatformSettingsResolver {
     ) {
         this.systemSettingRepository = systemSettingRepository;
         this.settingsProperties = settingsProperties;
-    }
-
-    /**
-     * 返回默认模型。
-     *
-     * @return 默认模型
-     */
-    public String resolveDefaultModel() {
-        Map<String, SystemSettingRecord> records = systemSettingRepository.findByKeys(java.util.List.of(DEFAULT_MODEL_KEY));
-        SystemSettingRecord record = records.get(DEFAULT_MODEL_KEY);
-        if (record != null && record.settingValue() != null && !record.settingValue().isBlank()) {
-            return record.settingValue().trim();
-        }
-        return settingsProperties.getOpenai().getDefaultModel();
     }
 
     /**

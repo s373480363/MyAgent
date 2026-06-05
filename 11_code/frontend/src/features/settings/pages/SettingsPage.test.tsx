@@ -14,11 +14,11 @@ describe("SettingsPage", () => {
         success: true,
         data: [
           {
-            settingKey: "myagent.openai.default-model",
-            settingValue: "gpt-4.1-mini",
-            valueType: "STRING",
+            settingKey: "agent.studio.runtime.default-llm-timeout-seconds",
+            settingValue: "120",
+            valueType: "INTEGER",
             editable: true,
-            description: "默认模型",
+            description: "默认 LLM 超时时间",
             source: "SYSTEM_SETTING"
           }
         ]
@@ -43,7 +43,7 @@ describe("SettingsPage", () => {
       </QueryClientProvider>
     );
 
-    expect(await screen.findByText("myagent.openai.default-model")).toBeInTheDocument();
-    expect(screen.getByText("gpt-4.1-mini")).toBeInTheDocument();
+    expect(await screen.findByText("agent.studio.runtime.default-llm-timeout-seconds")).toBeInTheDocument();
+    expect(screen.getByText("120")).toBeInTheDocument();
   });
 });

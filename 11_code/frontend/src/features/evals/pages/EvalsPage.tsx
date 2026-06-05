@@ -23,6 +23,7 @@ import {
 import { queryClient } from "../../../app/queryClient";
 import { JsonBlock, parseJsonText, stringifyJson } from "../../../shared/components/JsonBlock";
 import { JsonTextArea } from "../../../shared/components/JsonTextArea";
+import { ModelOfferingSelect } from "../../../shared/components/ModelOfferingSelect";
 import { PageState } from "../../../shared/components/PageState";
 import { StatusTag } from "../../../shared/components/StatusTag";
 
@@ -34,7 +35,10 @@ type CaseFormValues = {
   inputText?: string;
   referenceAnswerText?: string;
   assertionsText?: string;
-  scoreRuleText?: string;
+  scoreRuleEnabled?: boolean;
+  scoreRuleModelOfferingKey?: string;
+  scoreRuleTemperature?: number | null;
+  scoreRulePromptTemplate?: string;
   critical?: boolean;
   description?: string;
 };
@@ -514,8 +518,25 @@ function SuiteDrawer({
           <Form.Item name="assertionsText" label="确定性断言 JSON">
             <JsonTextArea rows={5} />
           </Form.Item>
-          <Form.Item name="scoreRuleText" label="可选 LLM 评分规则 JSON">
-            <JsonTextArea rows={5} />
+          <Form.Item name="scoreRuleEnabled" valuePropName="checked">
+            <Checkbox>启用 LLM 辅助评分</Checkbox>
+          </Form.Item>
+          <Form.Item name="scoreRuleModelOfferingKey" label="评分模型供应项">
+            <ModelOfferingSelect dataTestId="eval-score-rule-model-offering-select" />
+          </Form.Item>
+          <Form.Item name="scoreRuleTemperature" label="评分温度">
+            <InputNumber
+              min={0}
+              max={2}
+              step={0.1}
+              style={{ width: "100%" }}
+            />
+          </Form.Item>
+          <Form.Item name="scoreRulePromptTemplate" label="评分提示词模板">
+            <Input.TextArea
+              rows={4}
+              placeholder="留空时后端会使用默认评分提示词模板。"
+            />
           </Form.Item>
           <Form.Item name="critical" valuePropName="checked">
             <Checkbox>关键用例</Checkbox>
@@ -543,7 +564,10 @@ function SuiteDrawer({
       inputText: stringifyJson({}),
       referenceAnswerText: stringifyJson({}),
       assertionsText: stringifyJson([]),
-      scoreRuleText: stringifyJson({})
+      scoreRuleEnabled: false,
+      scoreRuleModelOfferingKey: undefined,
+      scoreRuleTemperature: undefined,
+      scoreRulePromptTemplate: undefined
     });
     setCaseMode("create");
   }
@@ -564,7 +588,7 @@ function SuiteDrawer({
       inputText: stringifyJson(record.input ?? {}),
       referenceAnswerText: stringifyJson(record.referenceAnswer ?? {}),
       assertionsText: stringifyJson(record.assertions ?? []),
-      scoreRuleText: stringifyJson(record.scoreRule ?? {}),
+      ...toScoreRuleFormValues(record.scoreRule),
       critical: record.critical,
       description: record.description
     });
@@ -600,7 +624,7 @@ function SuiteDrawer({
         input: parseOptionalJson(values.inputText),
         referenceAnswer: parseOptionalJson(values.referenceAnswerText),
         assertions: parseOptionalJson(values.assertionsText),
-        scoreRule: parseOptionalJson(values.scoreRuleText),
+        scoreRule: buildScoreRule(values),
         critical: values.critical,
         description: values.description
       };
@@ -735,4 +759,108 @@ function parseOptionalJson(text?: string) {
     return undefined;
   }
   return parseJsonText(text);
+}
+
+/**
+ * 将评分规则转换为表单字段。
+ *
+ * @param scoreRule 评分规则
+ * @returns 表单字段
+ */
+function toScoreRuleFormValues(scoreRule: unknown): Pick<
+  CaseFormValues,
+  "scoreRuleEnabled" | "scoreRuleModelOfferingKey" | "scoreRuleTemperature" | "scoreRulePromptTemplate"
+> {
+  const rule = isJsonObject(scoreRule) ? scoreRule : undefined;
+  return {
+    scoreRuleEnabled: readBoolean(rule, "enabled"),
+    scoreRuleModelOfferingKey: readText(rule, "modelOfferingKey"),
+    scoreRuleTemperature: readNumber(rule, "temperature"),
+    scoreRulePromptTemplate: readText(rule, "promptTemplate")
+  };
+}
+
+/**
+ * 根据表单字段构建正式评分规则。
+ *
+ * @param values 表单字段
+ * @returns 评分规则；未配置时返回 undefined
+ */
+function buildScoreRule(values: CaseFormValues) {
+  const modelOfferingKey = emptyToUndefined(values.scoreRuleModelOfferingKey);
+  const promptTemplate = emptyToUndefined(values.scoreRulePromptTemplate);
+  const hasTemperature = typeof values.scoreRuleTemperature === "number" && Number.isFinite(values.scoreRuleTemperature);
+  if (!values.scoreRuleEnabled && !modelOfferingKey && !promptTemplate && !hasTemperature) {
+    return undefined;
+  }
+  const scoreRule: Record<string, unknown> = {
+    enabled: Boolean(values.scoreRuleEnabled)
+  };
+  if (modelOfferingKey) {
+    scoreRule.modelOfferingKey = modelOfferingKey;
+  }
+  if (promptTemplate) {
+    scoreRule.promptTemplate = promptTemplate;
+  }
+  if (hasTemperature) {
+    scoreRule.temperature = values.scoreRuleTemperature;
+  }
+  return scoreRule;
+}
+
+/**
+ * 读取文本字段。
+ *
+ * @param source 源对象
+ * @param key 字段名
+ * @returns 文本值
+ */
+function readText(source: Record<string, unknown> | undefined, key: string) {
+  const value = source?.[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * 读取数字字段。
+ *
+ * @param source 源对象
+ * @param key 字段名
+ * @returns 数字值
+ */
+function readNumber(source: Record<string, unknown> | undefined, key: string) {
+  const value = source?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * 读取布尔字段。
+ *
+ * @param source 源对象
+ * @param key 字段名
+ * @returns 布尔值
+ */
+function readBoolean(source: Record<string, unknown> | undefined, key: string) {
+  const value = source?.[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+/**
+ * 空字符串转 undefined。
+ *
+ * @param value 输入值
+ * @returns 转换结果
+ */
+function emptyToUndefined(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+/**
+ * 判断是否普通 JSON 对象。
+ *
+ * @param value 待判断值
+ * @returns 普通对象返回 true
+ */
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

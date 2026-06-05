@@ -85,7 +85,7 @@ EvalRun 是一次验收执行。
 - evalSuiteId
 - workflowVersionId
 - nodeId
-- model
+- modelOfferingKey
 - startedAt
 - finishedAt
 - status

@@ -6,6 +6,14 @@ package com.myagent.model;
 public interface OpenAiModelGateway {
 
     /**
+     * 构造模型请求 Trace 白名单载荷。
+     *
+     * @param request 模型调用请求
+     * @return Trace 白名单载荷
+     */
+    ModelRequestTracePayload resolveRequestTracePayload(ModelInvocationRequest request);
+
+    /**
      * 调用模型。
      *
      * @param request 模型调用请求

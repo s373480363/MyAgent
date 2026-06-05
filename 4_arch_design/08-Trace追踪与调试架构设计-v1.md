@@ -63,8 +63,8 @@ Trace 是平台核心能力。每次运行必须能回答：
 
 | 类型 | 说明 |
 |------|------|
-| MODEL_REQUEST | OpenAI 请求前，保存模型、参数、系统提示词、用户提示词全文 |
-| MODEL_RESPONSE | OpenAI 响应后，保存模型输出全文、耗时、token 信息 |
+| MODEL_REQUEST | 模型供应商请求前，保存供应商、供应项、模型参数、系统提示词、用户提示词全文 |
+| MODEL_RESPONSE | 模型供应商响应后，保存模型输出全文、耗时、token 信息 |
 | SCHEMA_VALIDATION | Schema 校验结果，失败时包含字段路径和中文错误 |
 | CONDITION_DECISION | CONDITION 正常求值后的命中分支和下一节点；求值异常时记录失败事件 |
 | JAVA_METHOD_CALL | Java 方法标识、入参、出参、耗时、异常摘要 |
@@ -98,7 +98,7 @@ V1 默认保存模型提示词和模型输出全文。该策略的影响：
 - 会增加 PostgreSQL 存储体积。
 - 可能保存业务敏感内容。
 - 成立前提是 V1 本机或内网单用户部署，不直接暴露公网。
-- 预留配置项 `myagent.trace.persist-full-model-content=true`，V1 默认开启。
+- 预留配置项 `agent.studio.trace.persist-full-model-content=true`，V1 默认开启。
 - 后续若进入多人共享或公网部署，必须重新设计脱敏、清理和访问控制。
 
 ## 8. 调试页面

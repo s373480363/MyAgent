@@ -18,6 +18,7 @@ import com.myagent.method.runtime.JavaMethodDescriptor;
 import com.myagent.method.runtime.JavaMethodInvoker;
 import com.myagent.method.runtime.JavaMethodRegistry;
 import com.myagent.model.ModelInvocationResult;
+import com.myagent.model.ModelRequestTracePayload;
 import com.myagent.model.OpenAiModelGateway;
 import com.myagent.run.application.query.ListRunsQuery;
 import com.myagent.run.domain.RunStatus;
@@ -109,6 +110,15 @@ class NodeExecutorRuntimeSemanticsTests {
     void llmUsesFormalPromptTemplates() throws Exception {
         OpenAiModelGateway modelGateway = mock(OpenAiModelGateway.class);
         LlmNodeExecutor executor = new LlmNodeExecutor(objectMapper, modelGateway);
+        when(modelGateway.resolveRequestTracePayload(any())).thenReturn(new ModelRequestTracePayload(
+                "openai",
+                "OpenAI",
+                "openai.gpt_test",
+                "gpt_test",
+                "gpt-test",
+                new BigDecimal("0.5"),
+                false
+        ));
         when(modelGateway.invoke(any())).thenReturn(new ModelInvocationResult(
                 objectMapper.getNodeFactory().textNode("完成"),
                 "完成",
@@ -119,7 +129,7 @@ class NodeExecutorRuntimeSemanticsTests {
                 WorkflowNodeType.LLM,
                 """
                         {
-                          "model": "gpt-test",
+                          "modelOfferingKey": "openai.gpt_test",
                           "temperature": 0.5,
                           "systemPromptTemplate": "系统 {agentKey}",
                           "userPromptTemplate": "输入 {inputJson}"
@@ -129,7 +139,7 @@ class NodeExecutorRuntimeSemanticsTests {
 
         assertThat(result.status()).isEqualTo(RunStatus.SUCCESS);
         verify(modelGateway).invoke(argThat(request ->
-                "gpt-test".equals(request.model())
+                "openai.gpt_test".equals(request.modelOfferingKey())
                         && request.systemPrompt().contains("source-agent")
                         && request.userPrompt().contains("\"question\":\"你好\"")
                         && request.temperature().compareTo(new BigDecimal("0.5")) == 0
@@ -145,6 +155,15 @@ class NodeExecutorRuntimeSemanticsTests {
     void reviewWritesModelResponseBeforeSchemaValidationFailure() throws Exception {
         OpenAiModelGateway modelGateway = mock(OpenAiModelGateway.class);
         ReviewNodeExecutor executor = new ReviewNodeExecutor(objectMapper, modelGateway);
+        when(modelGateway.resolveRequestTracePayload(any())).thenReturn(new ModelRequestTracePayload(
+                "openai",
+                "OpenAI",
+                "openai.gpt_test",
+                "gpt_test",
+                "gpt-test",
+                BigDecimal.ZERO,
+                true
+        ));
         when(modelGateway.invoke(any())).thenReturn(new ModelInvocationResult(
                 objectMapper.readTree("{\"unexpected\":true}"),
                 "{\"unexpected\":true}",
@@ -200,6 +219,15 @@ class NodeExecutorRuntimeSemanticsTests {
     @Test
     void nodeRunnerPreservesProducedOutputWhenOutputSchemaFails() throws Exception {
         OpenAiModelGateway modelGateway = mock(OpenAiModelGateway.class);
+        when(modelGateway.resolveRequestTracePayload(any())).thenReturn(new ModelRequestTracePayload(
+                "openai",
+                "OpenAI",
+                "openai.gpt_test",
+                "gpt_test",
+                "gpt-test",
+                BigDecimal.ZERO,
+                true
+        ));
         when(modelGateway.invoke(any())).thenReturn(new ModelInvocationResult(
                 objectMapper.readTree("{\"unexpected\":true}"),
                 "{\"unexpected\":true}",
@@ -928,7 +956,7 @@ class NodeExecutorRuntimeSemanticsTests {
                 "",
                 EnableStatus.ENABLED,
                 "",
-                "gpt-4.1-mini",
+                "openai.gpt_4_1_mini",
                 BigDecimal.ZERO,
                 600,
                 30,

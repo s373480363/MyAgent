@@ -12,13 +12,15 @@ import {
   type Schema
 } from "../../../api/domainApi";
 import { queryClient } from "../../../app/queryClient";
+import { ModelOfferingSelect } from "../../../shared/components/ModelOfferingSelect";
 import { PageState } from "../../../shared/components/PageState";
 import { StatusTag } from "../../../shared/components/StatusTag";
 
 type AgentFormMode = "create" | "edit";
+type AgentFormValues = Schema["CreateAgentRequest"] & Schema["UpdateAgentRequest"];
 
 /**
- * Agent 管理页面。
+ * Agent 管理页。
  */
 export function AgentsPage() {
   const { message } = App.useApp();
@@ -26,7 +28,8 @@ export function AgentsPage() {
   const [page, setPage] = useState(1);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [formMode, setFormMode] = useState<AgentFormMode | null>(null);
-  const [form] = Form.useForm<Schema["CreateAgentRequest"] & Schema["UpdateAgentRequest"]>();
+  const [form] = Form.useForm<AgentFormValues>();
+
   const agentsQuery = useQuery({
     queryKey: ["agents", page],
     queryFn: () => listAgents({ page, pageSize: 20 })
@@ -41,6 +44,7 @@ export function AgentsPage() {
     queryFn: () => listWorkflowVersions(selectedAgentId ?? 0, { page: 1, pageSize: 20 }),
     enabled: Boolean(selectedAgentId)
   });
+
   const createMutation = useMutation({
     mutationFn: createAgent,
     onSuccess: (result) => {
@@ -69,17 +73,18 @@ export function AgentsPage() {
   });
 
   useEffect(() => {
-    if (formMode === "edit" && detailQuery.data) {
-      form.setFieldsValue({
-        name: detailQuery.data.name,
-        description: detailQuery.data.description,
-        systemPrompt: detailQuery.data.systemPrompt,
-        defaultModel: detailQuery.data.defaultModel,
-        temperature: detailQuery.data.temperature,
-        timeoutSeconds: detailQuery.data.timeoutSeconds,
-        maxSteps: detailQuery.data.maxSteps
-      });
+    if (formMode !== "edit" || !detailQuery.data) {
+      return;
     }
+    form.setFieldsValue({
+      name: detailQuery.data.name,
+      description: detailQuery.data.description,
+      systemPrompt: detailQuery.data.systemPrompt,
+      defaultModelOfferingKey: detailQuery.data.defaultModelOfferingKey,
+      temperature: detailQuery.data.temperature,
+      timeoutSeconds: detailQuery.data.timeoutSeconds,
+      maxSteps: detailQuery.data.maxSteps
+    });
   }, [detailQuery.data, form, formMode]);
 
   if (agentsQuery.isLoading || agentsQuery.isError) {
@@ -99,10 +104,10 @@ export function AgentsPage() {
         <div>
           <Typography.Title level={3}>Agent 管理</Typography.Title>
           <Typography.Paragraph className="muted-text">
-            Agent 详情展示当前草稿、当前发布版本和历史版本入口；运行语义以 WorkflowVersion 快照为准。
+            Agent 详情展示当前草稿、当前发布和历史版本入口；LLM 默认模型改为正式模型供应项选择，不再接受自由模型名。
           </Typography.Paragraph>
         </div>
-        <Button type="primary" onClick={() => openCreateForm()}>创建 Agent</Button>
+        <Button type="primary" onClick={openCreateForm}>创建 Agent</Button>
       </section>
       <Card className="page-card">
         <Table<Schema["AgentListItemResult"]>
@@ -194,13 +199,13 @@ export function AgentsPage() {
           <Form.Item name="description" label="描述">
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item name="systemPrompt" label="系统提示词">
+          <Form.Item name="systemPrompt" label="LLM 节点默认系统提示词">
             <Input.TextArea rows={4} />
           </Form.Item>
-          <Form.Item name="defaultModel" label="默认模型">
-            <Input />
+          <Form.Item name="defaultModelOfferingKey" label="LLM 节点默认模型供应项">
+            <ModelOfferingSelect dataTestId="agent-default-model-offering-select" />
           </Form.Item>
-          <Form.Item name="temperature" label="温度">
+          <Form.Item name="temperature" label="LLM 节点默认温度">
             <InputNumber min={0} max={2} step={0.1} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="timeoutSeconds" label="默认总超时（秒）">
@@ -214,13 +219,9 @@ export function AgentsPage() {
     </Space>
   );
 
-  /**
-   * 打开创建表单。
-   */
   function openCreateForm() {
     form.resetFields();
     form.setFieldsValue({
-      defaultModel: "gpt-4.1-mini",
       temperature: 0.2,
       timeoutSeconds: 600,
       maxSteps: 30
@@ -228,17 +229,11 @@ export function AgentsPage() {
     setFormMode("create");
   }
 
-  /**
-   * 提交 Agent 表单。
-   *
-   * @param values 表单值
-   */
-  function submitForm(values: Schema["CreateAgentRequest"] & Schema["UpdateAgentRequest"]) {
+  function submitForm(values: AgentFormValues) {
     if (formMode === "create") {
       createMutation.mutate(values);
       return;
     }
-
     if (!selectedAgentId) {
       message.error("缺少 Agent 主键，无法更新。");
       return;
@@ -249,7 +244,7 @@ export function AgentsPage() {
         name: values.name,
         description: values.description,
         systemPrompt: values.systemPrompt,
-        defaultModel: values.defaultModel,
+        defaultModelOfferingKey: values.defaultModelOfferingKey,
         temperature: values.temperature,
         timeoutSeconds: values.timeoutSeconds,
         maxSteps: values.maxSteps
@@ -258,12 +253,6 @@ export function AgentsPage() {
   }
 }
 
-/**
- * Agent 详情组件。
- *
- * @param props 组件属性
- * @returns 详情展示
- */
 function AgentDetail({
   detail,
   versions,
@@ -293,8 +282,8 @@ function AgentDetail({
         <Descriptions.Item label="Agent Key">{detail?.agentKey}</Descriptions.Item>
         <Descriptions.Item label="状态"><StatusTag status={detail?.status ?? "UNKNOWN"} /></Descriptions.Item>
         <Descriptions.Item label="名称">{detail?.name}</Descriptions.Item>
-        <Descriptions.Item label="默认模型">{detail?.defaultModel}</Descriptions.Item>
-        <Descriptions.Item label="温度">{detail?.temperature ?? "-"}</Descriptions.Item>
+        <Descriptions.Item label="LLM 节点默认模型供应项">{detail?.defaultModelOfferingKey ?? "-"}</Descriptions.Item>
+        <Descriptions.Item label="LLM 节点默认温度">{detail?.temperature ?? "-"}</Descriptions.Item>
         <Descriptions.Item label="超时/步数">{detail?.timeoutSeconds} 秒 / {detail?.maxSteps} 步</Descriptions.Item>
         <Descriptions.Item label="当前草稿">{formatWorkflowSummary(detail?.currentDraftWorkflow)}</Descriptions.Item>
         <Descriptions.Item label="当前发布">{formatWorkflowSummary(detail?.currentPublishedWorkflow)}</Descriptions.Item>
@@ -303,7 +292,7 @@ function AgentDetail({
           {detail?.historyVersionSummary?.latestWorkflowVersionId ?? "-"}
         </Descriptions.Item>
         <Descriptions.Item label="描述" span={2}>{detail?.description ?? "-"}</Descriptions.Item>
-        <Descriptions.Item label="系统提示词" span={2}>{detail?.systemPrompt ?? "-"}</Descriptions.Item>
+        <Descriptions.Item label="LLM 节点默认系统提示词" span={2}>{detail?.systemPrompt ?? "-"}</Descriptions.Item>
       </Descriptions>
       <Card size="small" title="工作流版本">
         <Table<Schema["WorkflowVersionListItemResult"]>
@@ -336,12 +325,6 @@ function AgentDetail({
   );
 }
 
-/**
- * 格式化工作流摘要。
- *
- * @param value 工作流摘要
- * @returns 展示文本
- */
 function formatWorkflowSummary(value?: Schema["WorkflowVersionSummaryResult"]) {
   if (!value?.workflowVersionId) {
     return "-";

@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 /**
  * 模型调用请求。
  *
- * @param model 模型名称
+ * @param modelOfferingKey 模型供应项标识
  * @param systemPrompt 系统提示词
  * @param userPrompt 用户提示词
  * @param input 输入 JSON
@@ -15,7 +15,7 @@ import java.math.BigDecimal;
  * @param structuredOutput 是否结构化输出
  */
 public record ModelInvocationRequest(
-        String model,
+        String modelOfferingKey,
         String systemPrompt,
         String userPrompt,
         JsonNode input,

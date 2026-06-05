@@ -176,6 +176,20 @@ abstract class AbstractNodeExecutorSupport {
     }
 
     /**
+     * 解析模型供应项标识，节点未配置时回退 Agent 默认值。
+     *
+     * @param context 节点执行上下文
+     * @return 最终模型供应项标识
+     */
+    protected String resolveModelOfferingKey(NodeExecutionContext context) {
+        return readText(
+                context.nodeDefinition().getConfig(),
+                "modelOfferingKey",
+                context.agentDefinition().defaultModelOfferingKey()
+        );
+    }
+
+    /**
      * 渲染受控提示词占位符。
      *
      * @param template 模板文本

@@ -705,6 +705,8 @@
                 <span class="chip warning">WorkflowCanvas</span>
                 <span class="chip warning">TraceTimeline</span>
                 <span class="chip warning">EvalRunSummary</span>
+                <span class="chip warning">ModelProviderCatalog</span>
+                <span class="chip warning">ModelOfferingSelector</span>
               </div>
             </article>
           </div>
@@ -752,7 +754,7 @@
                   <td><strong>DataTable</strong></td>
                   <td><code>shared/components</code></td>
                   <td>P0</td>
-                  <td>承载 Agent、运行记录、Schema、方法、工具、验收集等列表。</td>
+                  <td>承载 Agent、运行记录、Schema、方法、工具、模型供应商、模型供应项、验收集等列表。</td>
                   <td>支持 loading、空态、错误态、分页、行内操作、列宽控制。</td>
                 </tr>
                 <tr>
@@ -977,7 +979,7 @@
               <h3>节点视觉规则</h3>
               <ul class="token-list">
                 <li>START、END 使用更明确的入口/出口视觉，不与普通节点混同。</li>
-                <li>LLM、REVIEW、SUMMARY 属于 LLM 类节点，可共享一组视觉家族。</li>
+                <li>LLM、REVIEW、SUMMARY 属于 LLM 类节点，可共享一组视觉家族，模型字段必须使用模型供应项选择器并展示供应商、供应项和上游模型名。</li>
                 <li>JAVA_METHOD、TOOL、EXTERNAL_AGENT、AGENT_CALL 要能看出“调用外部能力”的差异。</li>
               </ul>
             </article>

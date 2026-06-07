@@ -51,8 +51,22 @@ public class MyBatisEvalSuiteRepository implements EvalSuiteRepository {
     }
 
     @Override
-    public EvalSuiteRecord update(long suiteId, String name, String goal, BigDecimal passThreshold) {
-        return mapper.update(suiteId, name, goal == null ? "" : goal, passThreshold);
+    public EvalSuiteRecord update(
+            long suiteId,
+            String name,
+            String goal,
+            String judgeModelOfferingKey,
+            BigDecimal judgeTemperature,
+            BigDecimal passThreshold
+    ) {
+        return mapper.update(
+                suiteId,
+                name,
+                goal == null ? "" : goal,
+                judgeModelOfferingKey,
+                judgeTemperature,
+                passThreshold
+        );
     }
 
     @Override

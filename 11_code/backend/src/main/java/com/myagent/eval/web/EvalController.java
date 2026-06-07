@@ -142,6 +142,8 @@ public class EvalController {
                 request.nodeId(),
                 request.name(),
                 request.goal(),
+                request.judgeModelOfferingKey(),
+                request.judgeTemperature(),
                 request.passThreshold()
         )), null);
     }
@@ -160,7 +162,14 @@ public class EvalController {
             @Valid @RequestBody UpdateEvalSuiteRequest request
     ) {
         return new EvalSuiteApiResponse(true, evalApplicationService.updateSuite(
-                new UpdateEvalSuiteCommand(suiteId, request.name(), request.goal(), request.passThreshold())
+                new UpdateEvalSuiteCommand(
+                        suiteId,
+                        request.name(),
+                        request.goal(),
+                        request.judgeModelOfferingKey(),
+                        request.judgeTemperature(),
+                        request.passThreshold()
+                )
         ), null);
     }
 
@@ -232,9 +241,9 @@ public class EvalController {
                 request.caseNo(),
                 request.title(),
                 request.input(),
-                request.referenceAnswer(),
-                request.assertions(),
-                request.scoreRule(),
+                request.referenceSample(),
+                request.judgeRule(),
+                request.hardChecks(),
                 request.critical(),
                 request.description()
         )), null);
@@ -276,9 +285,9 @@ public class EvalController {
                 caseId,
                 request.title(),
                 request.input(),
-                request.referenceAnswer(),
-                request.assertions(),
-                request.scoreRule(),
+                request.referenceSample(),
+                request.judgeRule(),
+                request.hardChecks(),
                 request.critical(),
                 request.description()
         )), null);
@@ -349,8 +358,7 @@ public class EvalController {
     ) {
         return new EvalRunApiResponse(true, evalApplicationService.runSuite(new RunEvalSuiteCommand(
                 suiteId,
-                request.caseIds(),
-                request.includeUnconfirmed()
+                request.caseIds()
         )), null);
     }
 

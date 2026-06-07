@@ -43,7 +43,7 @@ public class V4__model_provider_catalog_routing_v1 extends BaseJavaMigration {
         LegacyOfferingMappings offeringMappings = bootstrapDefaultCatalog(connection, legacyModel);
         migrateAgentDefaultModel(connection, offeringMappings);
         migrateWorkflowNodeModels(connection, offeringMappings);
-        migrateEvalScoreRuleModels(connection, offeringMappings);
+        skipLegacyEvalCaseModelMigration();
         cleanupLegacySettings(connection);
         addForeignKeys(connection);
         dropLegacyAgentDefaultModelColumn(connection);
@@ -219,29 +219,8 @@ public class V4__model_provider_catalog_routing_v1 extends BaseJavaMigration {
      * @param defaultOfferingKey 默认供应项键
      * @throws Exception 执行失败时抛出
      */
-    private void migrateEvalScoreRuleModels(Connection connection, LegacyOfferingMappings mappings) throws Exception {
-        try (PreparedStatement query = connection.prepareStatement("""
-                select id, score_rule_json
-                from eval_case
-                order by id
-                """);
-             ResultSet resultSet = query.executeQuery()) {
-            while (resultSet.next()) {
-                long evalCaseId = resultSet.getLong("id");
-                JsonNode scoreRuleJson = objectMapper.readTree(resultSet.getString("score_rule_json"));
-                JsonNode migrated = migrateScoreRuleJson(scoreRuleJson, mappings);
-                try (PreparedStatement update = connection.prepareStatement("""
-                        update eval_case
-                        set score_rule_json = cast(? as jsonb),
-                            updated_at = now()
-                        where id = ?
-                        """)) {
-                    update.setString(1, objectMapper.writeValueAsString(migrated));
-                    update.setLong(2, evalCaseId);
-                    update.executeUpdate();
-                }
-            }
-        }
+    private void skipLegacyEvalCaseModelMigration() {
+        // Eval V1 已删除旧的用例级模型配置，本历史迁移不再处理 eval_case。
     }
 
     /**
@@ -418,16 +397,7 @@ public class V4__model_provider_catalog_routing_v1 extends BaseJavaMigration {
                 }
             }
         }
-        try (PreparedStatement query = connection.prepareStatement("""
-                select score_rule_json
-                from eval_case
-                """);
-             ResultSet resultSet = query.executeQuery()) {
-            while (resultSet.next()) {
-                JsonNode scoreRuleJson = objectMapper.readTree(resultSet.getString(1));
-                addIfNotBlank(legacyModels, textValue(scoreRuleJson.path("model")));
-            }
-        }
+        // Eval V1 已删除旧的用例级模型配置，本迁移不再从 eval_case 收集历史模型名。
         return legacyModels;
     }
 
@@ -508,25 +478,6 @@ public class V4__model_provider_catalog_routing_v1 extends BaseJavaMigration {
             migrated.add(objectNode);
         }
         return migrated;
-    }
-
-    /**
-     * 迁移评分规则 JSON。
-     *
-     * @param scoreRuleJson 评分规则
-     * @param mappings 历史映射
-     * @return 迁移后的评分规则
-     */
-    private JsonNode migrateScoreRuleJson(JsonNode scoreRuleJson, LegacyOfferingMappings mappings) {
-        if (!(scoreRuleJson instanceof ObjectNode objectNode)) {
-            return objectMapper.createObjectNode();
-        }
-        String legacyModel = trimToEmpty(textValue(objectNode.get("model")));
-        if (!legacyModel.isBlank()) {
-            objectNode.put("modelOfferingKey", mappings.resolve(legacyModel));
-        }
-        objectNode.remove("model");
-        return objectNode;
     }
 
     /**

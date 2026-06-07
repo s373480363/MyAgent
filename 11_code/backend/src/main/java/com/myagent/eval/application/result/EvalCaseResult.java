@@ -12,11 +12,11 @@ import java.time.Instant;
  * @param suiteId 套件主键
  * @param caseNo 用例编号
  * @param title 用例标题
- * @param input 输入 JSON
- * @param referenceAnswer 参考答案
- * @param assertions 断言规则
- * @param scoreRule 评分规则
- * @param critical 是否关键用例
+ * @param input 用例输入 JSON
+ * @param referenceSample 参考样例 JSON
+ * @param judgeRule 自然语言验收规则
+ * @param hardChecks 硬约束配置数组
+ * @param critical 是否为关键用例
  * @param confirmStatus 确认状态
  * @param sourceRunId 来源运行编号
  * @param sourceNodeRunId 来源 NodeRun 主键
@@ -32,9 +32,9 @@ public record EvalCaseResult(
         String caseNo,
         String title,
         JsonNode input,
-        JsonNode referenceAnswer,
-        JsonNode assertions,
-        JsonNode scoreRule,
+        JsonNode referenceSample,
+        String judgeRule,
+        JsonNode hardChecks,
         boolean critical,
         EvalCaseConfirmStatus confirmStatus,
         String sourceRunId,

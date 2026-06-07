@@ -18,7 +18,7 @@
 | 调用业务 Java 方法 | 查询业务数据、执行规则校验、格式化对象。 | JAVA_METHOD。 |
 | 调用外部 Agent | 调用 Codex、OpenCode、自研 CLI Agent 或 HTTP Agent。 | EXTERNAL_AGENT。 |
 | 创建多 Agent 协作 | 主 Agent 调用分析 Agent、总结 Agent 或审核 Agent。 | AGENT_CALL。 |
-| 维护节点验收集 | 为提示词准备输入、期望输出和断言规则。 | EvalSuite、EvalCase、EvalRun。 |
+| 维护节点验收集 | 为提示词准备输入、参考样例和自然语言验收规则。 | EvalSuite、EvalCase、EvalRun。 |
 | 调试工作流 | 查看分支选择、节点输出、失败位置。 | AgentRun、NodeRun、TraceEvent。 |
 | 对外提供 Agent 服务 | 将平台内已发布 Agent 暴露为同步 API。 | REST API、同步运行。 |
 
@@ -94,7 +94,7 @@
 - 用户手工维护验收用例。
 - 支持从历史运行转为待确认用例。
 - 支持确定性断言。
-- 支持可选 LLM 评分。
+- 支持 judge LLM 按用户定义的自然语言规则输出结构化验收结论。
 - 支持修改提示词后重跑验收集。
 
 ### 3.10 追踪调试

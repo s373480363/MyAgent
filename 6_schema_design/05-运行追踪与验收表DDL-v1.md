@@ -159,11 +159,14 @@ create table eval_suite (
   node_id varchar(128) not null,
   name varchar(200) not null,
   goal text not null default '',
+  judge_model_offering_key varchar(128) not null,
+  judge_temperature numeric(4,2) not null default 0,
   pass_threshold numeric(5,2) not null default 0,
   status varchar(20) not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint ck_eval_suite_status check (status in ('DRAFT', 'CONFIRMED', 'ARCHIVED')),
+  constraint ck_eval_suite_judge_temperature check (judge_temperature >= 0 and judge_temperature <= 2),
   constraint ck_eval_suite_pass_threshold check (pass_threshold >= 0 and pass_threshold <= 100)
 );
 ```
@@ -177,6 +180,8 @@ create table eval_suite (
 
 - `pass_threshold` 以百分比表达。
 - `node_id` 绑定到单个 LLM 类节点。
+- `judge_model_offering_key` 是本验收套件统一使用的 judge 模型供应项。
+- `judge_temperature` 是本验收套件统一使用的 judge 温度。
 - 状态流转为 `DRAFT -> CONFIRMED -> ARCHIVED`。
 - `DRAFT` 可编辑，`CONFIRMED` 可执行正式验收，`ARCHIVED` 不再参与新验收运行。
 
@@ -189,9 +194,9 @@ create table eval_case (
   case_no varchar(64) not null,
   title varchar(200) not null,
   input_json jsonb not null,
-  reference_answer_json jsonb,
-  assertions_json jsonb not null default '[]'::jsonb,
-  score_rule_json jsonb not null default '{}'::jsonb,
+  reference_sample_json jsonb,
+  judge_rule_text text not null default '',
+  hard_checks_json jsonb not null default '[]'::jsonb,
   critical boolean not null default false,
   confirm_status varchar(30) not null,
   source_agent_run_id bigint,
@@ -217,7 +222,10 @@ create table eval_case (
 
 说明：
 
-- `AI_DRAFT_PENDING` 不计入正式通过率。
+- 只有 `USER_CONFIRMED` 可以进入正式 EvalRun；`USER_CREATED` 和 `AI_DRAFT_PENDING` 不计入正式通过率。
+- `judge_rule_text` 是 LLM 节点验收主判断规则，确认正式用例前必须非空。
+- `reference_sample_json` 是参考样例，不是标准答案。
+- `hard_checks_json` 是可选硬约束，不承担自然语言质量主判断。
 - `critical=true` 的用例失败时应提升验收失败等级。
 - 从历史 NodeRun 生成的用例必须写入 `source_agent_run_id`、`source_node_run_id`、`source_workflow_version_id` 和 `source_node_id`。
 - 手工创建用例的来源字段可以为空。
@@ -268,8 +276,11 @@ create table eval_case_result (
   eval_run_id bigint not null,
   eval_case_id bigint not null,
   output_json jsonb,
-  assertion_result_json jsonb not null default '{}'::jsonb,
-  score_result_json jsonb not null default '{}'::jsonb,
+  hard_check_result_json jsonb not null default '[]'::jsonb,
+  judge_result_json jsonb,
+  judge_raw_text text,
+  judge_model_offering_key varchar(128),
+  judge_prompt_version varchar(32),
   passed boolean not null default false,
   error_message text not null default '',
   duration_ms bigint,
@@ -286,8 +297,12 @@ create table eval_case_result (
 
 说明：
 
-- `assertion_result_json` 保存每条断言的命中情况。
-- `score_result_json` 保存可选评分结果。
+- `hard_check_result_json` 保存硬约束检查结果，固定为数组结构，未配置 hardChecks 时为 `[]`。
+- `judge_result_json` 保存 judge LLM 结构化判定结果；hardChecks 失败跳过 judge 时为 null。
+- `judge_raw_text` 保存 judge 原始输出；hardChecks 失败跳过 judge 时为 null。
+- `judge_model_offering_key` 保存本次 judge 使用的模型供应项；hardChecks 失败跳过 judge 时为 null。
+- `judge_prompt_version` 保存本次 judge 使用的提示词版本；hardChecks 失败跳过 judge 时为 null。
+- 不设置顶层 `score` 列，分数只从 `judge_result_json.score` 读取。
 
 ## 10. 关系补充
 
@@ -298,6 +313,17 @@ create table eval_case_result (
 - `trace_event.node_run_id -> node_run.id`
 - `trace_event.eval_run_id -> eval_run.id`
 - `agent_message.parent_run_id -> agent_run.id`
+
+## 11. 节点验收结构切换执行策略
+
+当前系统旧数据会删除，本 DDL 是新安装和空库重建后的唯一结构。
+
+实施要求：
+
+- 直接更新当前 Flyway 基线脚本，使空库迁移后得到本文件定义的 eval_suite、eval_case 和 eval_case_result 结构。
+- Java migration 中不得再读取或更新 `reference_answer_json`、`assertions_json`、`score_rule_json`。
+- 已经应用旧迁移的本地或测试数据库必须清空后重新执行 Flyway 全量迁移。
+- 不编写旧 Eval 字段到新 Eval 字段的转换脚本。
 - `agent_message.child_run_id -> agent_run.id`
 - `eval_suite.agent_id -> agent_definition.id`
 - `eval_suite.workflow_version_id -> workflow_version.id`

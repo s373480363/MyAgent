@@ -23,6 +23,8 @@ public record CreateEvalSuiteRequest(
         @NotBlank String nodeId,
         @NotBlank String name,
         String goal,
+        @NotBlank String judgeModelOfferingKey,
+        @DecimalMin("0") @DecimalMax("2") BigDecimal judgeTemperature,
         @DecimalMin("0") @DecimalMax("100") BigDecimal passThreshold
 ) {
 }

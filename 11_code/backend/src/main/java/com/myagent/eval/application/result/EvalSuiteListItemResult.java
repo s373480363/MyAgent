@@ -25,6 +25,8 @@ public record EvalSuiteListItemResult(
         String nodeId,
         String name,
         String goal,
+        String judgeModelOfferingKey,
+        BigDecimal judgeTemperature,
         BigDecimal passThreshold,
         EvalSuiteStatus status,
         Instant updatedAt

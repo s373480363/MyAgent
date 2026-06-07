@@ -1091,6 +1091,8 @@
   "nodeId": "node_1",
   "name": "摘要节点回归集",
   "goal": "验证摘要节点在常见输入上的稳定性",
+  "judgeModelOfferingKey": "openai.gpt_4_1_mini",
+  "judgeTemperature": 0,
   "passThreshold": 80
 }
 ```
@@ -1105,6 +1107,8 @@
 {
   "name": "摘要节点回归集",
   "goal": "验证摘要节点在常见输入上的稳定性",
+  "judgeModelOfferingKey": "openai.gpt_4_1_mini",
+  "judgeTemperature": 0,
   "passThreshold": 80
 }
 ```
@@ -1122,6 +1126,7 @@
 
 - 将 `status=DRAFT` 转为 `CONFIRMED`。
 - 确认前必须至少存在一个可计入正式通过率的验收用例。
+- 确认前必须配置有效 `judgeModelOfferingKey`。
 
 ### 9.5 归档验收套件
 
@@ -1140,8 +1145,7 @@
 
 ```json
 {
-  "caseIds": [101, 102, 103],
-  "includeUnconfirmed": false
+  "caseIds": [101, 102, 103]
 }
 ```
 
@@ -1163,7 +1167,8 @@
 
 说明：
 
-- 未确认用例默认不计入正式通过率。
+- 正式验收只运行 `USER_CONFIRMED` 用例。
+- 请求中的 `caseIds` 如果包含 `USER_CREATED`、`AI_DRAFT_PENDING` 或 `ARCHIVED` 用例，接口必须返回业务错误。
 - 关键用例失败时应使验收结果明确失败。
 - `evalRunId` 是对外验收运行标识，对应数据库 `eval_run.run_no`，不是数据库自增主键。
 - `runId` 是本次验收同步创建的 `AgentRun(runType=EVAL)` 的对外运行标识，对应数据库 `agent_run.run_no`。
@@ -1199,7 +1204,9 @@
 规则：
 
 - 后端必须复制 NodeRun 输入作为用例输入。
-- 后端必须复制 NodeRun 输出作为参考答案。
+- 后端必须复制 NodeRun 输出作为参考样例 `referenceSample`。
+- 生成时 `judgeRule` 默认为空，用户补充后才能确认。
+- 生成时 `hardChecks` 默认为空数组。
 - 默认生成 `confirmStatus=AI_DRAFT_PENDING`。
 - 返回体中必须包含 `sourceRunId`、`sourceNodeRunId`、`sourceWorkflowVersionId` 和 `sourceNodeId`。
 - 其中 `sourceRunId` 对应数据库 `agent_run.run_no`，`sourceNodeRunId` 对应数据库 `node_run.id`；数据库内部仍写入 `eval_case.source_agent_run_id -> agent_run.id` 作为外键来源。
@@ -1217,21 +1224,16 @@
   "input": {
     "question": "请总结这段文本"
   },
-  "referenceAnswer": {
+  "referenceSample": {
     "summary": "参考摘要"
   },
-  "assertions": [
+  "judgeRule": "判断摘要是否覆盖输入中的关键事实，不得编造输入中不存在的信息，语言应简洁清楚。",
+  "hardChecks": [
     {
       "type": "JSON_PATH_EXISTS",
       "path": "$.summary"
     }
   ],
-  "scoreRule": {
-    "enabled": true,
-    "modelOfferingKey": "openai.gpt_4_1_mini",
-    "temperature": 0,
-    "promptTemplate": "请根据输入、参考答案、实际输出和断言结果给出评分 JSON：{payload}"
-  },
   "critical": false,
   "description": "验证摘要字段存在"
 }
@@ -1240,11 +1242,65 @@
 规则：
 
 - 用户创建的用例默认 `confirmStatus=USER_CREATED`。
-- AI 辅助生成的用例进入保存流程时，默认 `confirmStatus=AI_DRAFT_PENDING`，用户确认前不计入正式通过率。
+- `USER_CREATED` 是手工创建但尚未确认的状态，不能进入正式 EvalRun。
+- AI 辅助生成的用例进入保存流程时，默认 `confirmStatus=AI_DRAFT_PENDING`，用户确认前不能进入正式 EvalRun。
 - 用例详情应返回来源字段；手工创建时来源字段为空。
-- `scoreRule` 为空或 `enabled=false` 时不执行 LLM 辅助评分。
-- `scoreRule.modelOfferingKey` 可空；为空时使用 Agent 默认模型供应项。
-- `scoreRule.model` 是旧字段，只允许迁移读取，不属于新接口契约。
+- `judgeRule` 是正式验收主规则，确认用例前必须非空。
+- 创建接口允许 `judgeRule` 为空，此时用例保持待确认状态；确认接口必须校验 `judgeRule` 非空。
+- `referenceSample` 是参考样例，不是标准答案。
+- `hardChecks` 是可选硬约束，不用于自然语言质量主判断。
+- judge 模型供应项来自 EvalSuite，不在 EvalCase 中重复配置。
+- `hardChecks` 必须是数组，未配置时为 `[]`。
+
+V1 hardChecks 请求结构：
+
+```json
+[
+  {
+    "type": "SCHEMA_VALIDATION"
+  },
+  {
+    "type": "JSON_PATH_EXISTS",
+    "path": "$.summary"
+  },
+  {
+    "type": "JSON_PATH_IN",
+    "path": "$.riskLevel",
+    "values": ["LOW", "MEDIUM", "HIGH"]
+  },
+  {
+    "type": "JSON_PATH_NUMBER_RANGE",
+    "path": "$.score",
+    "min": 0,
+    "max": 100
+  },
+  {
+    "type": "JSON_PATH_REGEX",
+    "path": "$.orderNo",
+    "pattern": "^[A-Z0-9-]+$"
+  },
+  {
+    "type": "JSON_PATH_CONTAINS",
+    "path": "$.summary",
+    "expected": "关键风险"
+  },
+  {
+    "type": "JSON_PATH_NOT_CONTAINS",
+    "path": "$.summary",
+    "expected": "无法判断"
+  }
+]
+```
+
+字段规则：
+
+- `SCHEMA_VALIDATION` 只需要 `type`，目标节点必须配置 outputSchema。
+- `JSON_PATH_EXISTS` 需要 `path`。
+- `JSON_PATH_IN` 需要 `path` 和非空数组 `values`；单值判断也使用该类型。
+- `JSON_PATH_NUMBER_RANGE` 需要 `path`，且 `min` 和 `max` 至少一个存在。
+- `JSON_PATH_REGEX` 需要 `path` 和合法 Java 正则 `pattern`。
+- `JSON_PATH_CONTAINS` 和 `JSON_PATH_NOT_CONTAINS` 需要 `path` 和非空字符串 `expected`。
+- 未知 `type`、缺少必填字段、字段类型错误或非法正则都必须返回业务错误。
 
 ### 9.10 更新验收用例
 
@@ -1252,8 +1308,7 @@
 
 规则：
 
-- 可更新标题、输入、参考答案、断言、评分规则、关键用例标记和描述。
-- 更新评分规则时只能写入 `scoreRule.modelOfferingKey`，不得写入 `scoreRule.model`。
+- 可更新标题、输入、参考样例、judgeRule、hardChecks、关键用例标记和描述。
 - 已归档用例不可更新。
 
 ### 9.11 查询验收用例详情
@@ -1266,8 +1321,9 @@
 
 规则：
 
-- 将 `AI_DRAFT_PENDING` 或用户未确认状态转换为 `USER_CONFIRMED`。
-- 只有用户创建或确认的用例可以计入正式通过率。
+- 将 `AI_DRAFT_PENDING` 或 `USER_CREATED` 转换为 `USER_CONFIRMED`。
+- 确认前必须存在非空 `judgeRule`。
+- 只有 `USER_CONFIRMED` 用例可以计入正式通过率。
 
 ### 9.13 归档验收用例
 
@@ -1350,7 +1406,7 @@
   "criticalFailedCaseCount": 1,
   "summary": "存在 1 条关键用例失败",
   "error": {
-    "code": "EVAL_ASSERTION_FAILED",
+    "code": "EVAL_JUDGE_RULE_FAILED",
     "message": "存在关键用例失败。"
   },
   "startedAt": "2026-05-27T10:00:00+08:00",
@@ -1410,19 +1466,26 @@
       "input": {
         "question": "请总结这段文本"
       },
-      "referenceAnswer": {
+      "referenceSample": {
         "summary": "参考摘要"
       },
       "output": null,
-      "assertionResults": [
+      "hardCheckResults": [
         {
           "type": "JSON_PATH_EXISTS",
           "passed": false,
-          "message": "$.summary 字段缺失"
+          "path": "$.summary",
+          "message": "$.summary 字段缺失。",
+          "expected": "字段存在",
+          "actual": null,
+          "details": {}
         }
       ],
-      "scoreResult": null,
-      "errorMessage": "模型输出未通过断言。",
+      "judgeResult": null,
+      "judgeRawText": null,
+      "judgeModelOfferingKey": null,
+      "judgePromptVersion": null,
+      "errorMessage": "hardChecks 未通过，已跳过 judge LLM。",
       "durationMs": 1280
     }
   ],
@@ -1435,7 +1498,11 @@
 规则：
 
 - 结果明细是分页接口。
-- 每条结果项返回完整排障所需字段，前端不得再回表拼接用例输入、参考答案或断言结果。
+- 每条结果项返回完整排障所需字段，前端不得再回表拼接用例输入、参考样例、hardChecks 或 judge 结果。
+- `judgeResult` 是 LLM 节点验收的正式判定结果。
+- `judgeResult.score` 是唯一正式分数字段；结果项不提供顶层 `score`。
+- `hardCheckResults` 是可选硬约束结果，固定为数组；未配置 hardChecks 时为 `[]`。
+- hardChecks 失败时不调用 judge LLM，`judgeResult`、`judgeRawText`、`judgeModelOfferingKey`、`judgePromptVersion` 都返回 `null`。
 
 ### 9.17 查询验收历史对比
 

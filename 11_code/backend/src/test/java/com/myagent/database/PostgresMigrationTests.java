@@ -449,8 +449,8 @@ class PostgresMigrationTests {
      */
     private long insertEvalSuite(Connection connection, long agentId, long workflowVersionId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
-                insert into eval_suite(agent_id, workflow_version_id, node_id, name, status)
-                values (?, ?, 'llm_1', '测试验收套件', 'DRAFT')
+                insert into eval_suite(agent_id, workflow_version_id, node_id, name, judge_model_offering_key, status)
+                values (?, ?, 'llm_1', '测试验收套件', 'test-model', 'DRAFT')
                 returning id
                 """)) {
             statement.setLong(1, agentId);

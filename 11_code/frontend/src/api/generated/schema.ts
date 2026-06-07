@@ -1413,6 +1413,8 @@ export interface components {
         UpdateEvalSuiteRequest: {
             name: string;
             goal?: string;
+            judgeModelOfferingKey: string;
+            judgeTemperature?: number;
             passThreshold?: number;
         };
         /**
@@ -1434,6 +1436,8 @@ export interface components {
             nodeId?: string;
             name?: string;
             goal?: string;
+            judgeModelOfferingKey?: string;
+            judgeTemperature?: number;
             passThreshold?: number;
             /** @enum {string} */
             status?: "DRAFT" | "CONFIRMED" | "ARCHIVED";
@@ -1445,9 +1449,9 @@ export interface components {
         UpdateEvalCaseRequest: {
             title: string;
             input?: components["schemas"]["JsonNode"];
-            referenceAnswer?: components["schemas"]["JsonNode"];
-            assertions?: components["schemas"]["JsonNode"];
-            scoreRule?: components["schemas"]["JsonNode"];
+            referenceSample?: components["schemas"]["JsonNode"];
+            judgeRule?: string;
+            hardChecks?: components["schemas"]["JsonNode"];
             critical?: boolean;
             description?: string;
         };
@@ -1468,9 +1472,9 @@ export interface components {
             caseNo?: string;
             title?: string;
             input?: components["schemas"]["JsonNode"];
-            referenceAnswer?: components["schemas"]["JsonNode"];
-            assertions?: components["schemas"]["JsonNode"];
-            scoreRule?: components["schemas"]["JsonNode"];
+            referenceSample?: components["schemas"]["JsonNode"];
+            judgeRule?: string;
+            hardChecks?: components["schemas"]["JsonNode"];
             critical?: boolean;
             /** @enum {string} */
             confirmStatus?: "USER_CREATED" | "USER_CONFIRMED" | "AI_DRAFT_PENDING" | "ARCHIVED";
@@ -2224,11 +2228,12 @@ export interface components {
             nodeId: string;
             name: string;
             goal?: string;
+            judgeModelOfferingKey: string;
+            judgeTemperature?: number;
             passThreshold?: number;
         };
         RunEvalSuiteRequest: {
             caseIds?: number[];
-            includeUnconfirmed?: boolean;
         };
         /**
          * @description 验收运行创建统一响应。
@@ -2259,9 +2264,9 @@ export interface components {
             caseNo: string;
             title: string;
             input?: components["schemas"]["JsonNode"];
-            referenceAnswer?: components["schemas"]["JsonNode"];
-            assertions?: components["schemas"]["JsonNode"];
-            scoreRule?: components["schemas"]["JsonNode"];
+            referenceSample?: components["schemas"]["JsonNode"];
+            judgeRule?: string;
+            hardChecks?: components["schemas"]["JsonNode"];
             critical?: boolean;
             description?: string;
         };
@@ -3233,6 +3238,8 @@ export interface components {
             nodeId?: string;
             name?: string;
             goal?: string;
+            judgeModelOfferingKey?: string;
+            judgeTemperature?: number;
             passThreshold?: number;
             /** @enum {string} */
             status?: "DRAFT" | "CONFIRMED" | "ARCHIVED";
@@ -3532,10 +3539,14 @@ export interface components {
             /** Format: int32 */
             versionNo?: number;
         };
-        EvalAssertionResultItem: {
+        EvalHardCheckResultItem: {
             type?: string;
             passed?: boolean;
             message?: string;
+            path?: string;
+            expected?: components["schemas"]["JsonNode"];
+            actual?: components["schemas"]["JsonNode"];
+            details?: components["schemas"]["JsonNode"];
         };
         EvalRunResultItemResult: {
             /** Format: int64 */
@@ -3547,10 +3558,15 @@ export interface components {
             critical?: boolean;
             passed?: boolean;
             input?: components["schemas"]["JsonNode"];
-            referenceAnswer?: components["schemas"]["JsonNode"];
+            referenceSample?: components["schemas"]["JsonNode"];
+            judgeRule?: string;
+            hardChecks?: components["schemas"]["JsonNode"];
             output?: components["schemas"]["JsonNode"];
-            assertionResults?: components["schemas"]["EvalAssertionResultItem"][];
-            scoreResult?: components["schemas"]["JsonNode"];
+            hardCheckResults?: components["schemas"]["EvalHardCheckResultItem"][];
+            judgeResult?: components["schemas"]["JsonNode"];
+            judgeRawText?: string;
+            judgeModelOfferingKey?: string;
+            judgePromptVersion?: string;
             errorMessage?: string;
             /** Format: int64 */
             durationMs?: number;

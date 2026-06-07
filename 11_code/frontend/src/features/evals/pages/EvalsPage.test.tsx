@@ -12,11 +12,11 @@ import {
   getEvalRun,
   getModelOfferingsByKeys,
   listEvalCases,
-  listModelOfferings,
   listEvalRunHistory,
   listEvalRunResults,
   listEvalRuns,
   listEvalSuites,
+  listModelOfferings,
   runEvalSuite,
   type Schema,
   updateEvalCase,
@@ -36,11 +36,11 @@ vi.mock("../../../api/domainApi", async (importOriginal) => {
     getEvalRun: vi.fn(),
     getModelOfferingsByKeys: vi.fn(),
     listEvalCases: vi.fn(),
-    listModelOfferings: vi.fn(),
     listEvalRunHistory: vi.fn(),
     listEvalRunResults: vi.fn(),
     listEvalRuns: vi.fn(),
     listEvalSuites: vi.fn(),
+    listModelOfferings: vi.fn(),
     runEvalSuite: vi.fn(),
     updateEvalCase: vi.fn(),
     updateEvalSuite: vi.fn()
@@ -58,6 +58,8 @@ describe("EvalsPage", () => {
           nodeId: "node-llm",
           name: "LLM 节点验收",
           goal: "验证摘要质量",
+          judgeModelOfferingKey: "openai.gpt_4_1_mini",
+          judgeTemperature: 0,
           passThreshold: 80,
           status: "CONFIRMED"
         }
@@ -96,7 +98,7 @@ describe("EvalsPage", () => {
       passedCaseCount: 1,
       failedCaseCount: 1,
       criticalFailedCaseCount: 1,
-      summary: "关键断言失败",
+      summary: "关键用例未通过",
       historyComparison: {
         previousEvalRunId: "EV-0",
         previousRunId: "RUN-EVAL-0",
@@ -109,7 +111,7 @@ describe("EvalsPage", () => {
           caseNo: "CASE-7",
           title: "关键摘要",
           critical: true,
-          reason: "摘要缺少关键字段"
+          reason: "覆盖不足"
         }
       ]
     });
@@ -123,10 +125,16 @@ describe("EvalsPage", () => {
           critical: true,
           passed: false,
           input: { topic: "测试" },
+          referenceSample: { summary: "参考样例" },
+          judgeRule: "必须覆盖风险点",
+          hardChecks: [{ type: "JSON_PATH_EXISTS", path: "$.text" }],
           output: { text: "不完整" },
-          assertionResults: [{ type: "JSON_PATH", passed: false, message: "缺少字段" }],
-          scoreResult: { score: 0.3 },
-          errorMessage: "摘要缺少关键字段",
+          hardCheckResults: [{ type: "JSON_PATH_EXISTS", passed: true, message: "字段存在" }],
+          judgeResult: { passed: false, score: 62, reason: "覆盖不足" },
+          judgeRawText: "{\"passed\":false}",
+          judgeModelOfferingKey: "openai.gpt_4_1_mini",
+          judgePromptVersion: "JUDGE_RULE_V1",
+          errorMessage: "判定未通过",
           durationMs: 12
         }
       ],
@@ -155,7 +163,7 @@ describe("EvalsPage", () => {
     vi.mocked(updateEvalSuite).mockResolvedValue({});
   });
 
-  it("renders eval run detail, result item and history summary fields", async () => {
+  it("renders eval run detail with judge fields", async () => {
     renderWithProviders(<EvalsPage />, {
       route: "/eval-runs/EV-1",
       path: "/eval-runs/:evalRunId"
@@ -165,19 +173,14 @@ describe("EvalsPage", () => {
     expect(await screen.findByText("验收运行：EV-1")).toBeInTheDocument();
     expect(screen.getByText("RUN-EVAL-1")).toBeInTheDocument();
     expect(screen.getByText("CASE-7")).toBeInTheDocument();
-    expect(screen.getByText("关键摘要")).toBeInTheDocument();
-    expect(screen.getByText("摘要缺少关键字段")).toBeInTheDocument();
+    expect(screen.getByText("判定未通过")).toBeInTheDocument();
+
+    expandFirstTableRow();
+    expect(await screen.findByText("必须覆盖风险点")).toBeInTheDocument();
+    expect(screen.getByText("JUDGE_RULE_V1")).toBeInTheDocument();
   });
 
-  it("closes archived suite and archived case mutation actions", async () => {
-    expect(isArchivedEvalSuite("ARCHIVED")).toBe(true);
-    expect(isArchivedEvalSuite("CONFIRMED")).toBe(false);
-    expect(isReadOnlyEvalCase("ARCHIVED", "USER_CREATED")).toBe(true);
-    expect(isReadOnlyEvalCase("CONFIRMED", "ARCHIVED")).toBe(true);
-    expect(isReadOnlyEvalCase("CONFIRMED", "USER_CONFIRMED")).toBe(false);
-  });
-
-  it("uses the paged model offering selector when creating scoreRule", async () => {
+  it("creates suite with judge model offering", async () => {
     vi.mocked(listModelOfferings)
       .mockResolvedValueOnce({
         items: [
@@ -214,14 +217,9 @@ describe("EvalsPage", () => {
 
     renderEvalsPage();
 
-    fireEvent.click(await screen.findByRole("button", { name: "详情" }));
-    fireEvent.click(await screen.findByRole("button", { name: "创建用例" }));
-    const scoreRuleCheckbox = screen.getByRole<HTMLInputElement>("checkbox", { name: "启用 LLM 辅助评分" });
-    fireEvent.click(scoreRuleCheckbox);
-    expect(scoreRuleCheckbox.checked).toBe(true);
-
-    await screen.findByTestId("eval-score-rule-model-offering-select");
-    openSelect("eval-score-rule-model-offering-select");
+    fireEvent.click(await screen.findByRole("button", { name: "创建套件" }));
+    await screen.findByTestId("eval-suite-judge-model-offering-select");
+    openSelect("eval-suite-judge-model-offering-select");
     await waitFor(() => {
       expect(hasPagedQueryCall(vi.mocked(listModelOfferings), 1)).toBe(true);
     });
@@ -231,27 +229,58 @@ describe("EvalsPage", () => {
     });
     selectDropdownOption("OpenAI / GPT-4.1 Mini (gpt-4.1-mini)");
 
+    fireEvent.change(screen.getByLabelText("Agent ID"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("WorkflowVersion ID"), { target: { value: "12" } });
+    fireEvent.change(screen.getByLabelText("节点 ID"), { target: { value: "node-llm" } });
+    fireEvent.change(screen.getByLabelText("套件名称"), { target: { value: "新的验收套件" } });
+    clickModalOkButton();
+
+    await waitFor(() => {
+      expect(lastMockCall(vi.mocked(createEvalSuite))?.[0]).toEqual(expect.objectContaining({
+        agentId: 1,
+        workflowVersionId: 12,
+        nodeId: "node-llm",
+        name: "新的验收套件",
+        judgeModelOfferingKey: "openai.gpt_4_1_mini"
+      }));
+    });
+  }, 10000);
+
+  it("creates case with judgeRule and hardChecks", async () => {
+    renderEvalsPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "详情" }));
+    fireEvent.click(await screen.findByRole("button", { name: "创建用例" }));
     fireEvent.change(screen.getByLabelText("用例编号"), { target: { value: "CASE-NEW" } });
-    fireEvent.change(screen.getByLabelText("标题"), { target: { value: "新的评分用例" } });
+    fireEvent.change(screen.getByLabelText("标题"), { target: { value: "新的验收用例" } });
+    fireEvent.change(screen.getByTestId("eval-case-reference-sample-text"), { target: { value: "{\"summary\":\"ok\"}" } });
+    fireEvent.change(screen.getByTestId("eval-case-judge-rule-text"), { target: { value: "必须覆盖关键风险点" } });
+    fireEvent.change(screen.getByTestId("eval-case-hard-checks-text"), {
+      target: { value: "[{\"type\":\"JSON_PATH_EXISTS\",\"path\":\"$.summary\"}]" }
+    });
     clickModalOkButton();
 
     await waitFor(() => {
       expect(lastMockCall(vi.mocked(createEvalCase))?.[0]).toBe(1);
       expect(lastMockCall(vi.mocked(createEvalCase))?.[1]).toEqual(expect.objectContaining({
         caseNo: "CASE-NEW",
-        title: "新的评分用例",
-        scoreRule: expect.objectContaining({
-          enabled: true,
-          modelOfferingKey: "openai.gpt_4_1_mini"
-        })
+        title: "新的验收用例",
+        referenceSample: { summary: "ok" },
+        judgeRule: "必须覆盖关键风险点",
+        hardChecks: [{ type: "JSON_PATH_EXISTS", path: "$.summary" }]
       }));
     });
-  }, 10000);
+  });
+
+  it("detects archived suite and case states", () => {
+    expect(isArchivedEvalSuite("ARCHIVED")).toBe(true);
+    expect(isArchivedEvalSuite("CONFIRMED")).toBe(false);
+    expect(isReadOnlyEvalCase("ARCHIVED", "USER_CREATED")).toBe(true);
+    expect(isReadOnlyEvalCase("CONFIRMED", "ARCHIVED")).toBe(true);
+    expect(isReadOnlyEvalCase("CONFIRMED", "USER_CONFIRMED")).toBe(false);
+  });
 });
 
-/**
- * 渲染 Eval 页面。
- */
 function renderEvalsPage() {
   return renderWithProviders(<EvalsPage />, {
     route: "/evals",
@@ -259,11 +288,6 @@ function renderEvalsPage() {
   });
 }
 
-/**
- * 打开基于 Ant Design Select 的下拉框。
- *
- * @param testId 选择器测试标识
- */
 function openSelect(testId: string) {
   const selectRoot = screen.getByTestId(testId);
   const selector = selectRoot.querySelector(".ant-select-selector");
@@ -271,11 +295,6 @@ function openSelect(testId: string) {
   fireEvent.click(selector ?? selectRoot);
 }
 
-/**
- * 点击下拉选项。
- *
- * @param label 选项文案
- */
 function selectDropdownOption(label: string) {
   const option = Array.from(document.querySelectorAll<HTMLElement>(".ant-select-item-option"))
     .find((item) => item.textContent?.includes(label));
@@ -286,9 +305,14 @@ function selectDropdownOption(label: string) {
   fireEvent.click(option);
 }
 
-/**
- * 点击当前可见弹窗的主确认按钮。
- */
+function expandFirstTableRow() {
+  const expandButton = document.querySelector<HTMLElement>(".ant-table-row-expand-icon");
+  if (!expandButton) {
+    throw new Error("未找到可展开行。");
+  }
+  fireEvent.click(expandButton);
+}
+
 function clickModalOkButton() {
   const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(".ant-modal .ant-btn-primary"));
   const button = buttons.at(-1);
@@ -298,33 +322,14 @@ function clickModalOkButton() {
   fireEvent.click(button);
 }
 
-/**
- * 判断远程分页查询是否已请求指定页码。
- *
- * @param queryMock 查询 mock
- * @param page 页码
- * @returns 命中时返回 true
- */
 function hasPagedQueryCall(queryMock: ReturnType<typeof vi.fn>, page: number) {
   return queryMock.mock.calls.some(([query]) => query?.page === page);
 }
 
-/**
- * 读取 mock 最近一次调用参数。
- *
- * @param mockFn mock 函数
- * @returns 调用参数
- */
 function lastMockCall(mockFn: ReturnType<typeof vi.fn>) {
   return mockFn.mock.calls.at(-1);
 }
 
-/**
- * 构造模型供应项描述。
- *
- * @param overrides 覆盖字段
- * @returns 描述对象
- */
 function createOfferingDescriptor(
   overrides: Partial<Schema["ModelOfferingDescriptor"]>
 ): Schema["ModelOfferingDescriptor"] {

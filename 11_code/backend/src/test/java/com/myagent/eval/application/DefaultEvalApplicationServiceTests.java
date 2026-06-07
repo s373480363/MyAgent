@@ -6,7 +6,6 @@ import com.myagent.agent.repository.AgentRecord;
 import com.myagent.agent.repository.AgentRepository;
 import com.myagent.common.domain.EnableStatus;
 import com.myagent.common.error.BizException;
-import com.myagent.eval.application.command.CreateEvalCaseCommand;
 import com.myagent.eval.application.command.CreateEvalCaseFromNodeRunCommand;
 import com.myagent.eval.application.command.RunEvalSuiteCommand;
 import com.myagent.eval.application.result.EvalCaseResult;
@@ -14,10 +13,13 @@ import com.myagent.eval.domain.EvalCaseConfirmStatus;
 import com.myagent.eval.domain.EvalSuiteStatus;
 import com.myagent.eval.repository.EvalCaseRecord;
 import com.myagent.eval.repository.EvalCaseRepository;
+import com.myagent.eval.repository.EvalCaseResultRecord;
 import com.myagent.eval.repository.EvalCaseResultRepository;
+import com.myagent.eval.repository.EvalRunRecord;
 import com.myagent.eval.repository.EvalRunRepository;
 import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
+import com.myagent.modelcatalog.application.ModelRouteResolver;
 import com.myagent.run.domain.RunNoGenerator;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.domain.RunType;
@@ -25,6 +27,7 @@ import com.myagent.run.repository.AgentRunRecord;
 import com.myagent.run.repository.AgentRunRepository;
 import com.myagent.run.repository.NodeRunRecord;
 import com.myagent.run.repository.NodeRunRepository;
+import com.myagent.runtime.NodeExecutionResult;
 import com.myagent.runtime.NodeExecutionRunner;
 import com.myagent.runtime.TraceWriter;
 import com.myagent.workflow.domain.WorkflowNodeDefinition;
@@ -35,6 +38,7 @@ import com.myagent.workflow.domain.WorkflowVersionStatus;
 import com.myagent.workflow.repository.WorkflowVersionRecord;
 import com.myagent.workflow.repository.WorkflowVersionRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -44,7 +48,12 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -53,28 +62,21 @@ import static org.mockito.Mockito.when;
  */
 class DefaultEvalApplicationServiceTests {
 
-    /**
-     * JSON 对象映射器。
-     */
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    /**
-     * 正常 NodeRun 可以生成 AI_DRAFT_PENDING 验收用例。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
     @Test
     void createCaseFromNodeRunCreatesPendingDraftCaseForConsistentSource() throws Exception {
         EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
         AgentRunRepository runRepository = mock(AgentRunRepository.class);
         NodeRunRepository nodeRunRepository = mock(NodeRunRepository.class);
-        DefaultEvalCaseApplicationService service = caseService(suiteRepository(suite(1L, 10L, "llm")), caseRepository, runRepository, nodeRunRepository);
+        DefaultEvalCaseApplicationService service = caseService(
+                suiteRepository(suite(1L, 10L, "llm", EvalSuiteStatus.DRAFT)),
+                caseRepository,
+                runRepository,
+                nodeRunRepository
+        );
         AgentRunRecord sourceRun = agentRun(100L, 1L, 10L);
-        NodeRunRecord nodeRun = nodeRun(200L, 100L, "llm", RunStatus.SUCCESS, OBJECT_MAPPER.readTree("""
-                {
-                  "summary": "ok"
-                }
-                """));
+        NodeRunRecord nodeRun = nodeRun(200L, 100L, "llm", RunStatus.SUCCESS, output());
         when(runRepository.findById(100L)).thenReturn(Optional.of(sourceRun));
         when(nodeRunRepository.findById(200L)).thenReturn(Optional.of(nodeRun));
         when(caseRepository.insert(any(EvalCaseRecord.class))).thenAnswer(invocation -> withCaseId(invocation.getArgument(0)));
@@ -88,180 +90,27 @@ class DefaultEvalApplicationServiceTests {
 
         assertThat(result.confirmStatus()).isEqualTo(EvalCaseConfirmStatus.AI_DRAFT_PENDING);
         assertThat(result.input().path("question").asText()).isEqualTo("hello");
-        assertThat(result.referenceAnswer().path("summary").asText()).isEqualTo("ok");
+        assertThat(result.referenceSample().path("summary").asText()).isEqualTo("ok");
+        assertThat(result.judgeRule()).isBlank();
+        assertThat(result.hardChecks().isArray()).isTrue();
         assertThat(result.sourceRunId()).isEqualTo("run-100");
         assertThat(result.sourceNodeRunId()).isEqualTo(200L);
         assertThat(result.sourceWorkflowVersionId()).isEqualTo(10L);
         assertThat(result.sourceNodeId()).isEqualTo("llm");
     }
 
-    /**
-     * NodeRun 所属 Agent 与 EvalSuite 不一致时必须失败。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
     @Test
-    void createCaseFromNodeRunRejectsAgentMismatch() throws Exception {
-        assertCreateCaseFromNodeRunRejected(
-                suite(1L, 10L, "llm"),
-                agentRun(100L, 2L, 10L),
-                nodeRun(200L, 100L, "llm", RunStatus.SUCCESS, output()),
-                "Agent 不一致"
-        );
-    }
-
-    /**
-     * NodeRun 所属工作流版本与 EvalSuite 不一致时必须失败。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
-    @Test
-    void createCaseFromNodeRunRejectsWorkflowVersionMismatch() throws Exception {
-        assertCreateCaseFromNodeRunRejected(
-                suite(1L, 10L, "llm"),
-                agentRun(100L, 1L, 11L),
-                nodeRun(200L, 100L, "llm", RunStatus.SUCCESS, output()),
-                "工作流版本不一致"
-        );
-    }
-
-    /**
-     * NodeRun 所属节点与 EvalSuite 目标节点不一致时必须失败。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
-    @Test
-    void createCaseFromNodeRunRejectsNodeIdMismatch() throws Exception {
-        assertCreateCaseFromNodeRunRejected(
-                suite(1L, 10L, "llm"),
-                agentRun(100L, 1L, 10L),
-                nodeRun(200L, 100L, "review", RunStatus.SUCCESS, output()),
-                "目标节点不一致"
-        );
-    }
-
-    /**
-     * NodeRun 非 SUCCESS 时必须失败。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
-    @Test
-    void createCaseFromNodeRunRejectsNonSuccessNodeRun() throws Exception {
-        assertCreateCaseFromNodeRunRejected(
-                suite(1L, 10L, "llm"),
-                agentRun(100L, 1L, 10L),
-                nodeRun(200L, 100L, "llm", RunStatus.FAILED, output()),
-                "SUCCESS 状态"
-        );
-    }
-
-    /**
-     * NodeRun 输出为空时必须失败。
-     */
-    @Test
-    void createCaseFromNodeRunRejectsEmptyOutput() {
-        assertCreateCaseFromNodeRunRejected(
-                suite(1L, 10L, "llm"),
-                agentRun(100L, 1L, 10L),
-                nodeRun(200L, 100L, "llm", RunStatus.SUCCESS, null),
-                "输出不能为空"
-        );
-    }
-
-    /**
-     * 正式 EvalRun 不允许包含未确认用例。
-     */
-    @Test
-    void runSuiteRejectsIncludeUnconfirmed() {
-        DefaultEvalApplicationService service = service(
-                suiteRepository(new EvalSuiteRecord(
-                        300L,
-                        1L,
-                        10L,
-                        "llm",
-                        "套件",
-                        "",
-                        BigDecimal.ZERO,
-                        EvalSuiteStatus.CONFIRMED,
-                        Instant.now(),
-                        Instant.now()
-                )),
-                mock(EvalCaseRepository.class),
-                mock(AgentRunRepository.class),
-                mock(NodeRunRepository.class)
-        );
-
-        assertThatThrownBy(() -> service.runSuite(new RunEvalSuiteCommand(300L, List.of(), true)))
-                .isInstanceOf(BizException.class)
-                .hasMessageContaining("不允许包含未确认用例");
-    }
-
-    /**
-     * 用户创建正式 EvalCase 时必须配置非空断言数组。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
-    @Test
-    void createCaseRejectsEmptyAssertions() throws Exception {
-        DefaultEvalCaseApplicationService service = caseService(
-                suiteRepository(suite(1L, 10L, "llm")),
-                mock(EvalCaseRepository.class),
-                mock(AgentRunRepository.class),
-                mock(NodeRunRepository.class)
-        );
-
-        assertThatThrownBy(() -> service.createCase(new CreateEvalCaseCommand(
-                300L,
-                "CASE-001",
-                "空断言用例",
-                OBJECT_MAPPER.readTree("{\"question\":\"hello\"}"),
-                OBJECT_MAPPER.readTree("{\"summary\":\"ok\"}"),
-                OBJECT_MAPPER.createArrayNode(),
-                OBJECT_MAPPER.createObjectNode(),
-                false,
-                ""
-        ))).isInstanceOf(BizException.class)
-                .hasMessageContaining("断言不能为空");
-    }
-
-    /**
-     * AI 草稿用例没有断言时不能被确认。
-     */
-    @Test
-    void confirmCaseRejectsEmptyAssertions() {
-        EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
-        when(caseRepository.findById(400L)).thenReturn(Optional.of(evalCase(
-                EvalCaseConfirmStatus.AI_DRAFT_PENDING,
-                OBJECT_MAPPER.createArrayNode()
-        )));
-        DefaultEvalCaseApplicationService service = caseService(
-                suiteRepository(suite(1L, 10L, "llm")),
-                caseRepository,
-                mock(AgentRunRepository.class),
-                mock(NodeRunRepository.class)
-        );
-
-        assertThatThrownBy(() -> service.confirmCase(300L, 400L))
-                .isInstanceOf(BizException.class)
-                .hasMessageContaining("断言不能为空");
-    }
-
-    /**
-     * SCHEMA_VALIDATION 断言要求目标节点配置 outputSchema。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
-    @Test
-    void confirmCaseRejectsSchemaValidationAssertionWithoutOutputSchema() throws Exception {
+    void confirmCaseRejectsEmptyJudgeRule() throws Exception {
         EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
         WorkflowVersionRepository workflowVersionRepository = mock(WorkflowVersionRepository.class);
         when(caseRepository.findById(400L)).thenReturn(Optional.of(evalCase(
                 EvalCaseConfirmStatus.AI_DRAFT_PENDING,
-                OBJECT_MAPPER.readTree("[{\"type\":\"SCHEMA_VALIDATION\"}]")
+                "",
+                OBJECT_MAPPER.createArrayNode()
         )));
-        when(workflowVersionRepository.findById(10L)).thenReturn(Optional.of(workflowVersion(false)));
+        when(workflowVersionRepository.findById(10L)).thenReturn(Optional.of(workflowVersion()));
         DefaultEvalCaseApplicationService service = caseService(
-                suiteRepository(suite(1L, 10L, "llm")),
+                suiteRepository(suite(1L, 10L, "llm", EvalSuiteStatus.DRAFT)),
                 caseRepository,
                 mock(AgentRunRepository.class),
                 mock(NodeRunRepository.class),
@@ -270,42 +119,39 @@ class DefaultEvalApplicationServiceTests {
 
         assertThatThrownBy(() -> service.confirmCase(300L, 400L))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("要求目标节点配置 outputSchema");
+                .hasMessageContaining("judgeRule");
     }
 
-    /**
-     * 确认套件前必须校验所有正式用例具备确定性断言。
-     */
     @Test
-    void confirmSuiteRejectsFormalCaseWithEmptyAssertions() {
+    void confirmCaseRejectsSchemaValidationHardCheckWithoutOutputSchema() throws Exception {
         EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
-        when(caseRepository.listRunnableCases(300L, null)).thenReturn(List.of(evalCase(
-                EvalCaseConfirmStatus.USER_CREATED,
-                OBJECT_MAPPER.createArrayNode()
+        WorkflowVersionRepository workflowVersionRepository = mock(WorkflowVersionRepository.class);
+        when(caseRepository.findById(400L)).thenReturn(Optional.of(evalCase(
+                EvalCaseConfirmStatus.AI_DRAFT_PENDING,
+                "输出必须满足 schema。",
+                OBJECT_MAPPER.readTree("[{\"type\":\"SCHEMA_VALIDATION\"}]")
         )));
-        DefaultEvalApplicationService service = service(
-                suiteRepository(suite(1L, 10L, "llm")),
+        when(workflowVersionRepository.findById(10L)).thenReturn(Optional.of(workflowVersion(false)));
+        DefaultEvalCaseApplicationService service = caseService(
+                suiteRepository(suite(1L, 10L, "llm", EvalSuiteStatus.DRAFT)),
                 caseRepository,
                 mock(AgentRunRepository.class),
-                mock(NodeRunRepository.class)
+                mock(NodeRunRepository.class),
+                workflowVersionRepository
         );
 
-        assertThatThrownBy(() -> service.confirmSuite(300L))
+        assertThatThrownBy(() -> service.confirmCase(300L, 400L))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("断言不能为空");
+                .hasMessageContaining("outputSchema");
     }
 
-    /**
-     * 正式 EvalRun 执行前必须再次防御性拒绝非法断言类型，且不能创建运行记录。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
     @Test
-    void runSuiteRejectsUnsupportedAssertionTypeBeforeCreatingRun() throws Exception {
+    void runSuiteRejectsUnsupportedHardCheckTypeBeforeCreatingRun() throws Exception {
         EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
         when(caseRepository.listRunnableCases(300L, List.of())).thenReturn(List.of(evalCase(
                 EvalCaseConfirmStatus.USER_CONFIRMED,
-                OBJECT_MAPPER.readTree("[{\"type\":\"UNSUPPORTED_ASSERTION\"}]")
+                "必须命中规则。",
+                OBJECT_MAPPER.readTree("[{\"type\":\"UNSUPPORTED_HARD_CHECK\"}]")
         )));
         AgentRepository agentRepository = mock(AgentRepository.class);
         WorkflowVersionRepository workflowVersionRepository = mock(WorkflowVersionRepository.class);
@@ -313,18 +159,7 @@ class DefaultEvalApplicationServiceTests {
         when(agentRepository.findById(1L)).thenReturn(Optional.of(agent()));
         when(workflowVersionRepository.findById(10L)).thenReturn(Optional.of(workflowVersion()));
         DefaultEvalApplicationService service = service(
-                suiteRepository(new EvalSuiteRecord(
-                        300L,
-                        1L,
-                        10L,
-                        "llm",
-                        "套件",
-                        "",
-                        BigDecimal.ZERO,
-                        EvalSuiteStatus.CONFIRMED,
-                        Instant.now(),
-                        Instant.now()
-                )),
+                suiteRepository(suite(1L, 10L, "llm", EvalSuiteStatus.CONFIRMED)),
                 caseRepository,
                 mock(AgentRunRepository.class),
                 mock(NodeRunRepository.class),
@@ -333,77 +168,162 @@ class DefaultEvalApplicationServiceTests {
                 lifecycleService
         );
 
-        assertThatThrownBy(() -> service.runSuite(new RunEvalSuiteCommand(300L, List.of(), false)))
+        assertThatThrownBy(() -> service.runSuite(new RunEvalSuiteCommand(300L, List.of())))
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("不支持断言类型");
+                .hasMessageContaining("UNSUPPORTED_HARD_CHECK");
         verifyNoInteractions(lifecycleService);
     }
 
-    /**
-     * 断言从 NodeRun 生成 EvalCase 会失败。
-     *
-     * @param suite EvalSuite
-     * @param sourceRun 来源运行
-     * @param nodeRun 来源节点运行
-     * @param message 错误消息片段
-     */
-    private void assertCreateCaseFromNodeRunRejected(
-            EvalSuiteRecord suite,
-            AgentRunRecord sourceRun,
-            NodeRunRecord nodeRun,
-            String message
-    ) {
+    @Test
+    void runSuiteSkipsJudgeWhenHardChecksFail() throws Exception {
+        EvalSuiteRepository suiteRepository = suiteRepository(suite(1L, 10L, "llm", EvalSuiteStatus.CONFIRMED));
         EvalCaseRepository caseRepository = mock(EvalCaseRepository.class);
-        AgentRunRepository runRepository = mock(AgentRunRepository.class);
-        NodeRunRepository nodeRunRepository = mock(NodeRunRepository.class);
-        DefaultEvalCaseApplicationService service = caseService(suiteRepository(suite), caseRepository, runRepository, nodeRunRepository);
-        when(runRepository.findById(sourceRun.id())).thenReturn(Optional.of(sourceRun));
-        when(nodeRunRepository.findById(nodeRun.id())).thenReturn(Optional.of(nodeRun));
+        EvalRunRepository evalRunRepository = mock(EvalRunRepository.class);
+        EvalCaseResultRepository evalCaseResultRepository = mock(EvalCaseResultRepository.class);
+        AgentRunRepository agentRunRepository = mock(AgentRunRepository.class);
+        AgentRepository agentRepository = mock(AgentRepository.class);
+        WorkflowVersionRepository workflowVersionRepository = mock(WorkflowVersionRepository.class);
+        TraceWriter traceWriter = mock(TraceWriter.class);
+        NodeExecutionRunner nodeExecutionRunner = mock(NodeExecutionRunner.class);
+        EvalHardCheckEvaluator hardCheckEvaluator = mock(EvalHardCheckEvaluator.class);
+        EvalJudgeEvaluator judgeEvaluator = mock(EvalJudgeEvaluator.class);
+        EvalRunLifecycleService lifecycleService = mock(EvalRunLifecycleService.class);
 
-        assertThatThrownBy(() -> service.createCaseFromNodeRun(new CreateEvalCaseFromNodeRunCommand(
-                nodeRun.id(),
-                suite.id(),
-                "来源用例",
-                ""
-        ))).isInstanceOf(BizException.class)
-                .hasMessageContaining(message);
-    }
+        EvalCaseRecord evalCase = evalCase(
+                EvalCaseConfirmStatus.USER_CONFIRMED,
+                "judge rule",
+                OBJECT_MAPPER.readTree("[{\"type\":\"JSON_PATH_EXISTS\",\"path\":\"$.summary\"}]")
+        );
+        JsonNode hardCheckResults = OBJECT_MAPPER.readTree("""
+                [
+                  {
+                    "type": "JSON_PATH_EXISTS",
+                    "passed": false,
+                    "message": "$.summary missing",
+                    "path": "$.summary",
+                    "expected": "field exists",
+                    "actual": null,
+                    "details": {}
+                  }
+                ]
+                """);
 
-    /**
-     * 构造应用服务。
-     *
-     * @param suiteRepository EvalSuite 仓储
-     * @param caseRepository EvalCase 仓储
-     * @param runRepository AgentRun 仓储
-     * @param nodeRunRepository NodeRun 仓储
-     * @return 应用服务
-     */
-    private DefaultEvalApplicationService service(
-            EvalSuiteRepository suiteRepository,
-            EvalCaseRepository caseRepository,
-            AgentRunRepository runRepository,
-            NodeRunRepository nodeRunRepository
-    ) {
-        return service(
+        when(caseRepository.listRunnableCases(300L, List.of())).thenReturn(List.of(evalCase));
+        when(agentRepository.findById(1L)).thenReturn(Optional.of(agent()));
+        when(workflowVersionRepository.findById(10L)).thenReturn(Optional.of(workflowVersion()));
+        when(evalCaseResultRepository.countCriticalFailures(600L)).thenReturn(0L);
+        when(nodeExecutionRunner.execute(any())).thenReturn(new NodeExecutionResult(
+                RunStatus.SUCCESS,
+                900L,
+                output(),
+                OBJECT_MAPPER.createObjectNode(),
+                null,
+                null,
+                "",
+                List.of(),
+                15L
+        ));
+        when(hardCheckEvaluator.evaluate(any(), any(), any())).thenReturn(new EvalHardCheckEvaluation(
+                false,
+                hardCheckResults,
+                "$.summary missing"
+        ));
+
+        AgentRunRecord agentRun = agentRun(500L, 1L, 10L);
+        EvalRunRecord runningEvalRun = new EvalRunRecord(
+                600L,
+                "eval-run-600",
+                300L,
+                1L,
+                10L,
+                "llm",
+                agentRun.id(),
+                RunStatus.RUNNING,
+                0,
+                0,
+                0,
+                BigDecimal.ZERO,
+                "",
+                "",
+                Instant.now(),
+                null,
+                null
+        );
+        EvalRunRecord finishedEvalRun = new EvalRunRecord(
+                600L,
+                "eval-run-600",
+                300L,
+                1L,
+                10L,
+                "llm",
+                agentRun.id(),
+                RunStatus.FAILED,
+                1,
+                0,
+                1,
+                BigDecimal.ZERO,
+                "failed",
+                "\u9a8c\u6536\u5224\u5b9a\u672a\u5168\u90e8\u901a\u8fc7\u3002",
+                Instant.now(),
+                Instant.now(),
+                15L
+        );
+        when(lifecycleService.createEvalAgentRun(anyString(), any(), any(), any(), any())).thenReturn(agentRun);
+        when(lifecycleService.createEvalRun(anyString(), any(), any(), any(), any())).thenReturn(runningEvalRun);
+        when(lifecycleService.finishEvalRun(
+                anyLong(),
+                any(),
+                anyInt(),
+                anyInt(),
+                anyInt(),
+                any(),
+                anyString(),
+                anyString(),
+                anyLong()
+        )).thenReturn(finishedEvalRun);
+
+        DefaultEvalApplicationService service = service(
                 suiteRepository,
                 caseRepository,
-                runRepository,
-                nodeRunRepository,
-                mock(AgentRepository.class),
-                mock(WorkflowVersionRepository.class),
-                mock(EvalRunLifecycleService.class)
+                evalRunRepository,
+                evalCaseResultRepository,
+                agentRunRepository,
+                agentRepository,
+                workflowVersionRepository,
+                traceWriter,
+                nodeExecutionRunner,
+                hardCheckEvaluator,
+                judgeEvaluator,
+                lifecycleService
+        );
+
+        var result = service.runSuite(new RunEvalSuiteCommand(300L, List.of()));
+
+        assertThat(result.status()).isEqualTo(RunStatus.FAILED);
+        assertThat(result.passedCaseCount()).isZero();
+        assertThat(result.failedCaseCount()).isEqualTo(1);
+        verifyNoInteractions(judgeEvaluator);
+
+        ArgumentCaptor<EvalCaseResultRecord> resultCaptor = ArgumentCaptor.forClass(EvalCaseResultRecord.class);
+        verify(lifecycleService).insertEvalCaseResult(resultCaptor.capture());
+        EvalCaseResultRecord caseResult = resultCaptor.getValue();
+        assertThat(caseResult.passed()).isFalse();
+        assertThat(caseResult.hardCheckResultJson()).isEqualTo(hardCheckResults);
+        assertThat(caseResult.judgeResultJson()).isNull();
+        assertThat(caseResult.judgeRawText()).isNull();
+        assertThat(caseResult.judgeModelOfferingKey()).isNull();
+        assertThat(caseResult.judgePromptVersion()).isNull();
+        assertThat(caseResult.errorMessage()).isEqualTo("hardChecks \u672a\u901a\u8fc7\uff0c\u5df2\u8df3\u8fc7 judge LLM\u3002");
+        verify(lifecycleService).finishEvalAgentRun(
+                eq(agentRun.id()),
+                eq(RunStatus.FAILED),
+                any(),
+                eq("EVAL_JUDGE_RULE_FAILED"),
+                anyString(),
+                anyLong()
         );
     }
 
-    /**
-     * 构造验收用例应用服务。
-     *
-     * @param suiteRepository EvalSuite 仓储
-     * @param caseRepository EvalCase 仓储
-     * @param runRepository AgentRun 仓储
-     * @param nodeRunRepository NodeRun 仓储
-     * @return 验收用例应用服务
-     */
     private DefaultEvalCaseApplicationService caseService(
             EvalSuiteRepository suiteRepository,
             EvalCaseRepository caseRepository,
@@ -419,16 +339,6 @@ class DefaultEvalApplicationServiceTests {
         );
     }
 
-    /**
-     * 构造验收用例应用服务。
-     *
-     * @param suiteRepository EvalSuite 仓储
-     * @param caseRepository EvalCase 仓储
-     * @param runRepository AgentRun 仓储
-     * @param nodeRunRepository NodeRun 仓储
-     * @param workflowVersionRepository 工作流版本仓储
-     * @return 验收用例应用服务
-     */
     private DefaultEvalCaseApplicationService caseService(
             EvalSuiteRepository suiteRepository,
             EvalCaseRepository caseRepository,
@@ -443,22 +353,11 @@ class DefaultEvalApplicationServiceTests {
                 runRepository,
                 nodeRunRepository,
                 workflowVersionRepository,
-                new EvalCaseFormalValidationService()
+                new EvalCaseFormalValidationService(),
+                mock(ModelRouteResolver.class)
         );
     }
 
-    /**
-     * 构造应用服务。
-     *
-     * @param suiteRepository EvalSuite 仓储
-     * @param caseRepository EvalCase 仓储
-     * @param runRepository AgentRun 仓储
-     * @param nodeRunRepository NodeRun 仓储
-     * @param agentRepository Agent 仓储
-     * @param workflowVersionRepository 工作流版本仓储
-     * @param lifecycleService EvalRun 生命周期服务
-     * @return 应用服务
-     */
     private DefaultEvalApplicationService service(
             EvalSuiteRepository suiteRepository,
             EvalCaseRepository caseRepository,
@@ -472,42 +371,63 @@ class DefaultEvalApplicationServiceTests {
                 OBJECT_MAPPER,
                 suiteRepository,
                 caseRepository,
-                mock(EvalRunRepository.class),
-                mock(EvalCaseResultRepository.class),
+                mock(com.myagent.eval.repository.EvalRunRepository.class),
+                mock(com.myagent.eval.repository.EvalCaseResultRepository.class),
                 agentRepository,
                 workflowVersionRepository,
                 runRepository,
                 mock(TraceWriter.class),
                 mock(NodeExecutionRunner.class),
-                mock(EvalAssertionEvaluator.class),
-                mock(EvalScoreEvaluator.class),
+                mock(EvalHardCheckEvaluator.class),
+                mock(EvalJudgeEvaluator.class),
                 lifecycleService,
                 new EvalCaseFormalValidationService(),
+                mock(ModelRouteResolver.class),
                 new RunNoGenerator()
         );
     }
 
-    /**
-     * 构造 EvalSuite 仓储。
-     *
-     * @param suite EvalSuite
-     * @return EvalSuite 仓储
-     */
+    private DefaultEvalApplicationService service(
+            EvalSuiteRepository suiteRepository,
+            EvalCaseRepository caseRepository,
+            EvalRunRepository evalRunRepository,
+            EvalCaseResultRepository evalCaseResultRepository,
+            AgentRunRepository runRepository,
+            AgentRepository agentRepository,
+            WorkflowVersionRepository workflowVersionRepository,
+            TraceWriter traceWriter,
+            NodeExecutionRunner nodeExecutionRunner,
+            EvalHardCheckEvaluator hardCheckEvaluator,
+            EvalJudgeEvaluator judgeEvaluator,
+            EvalRunLifecycleService lifecycleService
+    ) {
+        return new DefaultEvalApplicationService(
+                OBJECT_MAPPER,
+                suiteRepository,
+                caseRepository,
+                evalRunRepository,
+                evalCaseResultRepository,
+                agentRepository,
+                workflowVersionRepository,
+                runRepository,
+                traceWriter,
+                nodeExecutionRunner,
+                hardCheckEvaluator,
+                judgeEvaluator,
+                lifecycleService,
+                new EvalCaseFormalValidationService(),
+                mock(ModelRouteResolver.class),
+                new RunNoGenerator()
+        );
+    }
+
     private EvalSuiteRepository suiteRepository(EvalSuiteRecord suite) {
         EvalSuiteRepository repository = mock(EvalSuiteRepository.class);
         when(repository.findById(suite.id())).thenReturn(Optional.of(suite));
         return repository;
     }
 
-    /**
-     * 构造 EvalSuite。
-     *
-     * @param agentId Agent 主键
-     * @param workflowVersionId 工作流版本主键
-     * @param nodeId 节点标识
-     * @return EvalSuite
-     */
-    private EvalSuiteRecord suite(long agentId, long workflowVersionId, String nodeId) {
+    private EvalSuiteRecord suite(long agentId, long workflowVersionId, String nodeId, EvalSuiteStatus status) {
         return new EvalSuiteRecord(
                 300L,
                 agentId,
@@ -515,21 +435,15 @@ class DefaultEvalApplicationServiceTests {
                 nodeId,
                 "套件",
                 "",
+                "judge-model",
                 BigDecimal.ZERO,
-                EvalSuiteStatus.DRAFT,
+                BigDecimal.valueOf(80),
+                status,
                 Instant.now(),
                 Instant.now()
         );
     }
 
-    /**
-     * 构造 AgentRun。
-     *
-     * @param runId 运行主键
-     * @param agentId Agent 主键
-     * @param workflowVersionId 工作流版本主键
-     * @return AgentRun
-     */
     private AgentRunRecord agentRun(long runId, long agentId, long workflowVersionId) {
         return new AgentRunRecord(
                 runId,
@@ -550,16 +464,6 @@ class DefaultEvalApplicationServiceTests {
         );
     }
 
-    /**
-     * 构造 NodeRun。
-     *
-     * @param nodeRunId NodeRun 主键
-     * @param runId AgentRun 主键
-     * @param nodeId 节点标识
-     * @param status 节点状态
-     * @param outputJson 节点输出
-     * @return NodeRun
-     */
     private NodeRunRecord nodeRun(long nodeRunId, long runId, String nodeId, RunStatus status, JsonNode outputJson) {
         return new NodeRunRecord(
                 nodeRunId,
@@ -578,12 +482,6 @@ class DefaultEvalApplicationServiceTests {
         );
     }
 
-    /**
-     * 构造输出。
-     *
-     * @return 输出 JSON
-     * @throws Exception JSON 构造失败时抛出
-     */
     private JsonNode output() throws Exception {
         return OBJECT_MAPPER.readTree("""
                 {
@@ -592,12 +490,6 @@ class DefaultEvalApplicationServiceTests {
                 """);
     }
 
-    /**
-     * 设置用例主键。
-     *
-     * @param record 原始用例
-     * @return 带主键用例
-     */
     private EvalCaseRecord withCaseId(EvalCaseRecord record) {
         return new EvalCaseRecord(
                 400L,
@@ -605,9 +497,9 @@ class DefaultEvalApplicationServiceTests {
                 record.caseNo(),
                 record.title(),
                 record.inputJson(),
-                record.referenceAnswerJson(),
-                record.assertionsJson(),
-                record.scoreRuleJson(),
+                record.referenceSampleJson(),
+                record.judgeRuleText(),
+                record.hardChecksJson(),
                 record.critical(),
                 record.confirmStatus(),
                 record.sourceAgentRunId(),
@@ -620,14 +512,7 @@ class DefaultEvalApplicationServiceTests {
         );
     }
 
-    /**
-     * 构造 EvalCase。
-     *
-     * @param confirmStatus 确认状态
-     * @param assertionsJson 断言配置
-     * @return EvalCase
-     */
-    private EvalCaseRecord evalCase(EvalCaseConfirmStatus confirmStatus, JsonNode assertionsJson) {
+    private EvalCaseRecord evalCase(EvalCaseConfirmStatus confirmStatus, String judgeRule, JsonNode hardChecksJson) {
         return new EvalCaseRecord(
                 400L,
                 300L,
@@ -635,8 +520,8 @@ class DefaultEvalApplicationServiceTests {
                 "测试用例",
                 OBJECT_MAPPER.createObjectNode().put("question", "hello"),
                 OBJECT_MAPPER.createObjectNode().put("summary", "ok"),
-                assertionsJson,
-                OBJECT_MAPPER.createObjectNode(),
+                judgeRule,
+                hardChecksJson,
                 false,
                 confirmStatus,
                 null,
@@ -649,11 +534,6 @@ class DefaultEvalApplicationServiceTests {
         );
     }
 
-    /**
-     * 构造 Agent。
-     *
-     * @return Agent
-     */
     private AgentRecord agent() {
         return new AgentRecord(
                 1L,
@@ -673,23 +553,10 @@ class DefaultEvalApplicationServiceTests {
         );
     }
 
-    /**
-     * 构造工作流版本。
-     *
-     * @return 工作流版本
-     * @throws Exception JSON 构造失败时抛出
-     */
     private WorkflowVersionRecord workflowVersion() throws Exception {
-        return workflowVersion(false);
+        return workflowVersion(true);
     }
 
-    /**
-     * 构造工作流版本。
-     *
-     * @param withOutputSchema 目标节点是否配置输出 Schema
-     * @return 工作流版本
-     * @throws Exception JSON 构造失败时抛出
-     */
     private WorkflowVersionRecord workflowVersion(boolean withOutputSchema) throws Exception {
         WorkflowNodeDefinition node = new WorkflowNodeDefinition();
         node.setNodeId("llm");

@@ -16,6 +16,7 @@ import com.myagent.eval.repository.EvalCaseRecord;
 import com.myagent.eval.repository.EvalCaseRepository;
 import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
+import com.myagent.modelcatalog.application.ModelRouteResolver;
 import com.myagent.run.domain.RunStatus;
 import com.myagent.run.repository.AgentRunRecord;
 import com.myagent.run.repository.AgentRunRepository;
@@ -34,63 +35,23 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
- * 默认验收用例应用服务。
+ * Eval case application service.
  */
 @Service
 public class DefaultEvalCaseApplicationService implements EvalCaseApplicationService {
 
-    /**
-     * 用例编号时间格式。
-     */
     private static final DateTimeFormatter CASE_NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
             .withZone(ZoneId.of("Asia/Shanghai"));
 
-    /**
-     * JSON 对象映射器。
-     */
     private final ObjectMapper objectMapper;
-
-    /**
-     * EvalSuite 仓储。
-     */
     private final EvalSuiteRepository evalSuiteRepository;
-
-    /**
-     * EvalCase 仓储。
-     */
     private final EvalCaseRepository evalCaseRepository;
-
-    /**
-     * AgentRun 仓储。
-     */
     private final AgentRunRepository agentRunRepository;
-
-    /**
-     * NodeRun 仓储。
-     */
     private final NodeRunRepository nodeRunRepository;
-
-    /**
-     * 工作流版本仓储。
-     */
     private final WorkflowVersionRepository workflowVersionRepository;
-
-    /**
-     * 正式用例校验服务。
-     */
     private final EvalCaseFormalValidationService formalValidationService;
+    private final ModelRouteResolver modelRouteResolver;
 
-    /**
-     * 构造默认验收用例应用服务。
-     *
-     * @param objectMapper JSON 对象映射器
-     * @param evalSuiteRepository EvalSuite 仓储
-     * @param evalCaseRepository EvalCase 仓储
-     * @param agentRunRepository AgentRun 仓储
-     * @param nodeRunRepository NodeRun 仓储
-     * @param workflowVersionRepository 工作流版本仓储
-     * @param formalValidationService 正式用例校验服务
-     */
     public DefaultEvalCaseApplicationService(
             ObjectMapper objectMapper,
             EvalSuiteRepository evalSuiteRepository,
@@ -98,7 +59,8 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
             AgentRunRepository agentRunRepository,
             NodeRunRepository nodeRunRepository,
             WorkflowVersionRepository workflowVersionRepository,
-            EvalCaseFormalValidationService formalValidationService
+            EvalCaseFormalValidationService formalValidationService,
+            ModelRouteResolver modelRouteResolver
     ) {
         this.objectMapper = objectMapper;
         this.evalSuiteRepository = evalSuiteRepository;
@@ -107,6 +69,7 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         this.nodeRunRepository = nodeRunRepository;
         this.workflowVersionRepository = workflowVersionRepository;
         this.formalValidationService = formalValidationService;
+        this.modelRouteResolver = modelRouteResolver;
     }
 
     @Override
@@ -120,16 +83,15 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
     public EvalCaseResult createCase(CreateEvalCaseCommand command) {
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         requireSuiteNotArchived(suite);
-        validateScoreRule(command.scoreRule());
-        EvalCaseRecord record = new EvalCaseRecord(
+        EvalCaseRecord record = evalCaseRepository.insert(new EvalCaseRecord(
                 0L,
                 suite.id(),
-                requiredText(command.caseNo(), "验收用例编号不能为空。"),
-                requiredText(command.title(), "验收用例标题不能为空。"),
+                requiredText(command.caseNo(), "\u9a8c\u6536\u7528\u4f8b\u7f16\u53f7\u4e0d\u80fd\u4e3a\u7a7a\u3002"),
+                requiredText(command.title(), "\u9a8c\u6536\u7528\u4f8b\u6807\u9898\u4e0d\u80fd\u4e3a\u7a7a\u3002"),
                 nullToObject(command.input()),
-                command.referenceAnswer(),
-                nullToArray(command.assertions()),
-                nullToObject(command.scoreRule()),
+                command.referenceSample(),
+                normalizeJudgeRule(command.judgeRule()),
+                nullToArray(command.hardChecks()),
                 command.critical(),
                 EvalCaseConfirmStatus.USER_CREATED,
                 null,
@@ -139,9 +101,8 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
                 command.description() == null ? "" : command.description(),
                 null,
                 null
-        );
-        validateFormalEvalCase(suite, record);
-        return toCaseResult(evalCaseRepository.insert(record));
+        ));
+        return toCaseResult(record);
     }
 
     @Override
@@ -150,19 +111,19 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         requireSuiteNotArchived(suite);
         NodeRunRecord nodeRun = nodeRunRepository.findById(command.nodeRunId())
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定 NodeRun 不存在。"));
+                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "\u6307\u5b9a NodeRun \u4e0d\u5b58\u5728\u3002"));
         AgentRunRecord sourceRun = agentRunRepository.findById(nodeRun.runId())
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "NodeRun 关联的运行不存在。"));
+                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "NodeRun \u5173\u8054\u7684\u8fd0\u884c\u4e0d\u5b58\u5728\u3002"));
         validateNodeRunSourceForSuite(suite, nodeRun, sourceRun);
         EvalCaseRecord record = evalCaseRepository.insert(new EvalCaseRecord(
                 0L,
                 suite.id(),
                 newCaseNo(),
-                requiredText(command.title(), "验收用例标题不能为空。"),
+                requiredText(command.title(), "\u9a8c\u6536\u7528\u4f8b\u6807\u9898\u4e0d\u80fd\u4e3a\u7a7a\u3002"),
                 nullToObject(nodeRun.inputJson()),
                 nodeRun.outputJson(),
+                "",
                 objectMapper.createArrayNode(),
-                objectMapper.createObjectNode(),
                 false,
                 EvalCaseConfirmStatus.AI_DRAFT_PENDING,
                 sourceRun.id(),
@@ -189,18 +150,17 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         requireSuiteNotArchived(suite);
         EvalCaseRecord current = requiredCase(command.suiteId(), command.caseId());
         if (current.confirmStatus() == EvalCaseConfirmStatus.ARCHIVED) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收用例不可更新。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "\u5df2\u5f52\u6863\u9a8c\u6536\u7528\u4f8b\u4e0d\u53ef\u66f4\u65b0\u3002");
         }
-        validateScoreRule(command.scoreRule());
         EvalCaseRecord updated = evalCaseRepository.update(new EvalCaseRecord(
                 command.caseId(),
                 command.suiteId(),
                 current.caseNo(),
-                requiredText(command.title(), "验收用例标题不能为空。"),
+                requiredText(command.title(), "\u9a8c\u6536\u7528\u4f8b\u6807\u9898\u4e0d\u80fd\u4e3a\u7a7a\u3002"),
                 nullToObject(command.input()),
-                command.referenceAnswer(),
-                nullToArray(command.assertions()),
-                nullToObject(command.scoreRule()),
+                command.referenceSample(),
+                normalizeJudgeRule(command.judgeRule()),
+                nullToArray(command.hardChecks()),
                 command.critical(),
                 current.confirmStatus(),
                 current.sourceAgentRunId(),
@@ -223,7 +183,7 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         EvalSuiteRecord suite = requiredSuite(suiteId);
         EvalCaseRecord current = requiredCase(suiteId, caseId);
         if (current.confirmStatus() == EvalCaseConfirmStatus.ARCHIVED) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收用例不可确认。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "\u5df2\u5f52\u6863\u9a8c\u6536\u7528\u4f8b\u4e0d\u53ef\u786e\u8ba4\u3002");
         }
         validateFormalEvalCase(suite, current);
         return toCaseResult(evalCaseRepository.updateConfirmStatus(suiteId, caseId, EvalCaseConfirmStatus.USER_CONFIRMED));
@@ -237,12 +197,6 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         return toCaseResult(evalCaseRepository.updateConfirmStatus(suiteId, caseId, EvalCaseConfirmStatus.ARCHIVED));
     }
 
-    /**
-     * 转换用例详情。
-     *
-     * @param record 用例记录
-     * @return 用例详情
-     */
     private EvalCaseResult toCaseResult(EvalCaseRecord record) {
         String sourceRunId = record.sourceAgentRunId() == null
                 ? null
@@ -253,9 +207,9 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
                 record.caseNo(),
                 record.title(),
                 record.inputJson(),
-                record.referenceAnswerJson(),
-                record.assertionsJson(),
-                record.scoreRuleJson(),
+                record.referenceSampleJson(),
+                record.judgeRuleText(),
+                record.hardChecksJson(),
                 record.critical(),
                 record.confirmStatus(),
                 sourceRunId,
@@ -268,167 +222,96 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         );
     }
 
-    /**
-     * 校验从 NodeRun 生成 EvalCase 时的来源一致性。
-     *
-     * @param suite 验收套件
-     * @param nodeRun 来源 NodeRun
-     * @param sourceRun 来源 AgentRun
-     */
     private void validateNodeRunSourceForSuite(EvalSuiteRecord suite, NodeRunRecord nodeRun, AgentRunRecord sourceRun) {
         if (sourceRun.agentId() != suite.agentId()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属 Agent 与验收套件绑定的 Agent 不一致。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun \u6240\u5c5e Agent \u4e0e\u9a8c\u6536\u5957\u4ef6\u7ed1\u5b9a\u7684 Agent \u4e0d\u4e00\u81f4\u3002");
         }
         if (sourceRun.workflowVersionId() != suite.workflowVersionId()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属工作流版本与验收套件绑定的工作流版本不一致。");
+            throw new BizException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "NodeRun \u6240\u5c5e\u5de5\u4f5c\u6d41\u7248\u672c\u4e0e\u9a8c\u6536\u5957\u4ef6\u7ed1\u5b9a\u7684\u5de5\u4f5c\u6d41\u7248\u672c\u4e0d\u4e00\u81f4\u3002"
+            );
         }
         if (!suite.nodeId().equals(nodeRun.nodeId())) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 所属节点与验收套件目标节点不一致。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun \u6240\u5c5e\u8282\u70b9\u4e0e\u9a8c\u6536\u5957\u4ef6\u76ee\u6807\u8282\u70b9\u4e0d\u4e00\u81f4\u3002");
         }
         if (nodeRun.status() != RunStatus.SUCCESS) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "只有 SUCCESS 状态的 NodeRun 可以生成验收用例。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "\u53ea\u6709 SUCCESS \u72b6\u6001\u7684 NodeRun \u53ef\u4ee5\u751f\u6210\u9a8c\u6536\u7528\u4f8b\u3002");
         }
         if (nodeRun.outputJson() == null || nodeRun.outputJson().isNull() || nodeRun.outputJson().isMissingNode()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun 输出不能为空，无法复制为验收参考答案。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "NodeRun \u8f93\u51fa\u4e0d\u80fd\u4e3a\u7a7a\uff0c\u65e0\u6cd5\u590d\u5236\u4e3a\u53c2\u8003\u6837\u4f8b\u3002");
         }
     }
 
-    /**
-     * 结合套件目标节点校验正式 EvalCase。
-     *
-     * @param suite EvalSuite 记录
-     * @param record EvalCase 记录
-     */
     private void validateFormalEvalCase(EvalSuiteRecord suite, EvalCaseRecord record) {
-        formalValidationService.validateFormalEvalCase(record);
+        validateSuiteJudgeConfiguration(suite);
         WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(suite.workflowVersionId());
-        formalValidationService.validateFormalEvalCase(record, requiredEvalNode(workflowVersion, suite.nodeId()));
+        WorkflowNodeDefinition node = requiredEvalNode(workflowVersion, suite.nodeId());
+        formalValidationService.validateFormalEvalCase(record, node);
     }
 
-    /**
-     * 判断用例是否属于正式运行候选。
-     *
-     * @param record EvalCase 记录
-     * @return 属于正式候选时返回 true
-     */
     private boolean isFormalCase(EvalCaseRecord record) {
-        return record.confirmStatus() == EvalCaseConfirmStatus.USER_CREATED
-                || record.confirmStatus() == EvalCaseConfirmStatus.USER_CONFIRMED;
+        return record.confirmStatus() == EvalCaseConfirmStatus.USER_CONFIRMED;
     }
 
-    /**
-     * 校验评分规则契约。
-     *
-     * @param scoreRule 评分规则
-     */
-    private void validateScoreRule(JsonNode scoreRule) {
-        if (scoreRule == null || scoreRule.isNull() || scoreRule.isMissingNode()) {
-            return;
-        }
-        if (!scoreRule.isObject()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "scoreRule 必须是 JSON 对象。");
-        }
-        if (scoreRule.has("model")) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "scoreRule 不允许使用旧 model 字段，请改用 modelOfferingKey。");
-        }
+    private void validateSuiteJudgeConfiguration(EvalSuiteRecord suite) {
+        String judgeModelOfferingKey = requiredText(
+                suite.judgeModelOfferingKey(),
+                "\u786e\u8ba4\u9a8c\u6536\u7528\u4f8b\u524d\u5fc5\u987b\u5148\u4e3a\u9a8c\u6536\u5957\u4ef6\u914d\u7f6e judge \u6a21\u578b\u4f9b\u5e94\u9879\u3002"
+        );
+        modelRouteResolver.validatePublishable(judgeModelOfferingKey);
     }
 
-    /**
-     * 查找用例并校验所属套件。
-     *
-     * @param suiteId 套件主键
-     * @param caseId 用例主键
-     * @return 用例记录
-     */
     private EvalCaseRecord requiredCase(long suiteId, long caseId) {
         EvalCaseRecord record = evalCaseRepository.findById(caseId)
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定验收用例不存在。"));
+                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "\u6307\u5b9a\u9a8c\u6536\u7528\u4f8b\u4e0d\u5b58\u5728\u3002"));
         if (record.suiteId() != suiteId) {
-            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定验收用例不属于当前套件。");
+            throw new BizException(ErrorCode.RESOURCE_NOT_FOUND, "\u6307\u5b9a\u9a8c\u6536\u7528\u4f8b\u4e0d\u5c5e\u4e8e\u5f53\u524d\u5957\u4ef6\u3002");
         }
         return record;
     }
 
-    /**
-     * 查找套件。
-     *
-     * @param suiteId 套件主键
-     * @return 套件记录
-     */
     private EvalSuiteRecord requiredSuite(long suiteId) {
         return evalSuiteRepository.findById(suiteId)
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定验收套件不存在。"));
+                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "\u6307\u5b9a\u9a8c\u6536\u5957\u4ef6\u4e0d\u5b58\u5728\u3002"));
     }
 
-    /**
-     * 查找工作流版本。
-     *
-     * @param workflowVersionId 工作流版本主键
-     * @return 工作流版本
-     */
     private WorkflowVersionRecord requiredWorkflowVersion(long workflowVersionId) {
         return workflowVersionRepository.findById(workflowVersionId)
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "指定工作流版本不存在。"));
+                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "\u6307\u5b9a\u5de5\u4f5c\u6d41\u7248\u672c\u4e0d\u5b58\u5728\u3002"));
     }
 
-    /**
-     * 要求套件未归档。
-     *
-     * @param suite 套件记录
-     */
     private void requireSuiteNotArchived(EvalSuiteRecord suite) {
         if (suite.status() == EvalSuiteStatus.ARCHIVED) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "已归档验收套件不可修改。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "\u5df2\u5f52\u6863\u9a8c\u6536\u5957\u4ef6\u4e0d\u53ef\u4fee\u6539\u3002");
         }
     }
 
-    /**
-     * 查找并校验被验收节点。
-     *
-     * @param workflowVersion 工作流版本
-     * @param nodeId 节点标识
-     * @return 节点定义
-     */
     private WorkflowNodeDefinition requiredEvalNode(WorkflowVersionRecord workflowVersion, String nodeId) {
         WorkflowNodeDefinition node = workflowVersion.nodes().stream()
                 .filter(candidate -> nodeId.equals(candidate.getNodeId()))
                 .findFirst()
-                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "工作流版本中不存在指定节点。"));
+                .orElseThrow(() -> new BizException(ErrorCode.RESOURCE_NOT_FOUND, "\u5de5\u4f5c\u6d41\u7248\u672c\u4e2d\u4e0d\u5b58\u5728\u6307\u5b9a\u8282\u70b9\u3002"));
         if (node.getType() != WorkflowNodeType.LLM
                 && node.getType() != WorkflowNodeType.REVIEW
                 && node.getType() != WorkflowNodeType.SUMMARY) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "节点验收仅支持 LLM、REVIEW 和 SUMMARY 节点。");
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "\u8282\u70b9\u9a8c\u6536\u4ec5\u652f\u6301 LLM\u3001REVIEW \u548c SUMMARY \u8282\u70b9\u3002");
         }
         return node;
     }
 
-    /**
-     * 将空值转换为空对象。
-     *
-     * @param json 输入 JSON
-     * @return JSON 对象
-     */
     private JsonNode nullToObject(JsonNode json) {
         return json == null || json.isNull() ? objectMapper.createObjectNode() : json;
     }
 
-    /**
-     * 将空值转换为空数组。
-     *
-     * @param json 输入 JSON
-     * @return JSON 数组
-     */
     private JsonNode nullToArray(JsonNode json) {
         return json == null || json.isNull() ? objectMapper.createArrayNode() : json;
     }
 
-    /**
-     * 要求文本非空。
-     *
-     * @param value 文本
-     * @param message 错误消息
-     * @return 文本
-     */
+    private String normalizeJudgeRule(String judgeRule) {
+        return judgeRule == null ? "" : judgeRule;
+    }
+
     private String requiredText(String value, String message) {
         if (value == null || value.isBlank()) {
             throw new BizException(ErrorCode.INVALID_ARGUMENT, message);
@@ -436,11 +319,6 @@ public class DefaultEvalCaseApplicationService implements EvalCaseApplicationSer
         return value;
     }
 
-    /**
-     * 生成用例编号。
-     *
-     * @return 用例编号
-     */
     private String newCaseNo() {
         return "case_" + CASE_NO_TIME_FORMATTER.format(Instant.now()) + "_" + UUID.randomUUID().toString().substring(0, 8);
     }

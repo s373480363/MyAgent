@@ -30,9 +30,9 @@ public interface EvalCaseMapper {
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_rule_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class),
             @Arg(column = "source_agent_run_id", javaType = Long.class),
@@ -45,8 +45,8 @@ public interface EvalCaseMapper {
     })
     @Select("""
             insert into eval_case(
-              suite_id, case_no, title, input_json, reference_answer_json, assertions_json,
-              score_rule_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
+              suite_id, case_no, title, input_json, reference_sample_json, judge_rule_text,
+              hard_checks_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
               source_workflow_version_id, source_node_id, description
             )
             values (
@@ -54,9 +54,9 @@ public interface EvalCaseMapper {
               #{record.caseNo},
               #{record.title},
               #{record.inputJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-              #{record.referenceAnswerJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-              #{record.assertionsJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-              #{record.scoreRuleJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+              #{record.referenceSampleJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+              #{record.judgeRuleText},
+              #{record.hardChecksJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
               #{record.critical},
               #{record.confirmStatus},
               #{record.sourceAgentRunId},
@@ -65,8 +65,8 @@ public interface EvalCaseMapper {
               #{record.sourceNodeId},
               #{record.description}
             )
-            returning id, suite_id, case_no, title, input_json, reference_answer_json, assertions_json,
-                      score_rule_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
+            returning id, suite_id, case_no, title, input_json, reference_sample_json, judge_rule_text,
+                      hard_checks_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
                       source_workflow_version_id, source_node_id, description, created_at, updated_at
             """)
     EvalCaseRecord insert(@Param("record") EvalCaseRecord record);
@@ -83,9 +83,9 @@ public interface EvalCaseMapper {
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_rule_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class),
             @Arg(column = "source_agent_run_id", javaType = Long.class),
@@ -97,8 +97,8 @@ public interface EvalCaseMapper {
             @Arg(column = "updated_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class)
     })
     @Select("""
-            select id, suite_id, case_no, title, input_json, reference_answer_json, assertions_json,
-                   score_rule_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
+            select id, suite_id, case_no, title, input_json, reference_sample_json, judge_rule_text,
+                   hard_checks_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
                    source_workflow_version_id, source_node_id, description, created_at, updated_at
             from eval_case
             where id = #{caseId}
@@ -122,9 +122,9 @@ public interface EvalCaseMapper {
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_rule_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class),
             @Arg(column = "source_agent_run_id", javaType = Long.class),
@@ -137,8 +137,8 @@ public interface EvalCaseMapper {
     })
     @Select({
             "<script>",
-            "select id, suite_id, case_no, title, input_json, reference_answer_json, assertions_json,",
-            "       score_rule_json, critical, confirm_status, source_agent_run_id, source_node_run_id,",
+            "select id, suite_id, case_no, title, input_json, reference_sample_json, judge_rule_text,",
+            "       hard_checks_json, critical, confirm_status, source_agent_run_id, source_node_run_id,",
             "       source_workflow_version_id, source_node_id, description, created_at, updated_at",
             "from eval_case",
             "where suite_id = #{suiteId}",
@@ -204,9 +204,9 @@ public interface EvalCaseMapper {
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_rule_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class),
             @Arg(column = "source_agent_run_id", javaType = Long.class),
@@ -219,12 +219,12 @@ public interface EvalCaseMapper {
     })
     @Select({
             "<script>",
-            "select id, suite_id, case_no, title, input_json, reference_answer_json, assertions_json,",
-            "       score_rule_json, critical, confirm_status, source_agent_run_id, source_node_run_id,",
+            "select id, suite_id, case_no, title, input_json, reference_sample_json, judge_rule_text,",
+            "       hard_checks_json, critical, confirm_status, source_agent_run_id, source_node_run_id,",
             "       source_workflow_version_id, source_node_id, description, created_at, updated_at",
             "from eval_case",
             "where suite_id = #{suiteId}",
-            "  and confirm_status in ('USER_CREATED', 'USER_CONFIRMED')",
+            "  and confirm_status = 'USER_CONFIRMED'",
             "  <if test='caseIds != null and caseIds.size() > 0'>",
             "    and id in",
             "    <foreach collection='caseIds' item='caseId' open='(' separator=',' close=')'>",
@@ -249,7 +249,7 @@ public interface EvalCaseMapper {
             select count(*)
             from eval_case
             where suite_id = #{suiteId}
-              and confirm_status in ('USER_CREATED', 'USER_CONFIRMED')
+              and confirm_status = 'USER_CONFIRMED'
             """)
     long countFormalCases(@Param("suiteId") long suiteId);
 
@@ -265,9 +265,9 @@ public interface EvalCaseMapper {
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_rule_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class),
             @Arg(column = "source_agent_run_id", javaType = Long.class),
@@ -282,15 +282,15 @@ public interface EvalCaseMapper {
             update eval_case
             set title = #{record.title},
                 input_json = #{record.inputJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-                reference_answer_json = #{record.referenceAnswerJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-                assertions_json = #{record.assertionsJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-                score_rule_json = #{record.scoreRuleJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+                reference_sample_json = #{record.referenceSampleJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+                judge_rule_text = #{record.judgeRuleText},
+                hard_checks_json = #{record.hardChecksJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
                 critical = #{record.critical},
                 description = #{record.description},
                 updated_at = now()
             where id = #{record.id} and suite_id = #{record.suiteId}
-            returning id, suite_id, case_no, title, input_json, reference_answer_json, assertions_json,
-                      score_rule_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
+            returning id, suite_id, case_no, title, input_json, reference_sample_json, judge_rule_text,
+                      hard_checks_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
                       source_workflow_version_id, source_node_id, description, created_at, updated_at
             """)
     EvalCaseRecord update(@Param("record") EvalCaseRecord record);
@@ -309,9 +309,9 @@ public interface EvalCaseMapper {
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_rule_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class),
             @Arg(column = "source_agent_run_id", javaType = Long.class),
@@ -327,8 +327,8 @@ public interface EvalCaseMapper {
             set confirm_status = #{status},
                 updated_at = now()
             where id = #{caseId} and suite_id = #{suiteId}
-            returning id, suite_id, case_no, title, input_json, reference_answer_json, assertions_json,
-                      score_rule_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
+            returning id, suite_id, case_no, title, input_json, reference_sample_json, judge_rule_text,
+                      hard_checks_json, critical, confirm_status, source_agent_run_id, source_node_run_id,
                       source_workflow_version_id, source_node_id, description, created_at, updated_at
             """)
     EvalCaseRecord updateConfirmStatus(

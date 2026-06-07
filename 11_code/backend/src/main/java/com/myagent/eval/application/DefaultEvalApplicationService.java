@@ -18,8 +18,8 @@ import com.myagent.eval.application.query.ListEvalRunResultsQuery;
 import com.myagent.eval.application.query.ListEvalRunsQuery;
 import com.myagent.eval.application.query.ListEvalSuitesQuery;
 import com.myagent.eval.application.result.EvalAgentSummaryResult;
-import com.myagent.eval.application.result.EvalAssertionResultItem;
 import com.myagent.eval.application.result.EvalFailureSummaryResult;
+import com.myagent.eval.application.result.EvalHardCheckResultItem;
 import com.myagent.eval.application.result.EvalNodeSummaryResult;
 import com.myagent.eval.application.result.EvalRunDetailResult;
 import com.myagent.eval.application.result.EvalRunHistoryComparisonResult;
@@ -41,6 +41,7 @@ import com.myagent.eval.repository.EvalRunRecord;
 import com.myagent.eval.repository.EvalRunRepository;
 import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
+import com.myagent.modelcatalog.application.ModelRouteResolver;
 import com.myagent.run.application.result.RunErrorResult;
 import com.myagent.run.domain.RunNoGenerator;
 import com.myagent.run.domain.RunStatus;
@@ -126,14 +127,14 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private final NodeExecutionRunner nodeExecutionRunner;
 
     /**
-     * 验收断言执行器。
+     * 验收 hardChecks 执行器。
      */
-    private final EvalAssertionEvaluator assertionEvaluator;
+    private final EvalHardCheckEvaluator hardCheckEvaluator;
 
     /**
-     * 验收评分执行器。
+     * 验收 judge 执行器。
      */
-    private final EvalScoreEvaluator scoreEvaluator;
+    private final EvalJudgeEvaluator judgeEvaluator;
 
     /**
      * EvalRun 生命周期服务。
@@ -144,6 +145,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
      * 正式用例校验服务。
      */
     private final EvalCaseFormalValidationService formalValidationService;
+
+    /**
+     * 模型供应项的可发布性校验器。
+     */
+    private final ModelRouteResolver modelRouteResolver;
 
     /**
      * 运行编号生成器。
@@ -163,8 +169,8 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
      * @param agentRunRepository AgentRun 仓储
      * @param traceWriter Trace 写入器
      * @param nodeExecutionRunner 节点执行协调器
-     * @param assertionEvaluator 验收断言执行器
-     * @param scoreEvaluator 验收评分执行器
+     * @param hardCheckEvaluator 验收 hardChecks 执行器
+     * @param judgeEvaluator 验收 judge 执行器
      * @param evalRunLifecycleService EvalRun 生命周期服务
      * @param formalValidationService 正式用例校验服务
      * @param runNoGenerator 运行编号生成器
@@ -180,10 +186,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
             AgentRunRepository agentRunRepository,
             TraceWriter traceWriter,
             NodeExecutionRunner nodeExecutionRunner,
-            EvalAssertionEvaluator assertionEvaluator,
-            EvalScoreEvaluator scoreEvaluator,
+            EvalHardCheckEvaluator hardCheckEvaluator,
+            EvalJudgeEvaluator judgeEvaluator,
             EvalRunLifecycleService evalRunLifecycleService,
             EvalCaseFormalValidationService formalValidationService,
+            ModelRouteResolver modelRouteResolver,
             RunNoGenerator runNoGenerator
     ) {
         this.objectMapper = objectMapper;
@@ -196,10 +203,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
         this.agentRunRepository = agentRunRepository;
         this.traceWriter = traceWriter;
         this.nodeExecutionRunner = nodeExecutionRunner;
-        this.assertionEvaluator = assertionEvaluator;
-        this.scoreEvaluator = scoreEvaluator;
+        this.hardCheckEvaluator = hardCheckEvaluator;
+        this.judgeEvaluator = judgeEvaluator;
         this.evalRunLifecycleService = evalRunLifecycleService;
         this.formalValidationService = formalValidationService;
+        this.modelRouteResolver = modelRouteResolver;
         this.runNoGenerator = runNoGenerator;
     }
 
@@ -214,16 +222,22 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
         AgentRecord agent = requiredAgent(command.agentId());
         WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(command.workflowVersionId());
         if (workflowVersion.agentId() != agent.id()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "验收套件绑定的工作流版本不属于指定 Agent。");
+            throw new BizException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "\u9a8c\u6536\u5957\u4ef6\u7ed1\u5b9a\u7684\u5de5\u4f5c\u6d41\u7248\u672c\u4e0d\u5c5e\u4e8e\u6307\u5b9a Agent\u3002"
+            );
         }
         requiredEvalNode(workflowVersion, command.nodeId());
+        String judgeModelOfferingKey = validateJudgeModelOfferingKey(command.judgeModelOfferingKey());
         EvalSuiteRecord record = evalSuiteRepository.insert(new EvalSuiteRecord(
                 0L,
                 command.agentId(),
                 command.workflowVersionId(),
                 command.nodeId(),
-                requiredText(command.name(), "验收套件名称不能为空。"),
+                requiredText(command.name(), "\u9a8c\u6536\u5957\u4ef6\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a\u3002"),
                 command.goal() == null ? "" : command.goal(),
+                judgeModelOfferingKey,
+                normalizeJudgeTemperature(command.judgeTemperature()),
                 normalizeThreshold(command.passThreshold()),
                 EvalSuiteStatus.DRAFT,
                 null,
@@ -237,10 +251,13 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     public EvalSuiteResult updateSuite(UpdateEvalSuiteCommand command) {
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         requireSuiteDraft(suite);
+        String judgeModelOfferingKey = validateJudgeModelOfferingKey(command.judgeModelOfferingKey());
         return toSuiteResult(evalSuiteRepository.update(
                 command.suiteId(),
-                requiredText(command.name(), "验收套件名称不能为空。"),
+                requiredText(command.name(), "\u9a8c\u6536\u5957\u4ef6\u540d\u79f0\u4e0d\u80fd\u4e3a\u7a7a\u3002"),
                 command.goal() == null ? "" : command.goal(),
+                judgeModelOfferingKey,
+                normalizeJudgeTemperature(command.judgeTemperature()),
                 normalizeThreshold(command.passThreshold())
         ));
     }
@@ -250,11 +267,14 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     public EvalSuiteResult confirmSuite(long suiteId) {
         EvalSuiteRecord suite = requiredSuite(suiteId);
         requireSuiteDraft(suite);
+        validateJudgeModelOfferingKey(suite.judgeModelOfferingKey());
         List<EvalCaseRecord> formalCases = evalCaseRepository.listRunnableCases(suiteId, null);
         if (formalCases.isEmpty()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "确认验收套件前至少需要一个正式用例。");
+            throw new BizException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "\u786e\u8ba4\u9a8c\u6536\u5957\u4ef6\u524d\u81f3\u5c11\u9700\u8981\u4e00\u4e2a\u6b63\u5f0f\u7528\u4f8b\u3002"
+            );
         }
-        formalCases.forEach(formalValidationService::validateFormalEvalCase);
         WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(suite.workflowVersionId());
         WorkflowNodeDefinition node = requiredEvalNode(workflowVersion, suite.nodeId());
         formalCases.forEach(record -> formalValidationService.validateFormalEvalCase(record, node));
@@ -270,50 +290,56 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
 
     @Override
     public EvalRunResult runSuite(RunEvalSuiteCommand command) {
-        // 正式 EvalRun 只接收已确认套件和正式用例，未确认 AI 草稿不允许进入质量统计。
         EvalSuiteRecord suite = requiredSuite(command.suiteId());
         if (suite.status() != EvalSuiteStatus.CONFIRMED) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "只有已确认验收套件可以执行正式验收。");
+            throw new BizException(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "\u53ea\u6709\u5df2\u786e\u8ba4\u9a8c\u6536\u5957\u4ef6\u53ef\u4ee5\u6267\u884c\u6b63\u5f0f\u9a8c\u6536\u3002"
+            );
         }
-        if (command.includeUnconfirmed()) {
-            throw new BizException(ErrorCode.INVALID_ARGUMENT, "V1 正式验收不允许包含未确认用例。");
-        }
+
         AgentRecord agent = requiredAgent(suite.agentId());
         WorkflowVersionRecord workflowVersion = requiredWorkflowVersion(suite.workflowVersionId());
         WorkflowNodeDefinition node = requiredEvalNode(workflowVersion, suite.nodeId());
-        List<EvalCaseRecord> cases = evalCaseRepository.listRunnableCases(
-                suite.id(),
-                command.caseIds()
-        );
+        List<EvalCaseRecord> cases = evalCaseRepository.listRunnableCases(suite.id(), command.caseIds());
         if (cases.isEmpty()) {
-            throw new BizException(ErrorCode.EVAL_CASE_UNCONFIRMED, "没有可执行的验收用例。");
+            throw new BizException(ErrorCode.EVAL_CASE_UNCONFIRMED, "\u6ca1\u6709\u53ef\u6267\u884c\u7684\u9a8c\u6536\u7528\u4f8b\u3002");
         }
-        // 创建运行记录前先完成断言合法性校验，避免无效用例污染 AgentRun/EvalRun 审计链路。
+
         cases.forEach(record -> formalValidationService.validateFormalEvalCase(record, node));
+
         long startedAtNanos = System.nanoTime();
-        // AgentRun 与 EvalRun 通过生命周期服务独立提交，确保线程池内写 Trace 时外键已经可见。
-        AgentRunRecord agentRun = evalRunLifecycleService.createEvalAgentRun(runNoGenerator.nextRunNo(), agent, workflowVersion, suite, cases);
+        AgentRunRecord agentRun = evalRunLifecycleService.createEvalAgentRun(
+                runNoGenerator.nextRunNo(),
+                agent,
+                workflowVersion,
+                suite,
+                cases
+        );
         EvalRunRecord evalRun = null;
         int passed = 0;
         int failed = 0;
         try {
             evalRun = evalRunLifecycleService.createEvalRun(runNoGenerator.nextEvalRunNo(), suite, agent, workflowVersion, agentRun);
             for (EvalCaseRecord evalCase : cases) {
-                // 单用例执行复用 NodeExecutionRunner，保持 Eval 与普通运行一致的 NodeRun、Trace、Schema 和超时语义。
-                EvalCaseExecution execution = executeCase(agentRun, evalRun, agent, workflowVersion, node, evalCase);
+                EvalCaseExecution execution = executeCase(agentRun, evalRun, suite, agent, workflowVersion, node, evalCase);
                 boolean casePassed = execution.passed();
                 if (casePassed) {
                     passed++;
                 } else {
                     failed++;
                 }
+
                 evalRunLifecycleService.insertEvalCaseResult(new EvalCaseResultRecord(
                         0L,
                         evalRun.id(),
                         evalCase.id(),
                         execution.outputJson(),
-                        execution.assertionResults(),
-                        execution.scoreResult(),
+                        execution.hardCheckResults(),
+                        execution.judgeResult(),
+                        execution.judgeRawText(),
+                        execution.judgeModelOfferingKey(),
+                        execution.judgePromptVersion(),
                         casePassed,
                         execution.errorMessage(),
                         execution.durationMs(),
@@ -324,7 +350,9 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                         execution.nodeRunDbId(),
                         evalRun.id(),
                         TraceEventType.EVAL_CASE_RESULT,
-                        casePassed ? "验收用例通过：" + evalCase.caseNo() : "验收用例失败：" + evalCase.caseNo(),
+                        casePassed
+                                ? "\u9a8c\u6536\u7528\u4f8b\u901a\u8fc7\uff1a" + evalCase.caseNo()
+                                : "\u9a8c\u6536\u7528\u4f8b\u5931\u8d25\uff1a" + evalCase.caseNo(),
                         objectMapper.createObjectNode()
                                 .put("caseId", evalCase.id())
                                 .put("caseNo", evalCase.caseNo())
@@ -332,7 +360,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                                 .put("errorMessage", execution.errorMessage())
                 ));
             }
-            // 汇总只基于确定性断言结果；LLM 评分只进入 scoreResult，不覆盖正式通过率。
+
             BigDecimal passRate = percent(passed, cases.size());
             long criticalFailed = evalCaseResultRepository.countCriticalFailures(evalRun.id());
             RunStatus status = passRate.compareTo(suite.passThreshold()) >= 0 && criticalFailed == 0
@@ -340,6 +368,10 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                     : RunStatus.FAILED;
             String summary = buildSummary(status, criticalFailed, passed, failed, passRate);
             long durationMs = elapsedMillis(startedAtNanos);
+            String finalErrorMessage = status == RunStatus.SUCCESS
+                    ? ""
+                    : "\u9a8c\u6536\u5224\u5b9a\u672a\u5168\u90e8\u901a\u8fc7\u3002";
+
             EvalRunRecord finishedEvalRun = evalRunLifecycleService.finishEvalRun(
                     evalRun.id(),
                     status,
@@ -348,7 +380,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                     failed,
                     passRate,
                     summary,
-                    status == RunStatus.SUCCESS ? "" : "验收断言未全部通过。",
+                    finalErrorMessage,
                     durationMs
             );
             evalRunLifecycleService.finishEvalAgentRun(
@@ -358,8 +390,8 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                             .put("evalRunId", finishedEvalRun.runNo())
                             .put("passRate", passRate)
                             .put("summary", summary),
-                    status == RunStatus.SUCCESS ? null : ErrorCode.EVAL_ASSERTION_FAILED.getCode(),
-                    status == RunStatus.SUCCESS ? "" : "验收断言未全部通过。",
+                    status == RunStatus.SUCCESS ? null : ErrorCode.EVAL_JUDGE_RULE_FAILED.getCode(),
+                    finalErrorMessage,
                     durationMs
             );
             return new EvalRunResult(
@@ -374,7 +406,6 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                     summary
             );
         } catch (RuntimeException exception) {
-            // 异常路径同样显式写入 EvalRun 与 AgentRun 终态，避免运行记录长期停留在 RUNNING。
             markFailedEvalRun(agentRun, evalRun, cases, passed, failed, startedAtNanos, exception);
             throw exception;
         }
@@ -415,7 +446,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 run.summary(),
                 run.errorMessage() == null || run.errorMessage().isBlank()
                         ? null
-                        : new RunErrorResult(ErrorCode.EVAL_ASSERTION_FAILED.getCode(), run.errorMessage(), null),
+                        : new RunErrorResult(ErrorCode.EVAL_JUDGE_RULE_FAILED.getCode(), run.errorMessage(), null),
                 run.startedAt(),
                 run.finishedAt(),
                 run.durationMs(),
@@ -451,6 +482,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private EvalCaseExecution executeCase(
             AgentRunRecord agentRun,
             EvalRunRecord evalRun,
+            EvalSuiteRecord suite,
             AgentRecord agent,
             WorkflowVersionRecord workflowVersion,
             WorkflowNodeDefinition node,
@@ -479,28 +511,40 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                     nodeResult.durationMs()
             );
         }
-        EvalAssertionEvaluation assertion = assertionEvaluator.evaluate(
+        EvalHardCheckEvaluation hardCheck = hardCheckEvaluator.evaluate(
                 nodeResult.outputJson(),
-                evalCase.assertionsJson(),
+                evalCase.hardChecksJson(),
                 nodeResult.schemaValidationResultJson()
         );
-        JsonNode scoreResult = scoreEvaluator.evaluate(new EvalScoreRequest(
-                evalCase.scoreRuleJson(),
-                agent,
+        if (!hardCheck.passed()) {
+            return EvalCaseExecution.failedByHardChecks(
+                    nodeResult.nodeRunDbId(),
+                    nodeResult.outputJson(),
+                    hardCheck.hardCheckResults(),
+                    nodeResult.durationMs()
+            );
+        }
+        EvalJudgeEvaluation judge = judgeEvaluator.evaluate(new EvalJudgeRequest(
+                suite.judgeModelOfferingKey(),
+                suite.judgeTemperature(),
                 node,
                 evalCase.inputJson(),
-                evalCase.referenceAnswerJson(),
+                evalCase.referenceSampleJson(),
+                evalCase.judgeRuleText(),
                 nodeResult.outputJson(),
-                assertion.assertionResults(),
-                assertion.passed()
+                hardCheck.hardCheckResults()
         ));
+        boolean passed = judge.judgeResult() != null && judge.judgeResult().path("passed").asBoolean(false);
         return new EvalCaseExecution(
                 nodeResult.nodeRunDbId(),
                 nodeResult.outputJson(),
-                assertion.assertionResults(),
-                scoreResult,
-                assertion.passed(),
-                assertion.errorMessage(),
+                hardCheck.hardCheckResults(),
+                judge.judgeResult(),
+                judge.judgeRawText(),
+                judge.judgeModelOfferingKey(),
+                judge.judgePromptVersion(),
+                passed,
+                judge.errorMessage(),
                 nodeResult.durationMs()
         );
     }
@@ -667,37 +711,32 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 joined.critical(),
                 joined.passed(),
                 joined.inputJson(),
-                joined.referenceAnswerJson(),
+                joined.referenceSampleJson(),
+                joined.judgeRuleText(),
+                joined.hardChecksJson(),
                 joined.outputJson(),
-                toAssertionResultItems(joined.assertionResultJson()),
-                emptyObjectAsNull(joined.scoreResultJson()),
+                toHardCheckResultItems(joined.hardCheckResultJson()),
+                joined.judgeResultJson(),
+                joined.judgeRawText(),
+                joined.judgeModelOfferingKey(),
+                joined.judgePromptVersion(),
                 joined.errorMessage(),
                 joined.durationMs()
         );
     }
 
     /**
-     * 转换断言结果数组。
+     * 转换 hardChecks 结果数组。
      *
-     * @param assertionResultJson 断言结果 JSON
-     * @return 断言结果列表
+     * @param hardCheckResultJson hardChecks 结果 JSON
+     * @return hardChecks 结果列表
      */
-    private List<EvalAssertionResultItem> toAssertionResultItems(JsonNode assertionResultJson) {
-        if (assertionResultJson == null || !assertionResultJson.isArray()) {
+    private List<EvalHardCheckResultItem> toHardCheckResultItems(JsonNode hardCheckResultJson) {
+        if (hardCheckResultJson == null || !hardCheckResultJson.isArray()) {
             return List.of();
         }
-        return objectMapper.convertValue(assertionResultJson, new TypeReference<>() {
+        return objectMapper.convertValue(hardCheckResultJson, new TypeReference<List<EvalHardCheckResultItem>>() {
         });
-    }
-
-    /**
-     * 空对象转空值。
-     *
-     * @param json JSON 节点
-     * @return JSON 节点或 null
-     */
-    private JsonNode emptyObjectAsNull(JsonNode json) {
-        return json == null || json.isNull() || json.isMissingNode() || json.isEmpty() ? null : json;
     }
 
     /**
@@ -754,6 +793,8 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 record.nodeId(),
                 record.name(),
                 record.goal(),
+                record.judgeModelOfferingKey(),
+                record.judgeTemperature(),
                 record.passThreshold(),
                 record.status(),
                 record.updatedAt()
@@ -774,6 +815,8 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
                 record.nodeId(),
                 record.name(),
                 record.goal(),
+                record.judgeModelOfferingKey(),
+                record.judgeTemperature(),
                 record.passThreshold(),
                 record.status(),
                 record.createdAt(),
@@ -896,6 +939,32 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     }
 
     /**
+     * 规范化 judge 温度。
+     *
+     * @param judgeTemperature judge 温度
+     * @return 规范化温度
+     */
+    private BigDecimal normalizeJudgeTemperature(BigDecimal judgeTemperature) {
+        BigDecimal value = judgeTemperature == null ? BigDecimal.ZERO : judgeTemperature;
+        if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(BigDecimal.valueOf(2)) > 0) {
+            throw new BizException(ErrorCode.INVALID_ARGUMENT, "judge 温度必须在 0 到 2 之间。");
+        }
+        return value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * 校验 judge 模型供应项。
+     *
+     * @param judgeModelOfferingKey judge 模型供应项标识
+     * @return 规范化后的供应项标识
+     */
+    private String validateJudgeModelOfferingKey(String judgeModelOfferingKey) {
+        String normalized = requiredText(judgeModelOfferingKey, "judge 模型供应项不能为空。").trim();
+        modelRouteResolver.validatePublishable(normalized);
+        return normalized;
+    }
+
+    /**
      * 计算通过率。
      *
      * @param passed 通过数
@@ -1009,8 +1078,8 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
      *
      * @param nodeRunDbId NodeRun 主键
      * @param outputJson 输出 JSON
-     * @param assertionResults 断言结果
-     * @param scoreResult 评分结果
+     * @param hardCheckResults hardChecks 结果
+     * @param judgeResult judge 结构化结果
      * @param passed 是否通过
      * @param errorMessage 错误消息
      * @param durationMs 耗时毫秒
@@ -1018,8 +1087,11 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
     private record EvalCaseExecution(
             long nodeRunDbId,
             JsonNode outputJson,
-            JsonNode assertionResults,
-            JsonNode scoreResult,
+            JsonNode hardCheckResults,
+            JsonNode judgeResult,
+            String judgeRawText,
+            String judgeModelOfferingKey,
+            String judgePromptVersion,
             boolean passed,
             String errorMessage,
             Long durationMs
@@ -1030,7 +1102,7 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
          *
          * @param nodeRunDbId NodeRun 主键
          * @param outputJson 输出 JSON
-         * @param assertionResults 断言结果
+         * @param hardCheckResults hardChecks 结果
          * @param errorMessage 错误消息
          * @param durationMs 耗时毫秒
          * @return 执行结果
@@ -1038,11 +1110,51 @@ public class DefaultEvalApplicationService implements EvalApplicationService {
         private static EvalCaseExecution failed(
                 long nodeRunDbId,
                 JsonNode outputJson,
-                JsonNode assertionResults,
+                JsonNode hardCheckResults,
                 String errorMessage,
                 Long durationMs
         ) {
-            return new EvalCaseExecution(nodeRunDbId, outputJson, assertionResults, null, false, errorMessage, durationMs);
+            return new EvalCaseExecution(
+                    nodeRunDbId,
+                    outputJson,
+                    hardCheckResults,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false,
+                    errorMessage,
+                    durationMs
+            );
+        }
+
+        /**
+         * 构造 hardChecks 失败结果。
+         *
+         * @param nodeRunDbId NodeRun 主键
+         * @param outputJson 输出 JSON
+         * @param hardCheckResults hardChecks 结果
+         * @param durationMs 耗时毫秒
+         * @return 执行结果
+         */
+        private static EvalCaseExecution failedByHardChecks(
+                long nodeRunDbId,
+                JsonNode outputJson,
+                JsonNode hardCheckResults,
+                Long durationMs
+        ) {
+            return new EvalCaseExecution(
+                    nodeRunDbId,
+                    outputJson,
+                    hardCheckResults,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false,
+                    "hardChecks 未通过，已跳过 judge LLM。",
+                    durationMs
+            );
         }
     }
 }

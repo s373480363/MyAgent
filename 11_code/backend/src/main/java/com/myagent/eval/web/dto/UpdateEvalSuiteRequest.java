@@ -16,6 +16,8 @@ import java.math.BigDecimal;
 public record UpdateEvalSuiteRequest(
         @NotBlank String name,
         String goal,
+        @NotBlank String judgeModelOfferingKey,
+        @DecimalMin("0") @DecimalMax("2") BigDecimal judgeTemperature,
         @DecimalMin("0") @DecimalMax("100") BigDecimal passThreshold
 ) {
 }

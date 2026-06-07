@@ -14,6 +14,8 @@ public record UpdateEvalSuiteCommand(
         long suiteId,
         String name,
         String goal,
+        String judgeModelOfferingKey,
+        BigDecimal judgeTemperature,
         BigDecimal passThreshold
 ) {
 }

@@ -30,23 +30,30 @@ public interface EvalSuiteMapper {
             @Arg(column = "node_id", javaType = String.class),
             @Arg(column = "name", javaType = String.class),
             @Arg(column = "goal", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_temperature", javaType = BigDecimal.class),
             @Arg(column = "pass_threshold", javaType = BigDecimal.class),
             @Arg(column = "status", javaType = EvalSuiteStatus.class),
             @Arg(column = "created_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
             @Arg(column = "updated_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class)
     })
     @Select("""
-            insert into eval_suite(agent_id, workflow_version_id, node_id, name, goal, pass_threshold, status)
+            insert into eval_suite(
+              agent_id, workflow_version_id, node_id, name, goal, judge_model_offering_key, judge_temperature, pass_threshold, status
+            )
             values (
               #{record.agentId},
               #{record.workflowVersionId},
               #{record.nodeId},
               #{record.name},
               #{record.goal},
+              #{record.judgeModelOfferingKey},
+              #{record.judgeTemperature},
               #{record.passThreshold},
               #{record.status}
             )
-            returning id, agent_id, workflow_version_id, node_id, name, goal, pass_threshold, status, created_at, updated_at
+            returning id, agent_id, workflow_version_id, node_id, name, goal, judge_model_offering_key,
+                      judge_temperature, pass_threshold, status, created_at, updated_at
             """)
     EvalSuiteRecord insert(@Param("record") EvalSuiteRecord record);
 
@@ -63,13 +70,16 @@ public interface EvalSuiteMapper {
             @Arg(column = "node_id", javaType = String.class),
             @Arg(column = "name", javaType = String.class),
             @Arg(column = "goal", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_temperature", javaType = BigDecimal.class),
             @Arg(column = "pass_threshold", javaType = BigDecimal.class),
             @Arg(column = "status", javaType = EvalSuiteStatus.class),
             @Arg(column = "created_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
             @Arg(column = "updated_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class)
     })
     @Select("""
-            select id, agent_id, workflow_version_id, node_id, name, goal, pass_threshold, status, created_at, updated_at
+            select id, agent_id, workflow_version_id, node_id, name, goal, judge_model_offering_key,
+                   judge_temperature, pass_threshold, status, created_at, updated_at
             from eval_suite
             where id = #{suiteId}
             """)
@@ -94,6 +104,8 @@ public interface EvalSuiteMapper {
             @Arg(column = "node_id", javaType = String.class),
             @Arg(column = "name", javaType = String.class),
             @Arg(column = "goal", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_temperature", javaType = BigDecimal.class),
             @Arg(column = "pass_threshold", javaType = BigDecimal.class),
             @Arg(column = "status", javaType = EvalSuiteStatus.class),
             @Arg(column = "created_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
@@ -101,7 +113,8 @@ public interface EvalSuiteMapper {
     })
     @Select({
             "<script>",
-            "select id, agent_id, workflow_version_id, node_id, name, goal, pass_threshold, status, created_at, updated_at",
+            "select id, agent_id, workflow_version_id, node_id, name, goal, judge_model_offering_key,",
+            "       judge_temperature, pass_threshold, status, created_at, updated_at",
             "from eval_suite",
             "<where>",
             "  <if test='agentId != null'> and agent_id = #{agentId} </if>",
@@ -178,6 +191,8 @@ public interface EvalSuiteMapper {
             @Arg(column = "node_id", javaType = String.class),
             @Arg(column = "name", javaType = String.class),
             @Arg(column = "goal", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_temperature", javaType = BigDecimal.class),
             @Arg(column = "pass_threshold", javaType = BigDecimal.class),
             @Arg(column = "status", javaType = EvalSuiteStatus.class),
             @Arg(column = "created_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
@@ -187,15 +202,20 @@ public interface EvalSuiteMapper {
             update eval_suite
             set name = #{name},
                 goal = #{goal},
+                judge_model_offering_key = #{judgeModelOfferingKey},
+                judge_temperature = #{judgeTemperature},
                 pass_threshold = #{passThreshold},
                 updated_at = now()
             where id = #{suiteId}
-            returning id, agent_id, workflow_version_id, node_id, name, goal, pass_threshold, status, created_at, updated_at
+            returning id, agent_id, workflow_version_id, node_id, name, goal, judge_model_offering_key,
+                      judge_temperature, pass_threshold, status, created_at, updated_at
             """)
     EvalSuiteRecord update(
             @Param("suiteId") long suiteId,
             @Param("name") String name,
             @Param("goal") String goal,
+            @Param("judgeModelOfferingKey") String judgeModelOfferingKey,
+            @Param("judgeTemperature") BigDecimal judgeTemperature,
             @Param("passThreshold") BigDecimal passThreshold
     );
 
@@ -213,6 +233,8 @@ public interface EvalSuiteMapper {
             @Arg(column = "node_id", javaType = String.class),
             @Arg(column = "name", javaType = String.class),
             @Arg(column = "goal", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_temperature", javaType = BigDecimal.class),
             @Arg(column = "pass_threshold", javaType = BigDecimal.class),
             @Arg(column = "status", javaType = EvalSuiteStatus.class),
             @Arg(column = "created_at", javaType = java.time.Instant.class, typeHandler = InstantTypeHandler.class),
@@ -223,7 +245,8 @@ public interface EvalSuiteMapper {
             set status = #{status},
                 updated_at = now()
             where id = #{suiteId}
-            returning id, agent_id, workflow_version_id, node_id, name, goal, pass_threshold, status, created_at, updated_at
+            returning id, agent_id, workflow_version_id, node_id, name, goal, judge_model_offering_key,
+                      judge_temperature, pass_threshold, status, created_at, updated_at
             """)
     EvalSuiteRecord updateStatus(@Param("suiteId") long suiteId, @Param("status") EvalSuiteStatus status);
 }

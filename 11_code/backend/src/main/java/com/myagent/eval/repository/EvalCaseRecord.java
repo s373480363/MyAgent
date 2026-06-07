@@ -12,14 +12,14 @@ import java.time.Instant;
  * @param suiteId 验收套件主键
  * @param caseNo 用例编号
  * @param title 用例标题
- * @param inputJson 用例输入
- * @param referenceAnswerJson 参考答案
- * @param assertionsJson 确定性断言配置
- * @param scoreRuleJson 可选评分规则
- * @param critical 是否关键用例
+ * @param inputJson 用例输入 JSON
+ * @param referenceSampleJson 参考样例 JSON
+ * @param judgeRuleText 自然语言验收规则
+ * @param hardChecksJson 硬约束配置数组
+ * @param critical 是否为关键用例
  * @param confirmStatus 确认状态
- * @param sourceAgentRunId 来源 AgentRun 数据库主键
- * @param sourceNodeRunId 来源 NodeRun 数据库主键
+ * @param sourceAgentRunId 来源 AgentRun 主键
+ * @param sourceNodeRunId 来源 NodeRun 主键
  * @param sourceWorkflowVersionId 来源工作流版本主键
  * @param sourceNodeId 来源节点标识
  * @param description 用例说明
@@ -32,9 +32,9 @@ public record EvalCaseRecord(
         String caseNo,
         String title,
         JsonNode inputJson,
-        JsonNode referenceAnswerJson,
-        JsonNode assertionsJson,
-        JsonNode scoreRuleJson,
+        JsonNode referenceSampleJson,
+        String judgeRuleText,
+        JsonNode hardChecksJson,
         boolean critical,
         EvalCaseConfirmStatus confirmStatus,
         Long sourceAgentRunId,

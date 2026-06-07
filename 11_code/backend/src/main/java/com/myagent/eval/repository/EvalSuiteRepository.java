@@ -45,7 +45,14 @@ public interface EvalSuiteRepository {
      * @param passThreshold 通过阈值
      * @return 更新后的套件
      */
-    EvalSuiteRecord update(long suiteId, String name, String goal, BigDecimal passThreshold);
+    EvalSuiteRecord update(
+            long suiteId,
+            String name,
+            String goal,
+            String judgeModelOfferingKey,
+            BigDecimal judgeTemperature,
+            BigDecimal passThreshold
+    );
 
     /**
      * 更新状态。

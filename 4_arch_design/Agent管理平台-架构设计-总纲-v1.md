@@ -53,7 +53,7 @@ v1 架构必须覆盖以下能力：
 - Agent 协作：AGENT_CALL、父子 AgentRun、AgentMessage、最大调用深度。
 - 外部 Agent：Codex、OpenCode、Custom CLI、Custom HTTP 适配器。
 - TOOL 节点：ToolDefinition、ToolRegistry、直接工具调用和 LLM 允许工具列表。
-- 节点验收：EvalSuite、EvalCase、EvalRun、确定性断言、可选 LLM 评分。
+- 节点验收：EvalSuite、EvalCase、EvalRun、自然语言 judgeRule、可选 hardChecks、judgeResult。
 - Trace：AgentRun、NodeRun、TraceEvent、模型请求响应全文、错误定位。
 - 公共接口契约：REST API 由 OpenAPI 描述，前端基于契约生成类型。
 

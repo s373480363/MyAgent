@@ -19,6 +19,7 @@
 | `9_dependency\` | 项目依赖 | 查询/更新项目依赖信息 |
 | `10_error_list\` | 错误列表 | 查询历史错误/记录新错误 |
 | `11_code\` | 源代码 | 所有项目代码及直接依赖 |
+| `12_test_env\` | 测试环境信息 | 查询/更新验收测试所需要的环境信息 |
 | `13_release\` | 发布产物 | 发布后内容 |
 | `14_user_manual\` | 用户手册 | 提供给用户的教程说明 |
 
@@ -26,6 +27,7 @@
 - `0_specifications\develop_specification.md` — 开发规范
 - `0_specifications\ui_deisgn_specification.md` — 前端设计规范
 - `0_specifications\code_review_specification.md` — 代码审查规范
+- `0_specifications\test_specification.md` — 测试验收规范
 - `8_change_list\${change-name}\purpose.md` — 描述本次变更最终需要达成什么样的目的
 - `8_change_list\${change-name}\plan.md` — 描述本次变更预期的修改计划
 - `8_change_list\${change-name}\design.md` — 描述本次变更对于项目设计的调整，可能会包含 product、arch、ui、schema、interface 等多个维度的调整

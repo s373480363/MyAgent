@@ -1,6 +1,7 @@
 package com.myagent.eval.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.myagent.agent.repository.AgentRecord;
 import com.myagent.agent.repository.AgentRepository;
 import com.myagent.common.domain.EnableStatus;
@@ -14,6 +15,7 @@ import com.myagent.eval.repository.EvalRunRecord;
 import com.myagent.eval.repository.EvalRunRepository;
 import com.myagent.eval.repository.EvalSuiteRecord;
 import com.myagent.eval.repository.EvalSuiteRepository;
+import com.myagent.model.ModelInvocationRequest;
 import com.myagent.model.ModelInvocationResult;
 import com.myagent.model.ModelRequestTracePayload;
 import com.myagent.model.OpenAiModelGateway;
@@ -57,9 +59,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers(disabledWithoutDocker = true)
 class EvalRunTransactionBoundaryPostgresTests {
 
-    /**
-     * PostgreSQL 测试容器。
-     */
     @Container
     private static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
@@ -67,70 +66,17 @@ class EvalRunTransactionBoundaryPostgresTests {
                     .withUsername("myagent")
                     .withPassword("myagent");
 
-    /**
-     * JSON 对象映射器。
-     */
     private final ObjectMapper objectMapper;
-
-    /**
-     * 节点验收应用服务。
-     */
     private final EvalApplicationService evalApplicationService;
-
-    /**
-     * Agent 仓储。
-     */
     private final AgentRepository agentRepository;
-
-    /**
-     * 工作流版本仓储。
-     */
     private final WorkflowVersionRepository workflowVersionRepository;
-
-    /**
-     * EvalSuite 仓储。
-     */
     private final EvalSuiteRepository evalSuiteRepository;
-
-    /**
-     * EvalCase 仓储。
-     */
     private final EvalCaseRepository evalCaseRepository;
-
-    /**
-     * AgentRun 仓储。
-     */
     private final AgentRunRepository agentRunRepository;
-
-    /**
-     * EvalRun 仓储。
-     */
     private final EvalRunRepository evalRunRepository;
-
-    /**
-     * NodeRun 仓储。
-     */
     private final NodeRunRepository nodeRunRepository;
-
-    /**
-     * TraceEvent 仓储。
-     */
     private final TraceEventRepository traceEventRepository;
 
-    /**
-     * 构造集成测试。
-     *
-     * @param objectMapper JSON 对象映射器
-     * @param evalApplicationService 节点验收应用服务
-     * @param agentRepository Agent 仓储
-     * @param workflowVersionRepository 工作流版本仓储
-     * @param evalSuiteRepository EvalSuite 仓储
-     * @param evalCaseRepository EvalCase 仓储
-     * @param agentRunRepository AgentRun 仓储
-     * @param evalRunRepository EvalRun 仓储
-     * @param nodeRunRepository NodeRun 仓储
-     * @param traceEventRepository TraceEvent 仓储
-     */
     @Autowired
     EvalRunTransactionBoundaryPostgresTests(
             ObjectMapper objectMapper,
@@ -156,11 +102,6 @@ class EvalRunTransactionBoundaryPostgresTests {
         this.traceEventRepository = traceEventRepository;
     }
 
-    /**
-     * 注册 PostgreSQL 容器数据源。
-     *
-     * @param registry 动态配置注册器
-     */
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
@@ -169,11 +110,6 @@ class EvalRunTransactionBoundaryPostgresTests {
         registry.add("spring.flyway.enabled", () -> true);
     }
 
-    /**
-     * 正式 EvalRun 的父运行记录必须在线程池写 Trace 前已经提交。
-     *
-     * @throws Exception JSON 构造失败时抛出
-     */
     @Test
     void runSuiteCommitsParentRecordsBeforeWorkerThreadWritesTrace() throws Exception {
         AgentRecord agent = createAgent();
@@ -181,7 +117,7 @@ class EvalRunTransactionBoundaryPostgresTests {
         EvalSuiteRecord suite = createConfirmedSuite(agent, workflowVersion);
         createConfirmedCase(suite);
 
-        EvalRunResult result = evalApplicationService.runSuite(new RunEvalSuiteCommand(suite.id(), List.of(), false));
+        EvalRunResult result = evalApplicationService.runSuite(new RunEvalSuiteCommand(suite.id(), List.of()));
 
         AgentRunRecord agentRun = agentRunRepository.findByRunNo(result.runId()).orElseThrow();
         EvalRunRecord evalRun = evalRunRepository.findByRunNo(result.evalRunId()).orElseThrow();
@@ -193,19 +129,14 @@ class EvalRunTransactionBoundaryPostgresTests {
         assertThat(evalRun.status()).isEqualTo(RunStatus.SUCCESS);
         assertThat(evalRun.agentRunId()).isEqualTo(agentRun.id());
         assertThat(nodeRuns).hasSize(1);
-        assertThat(nodeRuns.getFirst().status()).isEqualTo(RunStatus.SUCCESS);
+        assertThat(nodeRuns.get(0).status()).isEqualTo(RunStatus.SUCCESS);
         assertThat(traceEvents)
                 .extracting(RunTraceEventRecord::eventType)
                 .contains(TraceEventType.MODEL_REQUEST, TraceEventType.MODEL_RESPONSE, TraceEventType.EVAL_CASE_RESULT);
-        assertTraceForeignKeys(traceEvents, TraceEventType.MODEL_REQUEST, agentRun.id(), nodeRuns.getFirst().id(), evalRun.id());
-        assertTraceForeignKeys(traceEvents, TraceEventType.MODEL_RESPONSE, agentRun.id(), nodeRuns.getFirst().id(), evalRun.id());
+        assertTraceForeignKeys(traceEvents, TraceEventType.MODEL_REQUEST, agentRun.id(), nodeRuns.get(0).id(), evalRun.id());
+        assertTraceForeignKeys(traceEvents, TraceEventType.MODEL_RESPONSE, agentRun.id(), nodeRuns.get(0).id(), evalRun.id());
     }
 
-    /**
-     * 创建 Agent 主数据。
-     *
-     * @return Agent 记录
-     */
     private AgentRecord createAgent() {
         return agentRepository.insert(new AgentRecord(
                 0L,
@@ -225,12 +156,6 @@ class EvalRunTransactionBoundaryPostgresTests {
         ));
     }
 
-    /**
-     * 创建包含 LLM 目标节点的已发布工作流版本。
-     *
-     * @param agent Agent 记录
-     * @return 工作流版本
-     */
     private WorkflowVersionRecord createWorkflowVersion(AgentRecord agent) {
         WorkflowNodeDefinition node = new WorkflowNodeDefinition();
         node.setNodeId("llm_1");
@@ -259,13 +184,6 @@ class EvalRunTransactionBoundaryPostgresTests {
         return workflowVersion;
     }
 
-    /**
-     * 创建已确认验收套件。
-     *
-     * @param agent Agent 记录
-     * @param workflowVersion 工作流版本
-     * @return 验收套件
-     */
     private EvalSuiteRecord createConfirmedSuite(AgentRecord agent, WorkflowVersionRecord workflowVersion) {
         return evalSuiteRepository.insert(new EvalSuiteRecord(
                 0L,
@@ -274,20 +192,15 @@ class EvalRunTransactionBoundaryPostgresTests {
                 "llm_1",
                 "LLM 节点验收套件",
                 "验证 Trace 外键链路。",
+                "test-model",
                 BigDecimal.ZERO,
+                BigDecimal.valueOf(100),
                 EvalSuiteStatus.CONFIRMED,
                 null,
                 null
         ));
     }
 
-    /**
-     * 创建已确认验收用例。
-     *
-     * @param suite 验收套件
-     * @return 验收用例
-     * @throws Exception JSON 构造失败时抛出
-     */
     private EvalCaseRecord createConfirmedCase(EvalSuiteRecord suite) throws Exception {
         return evalCaseRepository.insert(new EvalCaseRecord(
                 0L,
@@ -304,16 +217,8 @@ class EvalRunTransactionBoundaryPostgresTests {
                           "answer": "ok"
                         }
                         """),
-                objectMapper.readTree("""
-                        [
-                          {
-                            "type": "JSON_PATH_EQUALS",
-                            "path": "$.answer",
-                            "expected": "ok"
-                          }
-                        ]
-                        """),
-                objectMapper.createObjectNode(),
+                "请判断 answer 是否等于 ok，并给出通过结论。",
+                objectMapper.createArrayNode(),
                 true,
                 EvalCaseConfirmStatus.USER_CONFIRMED,
                 null,
@@ -326,15 +231,6 @@ class EvalRunTransactionBoundaryPostgresTests {
         ));
     }
 
-    /**
-     * 断言指定 Trace 事件带有完整外键。
-     *
-     * @param traceEvents Trace 事件列表
-     * @param eventType 事件类型
-     * @param agentRunId AgentRun 主键
-     * @param nodeRunId NodeRun 主键
-     * @param evalRunId EvalRun 主键
-     */
     private void assertTraceForeignKeys(
             List<RunTraceEventRecord> traceEvents,
             TraceEventType eventType,
@@ -351,24 +247,15 @@ class EvalRunTransactionBoundaryPostgresTests {
         assertThat(event.evalRunId()).isEqualTo(evalRunId);
     }
 
-    /**
-     * 测试用模型网关配置。
-     */
     @TestConfiguration
     static class TestModelGatewayConfiguration {
 
-        /**
-         * 构造不会外呼网络的模型网关。
-         *
-         * @param objectMapper JSON 对象映射器
-         * @return 测试模型网关
-         */
         @Bean
         @Primary
         OpenAiModelGateway testOpenAiModelGateway(ObjectMapper objectMapper) {
             return new OpenAiModelGateway() {
                 @Override
-                public ModelRequestTracePayload resolveRequestTracePayload(com.myagent.model.ModelInvocationRequest request) {
+                public ModelRequestTracePayload resolveRequestTracePayload(ModelInvocationRequest request) {
                     return new ModelRequestTracePayload(
                             "openai",
                             "OpenAI",
@@ -381,7 +268,19 @@ class EvalRunTransactionBoundaryPostgresTests {
                 }
 
                 @Override
-                public ModelInvocationResult invoke(com.myagent.model.ModelInvocationRequest request) {
+                public ModelInvocationResult invoke(ModelInvocationRequest request) {
+                    if (request.systemPrompt() != null && request.systemPrompt().contains("judge")) {
+                        ObjectNode judgeResult = objectMapper.createObjectNode();
+                        judgeResult.put("passed", true);
+                        judgeResult.put("score", 100);
+                        judgeResult.put("reason", "ok");
+                        judgeResult.set("criteriaResults", objectMapper.createArrayNode());
+                        return new ModelInvocationResult(
+                                judgeResult,
+                                "{\"passed\":true,\"score\":100,\"reason\":\"ok\",\"criteriaResults\":[]}",
+                                12L
+                        );
+                    }
                     return new ModelInvocationResult(
                             objectMapper.createObjectNode().put("answer", "ok"),
                             "{\"answer\":\"ok\"}",

@@ -1,5 +1,20 @@
 import { useEffect, useState } from "react";
-import { App, Button, Card, Checkbox, Descriptions, Drawer, Form, Input, InputNumber, Modal, Space, Table, Tabs, Typography } from "antd";
+import {
+  App,
+  Button,
+  Card,
+  Checkbox,
+  Descriptions,
+  Drawer,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Space,
+  Table,
+  Tabs,
+  Typography
+} from "antd";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -33,40 +48,21 @@ type CaseFormValues = {
   caseNo?: string;
   title: string;
   inputText?: string;
-  referenceAnswerText?: string;
-  assertionsText?: string;
-  scoreRuleEnabled?: boolean;
-  scoreRuleModelOfferingKey?: string;
-  scoreRuleTemperature?: number | null;
-  scoreRulePromptTemplate?: string;
+  referenceSampleText?: string;
+  judgeRule?: string;
+  hardChecksText?: string;
   critical?: boolean;
   description?: string;
 };
 
-/**
- * 判断套件是否已经进入归档只读状态。
- *
- * @param status 套件状态
- * @returns 归档时返回 true
- */
 export function isArchivedEvalSuite(status?: string | null) {
   return status === "ARCHIVED";
 }
 
-/**
- * 判断用例是否应进入只读状态。
- *
- * @param suiteStatus 套件状态
- * @param confirmStatus 用例确认状态
- * @returns 归档套件或归档用例均返回 true
- */
 export function isReadOnlyEvalCase(suiteStatus?: string | null, confirmStatus?: string | null) {
   return isArchivedEvalSuite(suiteStatus) || confirmStatus === "ARCHIVED";
 }
 
-/**
- * 节点验收页面。
- */
 export function EvalsPage() {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -77,10 +73,12 @@ export function EvalsPage() {
   const [selectedSuite, setSelectedSuite] = useState<Schema["EvalSuiteListItemResult"] | null>(null);
   const [selectedEvalRunId, setSelectedEvalRunId] = useState<string | null>(routeEvalRunId ?? null);
   const [form] = Form.useForm<SuiteFormValues>();
+
   const suitesQuery = useQuery({
     queryKey: ["eval-suites", page],
     queryFn: () => listEvalSuites({ page, pageSize: 20 })
   });
+
   const createMutation = useMutation({
     mutationFn: createEvalSuite,
     onSuccess: () => {
@@ -90,6 +88,7 @@ export function EvalsPage() {
       void queryClient.invalidateQueries({ queryKey: ["eval-suites"] });
     }
   });
+
   const updateMutation = useMutation({
     mutationFn: ({ suiteId, body }: { suiteId: number; body: Schema["UpdateEvalSuiteRequest"] }) => updateEvalSuite(suiteId, body),
     onSuccess: () => {
@@ -98,6 +97,7 @@ export function EvalsPage() {
       void queryClient.invalidateQueries({ queryKey: ["eval-suites"] });
     }
   });
+
   const confirmMutation = useMutation({
     mutationFn: confirmEvalSuite,
     onSuccess: () => {
@@ -105,6 +105,7 @@ export function EvalsPage() {
       void queryClient.invalidateQueries({ queryKey: ["eval-suites"] });
     }
   });
+
   const archiveMutation = useMutation({
     mutationFn: archiveEvalSuite,
     onSuccess: () => {
@@ -112,8 +113,9 @@ export function EvalsPage() {
       void queryClient.invalidateQueries({ queryKey: ["eval-suites"] });
     }
   });
+
   const runMutation = useMutation({
-    mutationFn: (suiteId: number) => runEvalSuite(suiteId, { includeUnconfirmed: false }),
+    mutationFn: (suiteId: number) => runEvalSuite(suiteId, {}),
     onSuccess: (result) => {
       message.success(`验收运行已完成：${result.evalRunId}`);
       void queryClient.invalidateQueries({ queryKey: ["eval-suites"] });
@@ -132,13 +134,16 @@ export function EvalsPage() {
   }, [routeEvalRunId]);
 
   useEffect(() => {
-    if (editingSuite) {
-      form.setFieldsValue({
-        name: editingSuite.name ?? "",
-        goal: editingSuite.goal,
-        passThreshold: editingSuite.passThreshold
-      });
+    if (!editingSuite) {
+      return;
     }
+    form.setFieldsValue({
+      name: editingSuite.name ?? "",
+      goal: editingSuite.goal,
+      judgeModelOfferingKey: editingSuite.judgeModelOfferingKey,
+      judgeTemperature: editingSuite.judgeTemperature,
+      passThreshold: editingSuite.passThreshold
+    });
   }, [editingSuite, form]);
 
   if (suitesQuery.isLoading || suitesQuery.isError) {
@@ -158,11 +163,12 @@ export function EvalsPage() {
         <div>
           <Typography.Title level={3}>节点验收</Typography.Title>
           <Typography.Paragraph className="muted-text">
-            套件、用例、运行、结果明细和历史对比统一按正式 Eval DTO 展示；来源链路可回到运行详情。
+            套件、用例、运行、结果明细和历史对比统一按正式 Eval judge 契约展示。
           </Typography.Paragraph>
         </div>
-        <Button type="primary" onClick={() => openCreateSuite()}>创建套件</Button>
+        <Button type="primary" onClick={openCreateSuite}>创建套件</Button>
       </section>
+
       <Card className="page-card">
         <Table<Schema["EvalSuiteListItemResult"]>
           rowKey={(record) => String(record.suiteId)}
@@ -178,6 +184,8 @@ export function EvalsPage() {
             { title: "Agent", dataIndex: "agentId" },
             { title: "工作流版本", dataIndex: "workflowVersionId" },
             { title: "节点", dataIndex: "nodeId" },
+            { title: "Judge 模型", dataIndex: "judgeModelOfferingKey" },
+            { title: "温度", dataIndex: "judgeTemperature" },
             { title: "阈值", dataIndex: "passThreshold", render: (value) => `${value ?? 0}%` },
             { title: "状态", dataIndex: "status", render: (value) => <StatusTag status={String(value)} /> },
             {
@@ -215,6 +223,7 @@ export function EvalsPage() {
           ]}
         />
       </Card>
+
       <Modal
         title={editingSuite ? "更新验收套件" : "创建验收套件"}
         open={createOpen || Boolean(editingSuite)}
@@ -227,7 +236,7 @@ export function EvalsPage() {
           void form.validateFields().then((values) => submitSuite(values));
         }}
       >
-        <Form form={form} layout="vertical" initialValues={{ passThreshold: 80 }}>
+        <Form form={form} layout="vertical" initialValues={{ passThreshold: 80, judgeTemperature: 0 }}>
           {!editingSuite ? (
             <>
               <Form.Item name="agentId" label="Agent ID" rules={[{ required: true, message: "请输入 Agent ID。" }]}>
@@ -247,11 +256,22 @@ export function EvalsPage() {
           <Form.Item name="goal" label="验收目标">
             <Input.TextArea rows={3} />
           </Form.Item>
+          <Form.Item
+            name="judgeModelOfferingKey"
+            label="Judge 模型供应项"
+            rules={[{ required: true, message: "请选择 Judge 模型供应项。" }]}
+          >
+            <ModelOfferingSelect dataTestId="eval-suite-judge-model-offering-select" />
+          </Form.Item>
+          <Form.Item name="judgeTemperature" label="Judge 温度">
+            <InputNumber min={0} max={2} step={0.1} style={{ width: "100%" }} />
+          </Form.Item>
           <Form.Item name="passThreshold" label="通过率阈值">
             <InputNumber min={0} max={100} style={{ width: "100%" }} />
           </Form.Item>
         </Form>
       </Modal>
+
       <SuiteDrawer
         suite={selectedSuite}
         onClose={() => setSelectedSuite(null)}
@@ -272,42 +292,40 @@ export function EvalsPage() {
     </Space>
   );
 
-  /**
-   * 打开创建套件弹窗。
-   */
   function openCreateSuite() {
     form.resetFields();
-    form.setFieldsValue({ passThreshold: 80 });
+    form.setFieldsValue({ passThreshold: 80, judgeTemperature: 0 });
     setCreateOpen(true);
   }
 
-  /**
-   * 提交套件表单。
-   *
-   * @param values 表单值
-   */
   function submitSuite(values: SuiteFormValues) {
+    const body: Schema["CreateEvalSuiteRequest"] = {
+      agentId: values.agentId,
+      workflowVersionId: values.workflowVersionId,
+      nodeId: values.nodeId ?? "",
+      name: values.name,
+      goal: values.goal,
+      judgeModelOfferingKey: values.judgeModelOfferingKey,
+      judgeTemperature: values.judgeTemperature,
+      passThreshold: values.passThreshold
+    };
     if (editingSuite?.suiteId) {
       updateMutation.mutate({
         suiteId: editingSuite.suiteId,
         body: {
           name: values.name,
           goal: values.goal,
+          judgeModelOfferingKey: values.judgeModelOfferingKey ?? "",
+          judgeTemperature: values.judgeTemperature,
           passThreshold: values.passThreshold
         }
       });
       return;
     }
-    createMutation.mutate(values);
+    createMutation.mutate(body);
   }
 }
 
-/**
- * 验收套件抽屉。
- *
- * @param props 组件属性
- * @returns 套件详情
- */
 function SuiteDrawer({
   suite,
   onClose,
@@ -325,21 +343,25 @@ function SuiteDrawer({
   const [caseMode, setCaseMode] = useState<CaseFormMode | null>(null);
   const [editingCase, setEditingCase] = useState<Schema["EvalCaseResult"] | null>(null);
   const [caseForm] = Form.useForm<CaseFormValues>();
+
   const casesQuery = useQuery({
     queryKey: ["eval-cases", suiteId],
     queryFn: () => listEvalCases(suiteId ?? 0, { page: 1, pageSize: 50 }),
     enabled: Boolean(suiteId)
   });
+
   const runsQuery = useQuery({
     queryKey: ["eval-runs", suiteId],
     queryFn: () => listEvalRuns(suiteId ?? 0, { page: 1, pageSize: 20 }),
     enabled: Boolean(suiteId)
   });
+
   const historyQuery = useQuery({
     queryKey: ["eval-run-history", suiteId],
     queryFn: () => listEvalRunHistory(suiteId ?? 0, { page: 1, pageSize: 20 }),
     enabled: Boolean(suiteId)
   });
+
   const createCaseMutation = useMutation({
     mutationFn: ({ targetSuiteId, body }: { targetSuiteId: number; body: Schema["CreateEvalCaseRequest"] }) => createEvalCase(targetSuiteId, body),
     onSuccess: () => {
@@ -348,6 +370,7 @@ function SuiteDrawer({
       void queryClient.invalidateQueries({ queryKey: ["eval-cases", suiteId] });
     }
   });
+
   const updateCaseMutation = useMutation({
     mutationFn: ({ targetSuiteId, caseId, body }: { targetSuiteId: number; caseId: number; body: Schema["UpdateEvalCaseRequest"] }) =>
       updateEvalCase(targetSuiteId, caseId, body),
@@ -357,6 +380,7 @@ function SuiteDrawer({
       void queryClient.invalidateQueries({ queryKey: ["eval-cases", suiteId] });
     }
   });
+
   const confirmCaseMutation = useMutation({
     mutationFn: ({ targetSuiteId, caseId }: { targetSuiteId: number; caseId: number }) => confirmEvalCase(targetSuiteId, caseId),
     onSuccess: () => {
@@ -364,6 +388,7 @@ function SuiteDrawer({
       void queryClient.invalidateQueries({ queryKey: ["eval-cases", suiteId] });
     }
   });
+
   const archiveCaseMutation = useMutation({
     mutationFn: ({ targetSuiteId, caseId }: { targetSuiteId: number; caseId: number }) => archiveEvalCase(targetSuiteId, caseId),
     onSuccess: () => {
@@ -381,7 +406,7 @@ function SuiteDrawer({
             label: "用例",
             children: (
               <Space direction="vertical" style={{ width: "100%" }}>
-                <Button type="primary" disabled={!suiteId || suiteArchived} onClick={() => openCreateCase()}>创建用例</Button>
+                <Button type="primary" disabled={!suiteId || suiteArchived} onClick={openCreateCase}>创建用例</Button>
                 <Table<Schema["EvalCaseResult"]>
                   rowKey={(record) => String(record.caseId)}
                   loading={casesQuery.isLoading}
@@ -391,9 +416,9 @@ function SuiteDrawer({
                     expandedRowRender: (record) => (
                       <Space direction="vertical" style={{ width: "100%" }}>
                         <JsonBlock title="输入" value={record.input} />
-                        <JsonBlock title="参考答案" value={record.referenceAnswer} />
-                        <JsonBlock title="断言" value={record.assertions} />
-                        <JsonBlock title="评分规则" value={record.scoreRule} />
+                        <JsonBlock title="参考样例" value={record.referenceSample} />
+                        <TextBlock title="自然语言验收规则" value={record.judgeRule} />
+                        <JsonBlock title="hardChecks" value={record.hardChecks} />
                       </Space>
                     )
                   }}
@@ -418,7 +443,15 @@ function SuiteDrawer({
                             <Button
                               type="link"
                               disabled={!suiteId || !record.caseId || record.confirmStatus === "USER_CONFIRMED" || caseReadOnly}
-                              onClick={() => suiteId && record.caseId && confirmCaseMutation.mutate({ targetSuiteId: suiteId, caseId: record.caseId })}
+                              onClick={() => {
+                                if (!record.judgeRule?.trim()) {
+                                  message.error("确认正式用例前必须填写自然语言验收规则。");
+                                  return;
+                                }
+                                if (suiteId && record.caseId) {
+                                  confirmCaseMutation.mutate({ targetSuiteId: suiteId, caseId: record.caseId });
+                                }
+                              }}
                             >
                               确认
                             </Button>
@@ -450,7 +483,11 @@ function SuiteDrawer({
                 pagination={false}
                 columns={[
                   { title: "EvalRun", dataIndex: "evalRunId" },
-                  { title: "Run", dataIndex: "runId", render: (value) => (value ? <Button type="link" onClick={() => onOpenSourceRun(String(value))}>{String(value)}</Button> : "-") },
+                  {
+                    title: "Run",
+                    dataIndex: "runId",
+                    render: (value) => (value ? <Button type="link" onClick={() => onOpenSourceRun(String(value))}>{String(value)}</Button> : "-")
+                  },
                   { title: "状态", dataIndex: "status", render: (value) => <StatusTag status={String(value)} /> },
                   { title: "通过率", dataIndex: "passRate", render: (value) => `${value ?? 0}%` },
                   { title: "通过/失败", render: (_, record) => `${record.passedCaseCount ?? 0}/${record.failedCaseCount ?? 0}` },
@@ -477,7 +514,11 @@ function SuiteDrawer({
                 pagination={false}
                 columns={[
                   { title: "EvalRun", dataIndex: "evalRunId" },
-                  { title: "Run", dataIndex: "runId", render: (value) => (value ? <Button type="link" onClick={() => onOpenSourceRun(String(value))}>{String(value)}</Button> : "-") },
+                  {
+                    title: "Run",
+                    dataIndex: "runId",
+                    render: (value) => (value ? <Button type="link" onClick={() => onOpenSourceRun(String(value))}>{String(value)}</Button> : "-")
+                  },
                   { title: "状态", dataIndex: "status", render: (value) => <StatusTag status={String(value)} /> },
                   { title: "通过率", dataIndex: "passRate", render: (value) => `${value ?? 0}%` },
                   { title: "通过率差值", dataIndex: "passRateDeltaFromPrevious" },
@@ -490,6 +531,7 @@ function SuiteDrawer({
           }
         ]}
       />
+
       <Modal
         title={caseMode === "create" ? "创建验收用例" : "编辑验收用例"}
         open={Boolean(caseMode)}
@@ -510,33 +552,20 @@ function SuiteDrawer({
             <Input />
           </Form.Item>
           <Form.Item name="inputText" label="输入 JSON">
-            <JsonTextArea rows={5} />
+            <JsonTextArea rows={5} dataTestId="eval-case-input-text" />
           </Form.Item>
-          <Form.Item name="referenceAnswerText" label="参考答案 JSON">
-            <JsonTextArea rows={5} />
+          <Form.Item name="referenceSampleText" label="参考样例 JSON">
+            <JsonTextArea rows={5} dataTestId="eval-case-reference-sample-text" />
           </Form.Item>
-          <Form.Item name="assertionsText" label="确定性断言 JSON">
-            <JsonTextArea rows={5} />
-          </Form.Item>
-          <Form.Item name="scoreRuleEnabled" valuePropName="checked">
-            <Checkbox>启用 LLM 辅助评分</Checkbox>
-          </Form.Item>
-          <Form.Item name="scoreRuleModelOfferingKey" label="评分模型供应项">
-            <ModelOfferingSelect dataTestId="eval-score-rule-model-offering-select" />
-          </Form.Item>
-          <Form.Item name="scoreRuleTemperature" label="评分温度">
-            <InputNumber
-              min={0}
-              max={2}
-              step={0.1}
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-          <Form.Item name="scoreRulePromptTemplate" label="评分提示词模板">
+          <Form.Item name="judgeRule" label="自然语言验收规则">
             <Input.TextArea
-              rows={4}
-              placeholder="留空时后端会使用默认评分提示词模板。"
+              rows={5}
+              placeholder="例如：必须覆盖三个关键风险点，不能编造输入中不存在的信息。"
+              data-testid="eval-case-judge-rule-text"
             />
+          </Form.Item>
+          <Form.Item name="hardChecksText" label="hardChecks JSON">
+            <JsonTextArea rows={5} dataTestId="eval-case-hard-checks-text" />
           </Form.Item>
           <Form.Item name="critical" valuePropName="checked">
             <Checkbox>关键用例</Checkbox>
@@ -549,9 +578,6 @@ function SuiteDrawer({
     </Drawer>
   );
 
-  /**
-   * 打开创建用例表单。
-   */
   function openCreateCase() {
     if (suiteArchived) {
       message.warning("归档套件不允许继续创建用例。");
@@ -562,21 +588,13 @@ function SuiteDrawer({
     caseForm.setFieldsValue({
       critical: false,
       inputText: stringifyJson({}),
-      referenceAnswerText: stringifyJson({}),
-      assertionsText: stringifyJson([]),
-      scoreRuleEnabled: false,
-      scoreRuleModelOfferingKey: undefined,
-      scoreRuleTemperature: undefined,
-      scoreRulePromptTemplate: undefined
+      referenceSampleText: "",
+      judgeRule: "",
+      hardChecksText: stringifyJson([])
     });
     setCaseMode("create");
   }
 
-  /**
-   * 打开编辑用例表单。
-   *
-   * @param record 用例
-   */
   function openEditCase(record: Schema["EvalCaseResult"]) {
     if (suiteArchived || record.confirmStatus === "ARCHIVED") {
       message.warning("归档用例不允许继续编辑。");
@@ -585,30 +603,22 @@ function SuiteDrawer({
     setEditingCase(record);
     caseForm.setFieldsValue({
       title: record.title ?? "",
-      inputText: stringifyJson(record.input ?? {}),
-      referenceAnswerText: stringifyJson(record.referenceAnswer ?? {}),
-      assertionsText: stringifyJson(record.assertions ?? []),
-      ...toScoreRuleFormValues(record.scoreRule),
+      inputText: stringifyOptionalJson(record.input),
+      referenceSampleText: stringifyOptionalJson(record.referenceSample),
+      judgeRule: record.judgeRule ?? "",
+      hardChecksText: stringifyOptionalJson(record.hardChecks ?? []),
       critical: record.critical,
       description: record.description
     });
     setCaseMode("edit");
   }
 
-  /**
-   * 关闭用例表单。
-   */
   function closeCaseForm() {
     setCaseMode(null);
     setEditingCase(null);
     caseForm.resetFields();
   }
 
-  /**
-   * 提交用例表单。
-   *
-   * @param values 表单值
-   */
   function submitCase(values: CaseFormValues) {
     if (!suiteId) {
       message.error("缺少套件主键，无法提交用例。");
@@ -622,9 +632,9 @@ function SuiteDrawer({
       const body = {
         title: values.title,
         input: parseOptionalJson(values.inputText),
-        referenceAnswer: parseOptionalJson(values.referenceAnswerText),
-        assertions: parseOptionalJson(values.assertionsText),
-        scoreRule: buildScoreRule(values),
+        referenceSample: parseOptionalJson(values.referenceSampleText),
+        judgeRule: values.judgeRule,
+        hardChecks: parseOptionalJson(values.hardChecksText),
         critical: values.critical,
         description: values.description
       };
@@ -649,12 +659,6 @@ function SuiteDrawer({
   }
 }
 
-/**
- * 验收运行详情抽屉。
- *
- * @param props 组件属性
- * @returns 运行详情
- */
 function EvalRunDrawer({
   evalRunId,
   onClose,
@@ -697,6 +701,7 @@ function EvalRunDrawer({
             <Descriptions.Item label="工作流版本">{detailQuery.data?.workflowVersion?.workflowVersionId}</Descriptions.Item>
             <Descriptions.Item label="摘要" span={2}>{detailQuery.data?.summary}</Descriptions.Item>
           </Descriptions>
+
           <Tabs
             items={[
               {
@@ -712,9 +717,15 @@ function EvalRunDrawer({
                       expandedRowRender: (record) => (
                         <Space direction="vertical" style={{ width: "100%" }}>
                           <JsonBlock title="输入" value={record.input} />
+                          <JsonBlock title="参考样例" value={record.referenceSample} />
+                          <TextBlock title="自然语言验收规则" value={record.judgeRule} />
+                          <JsonBlock title="hardChecks" value={record.hardChecks} />
                           <JsonBlock title="输出" value={record.output} />
-                          <JsonBlock title="断言结果" value={record.assertionResults} />
-                          <JsonBlock title="评分结果" value={record.scoreResult} />
+                          <JsonBlock title="hardCheck 结果" value={record.hardCheckResults ?? []} />
+                          <JsonBlock title="Judge 结果" value={record.judgeResult} />
+                          <TextBlock title="Judge 原始输出" value={record.judgeRawText} />
+                          <TextBlock title="Judge Prompt 版本" value={record.judgePromptVersion} />
+                          <TextBlock title="Judge 模型供应项" value={record.judgeModelOfferingKey} />
                         </Space>
                       )
                     }}
@@ -724,6 +735,7 @@ function EvalRunDrawer({
                       { title: "确认状态", dataIndex: "confirmStatus", render: (value) => <StatusTag status={String(value)} /> },
                       { title: "关键", dataIndex: "critical", render: (value) => (value ? "是" : "否") },
                       { title: "结果", dataIndex: "passed", render: (value) => <StatusTag status={value ? "SUCCESS" : "FAILED"} /> },
+                      { title: "Judge 分数", render: (_, record) => readJudgeScore(record.judgeResult) ?? "-" },
                       { title: "错误", dataIndex: "errorMessage" },
                       { title: "耗时(ms)", dataIndex: "durationMs" }
                     ]}
@@ -748,12 +760,18 @@ function EvalRunDrawer({
   );
 }
 
-/**
- * 解析可选 JSON。
- *
- * @param text JSON 文本
- * @returns JSON 值或 undefined
- */
+function TextBlock({ title, value }: { title: string; value?: string | null }) {
+  if (!value?.trim()) {
+    return null;
+  }
+  return (
+    <div style={{ width: "100%" }}>
+      <Typography.Text strong>{title}</Typography.Text>
+      <Typography.Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>{value}</Typography.Paragraph>
+    </div>
+  );
+}
+
 function parseOptionalJson(text?: string) {
   if (!text?.trim()) {
     return undefined;
@@ -761,106 +779,18 @@ function parseOptionalJson(text?: string) {
   return parseJsonText(text);
 }
 
-/**
- * 将评分规则转换为表单字段。
- *
- * @param scoreRule 评分规则
- * @returns 表单字段
- */
-function toScoreRuleFormValues(scoreRule: unknown): Pick<
-  CaseFormValues,
-  "scoreRuleEnabled" | "scoreRuleModelOfferingKey" | "scoreRuleTemperature" | "scoreRulePromptTemplate"
-> {
-  const rule = isJsonObject(scoreRule) ? scoreRule : undefined;
-  return {
-    scoreRuleEnabled: readBoolean(rule, "enabled"),
-    scoreRuleModelOfferingKey: readText(rule, "modelOfferingKey"),
-    scoreRuleTemperature: readNumber(rule, "temperature"),
-    scoreRulePromptTemplate: readText(rule, "promptTemplate")
-  };
-}
-
-/**
- * 根据表单字段构建正式评分规则。
- *
- * @param values 表单字段
- * @returns 评分规则；未配置时返回 undefined
- */
-function buildScoreRule(values: CaseFormValues) {
-  const modelOfferingKey = emptyToUndefined(values.scoreRuleModelOfferingKey);
-  const promptTemplate = emptyToUndefined(values.scoreRulePromptTemplate);
-  const hasTemperature = typeof values.scoreRuleTemperature === "number" && Number.isFinite(values.scoreRuleTemperature);
-  if (!values.scoreRuleEnabled && !modelOfferingKey && !promptTemplate && !hasTemperature) {
-    return undefined;
+function stringifyOptionalJson(value: unknown) {
+  if (value === undefined || value === null) {
+    return "";
   }
-  const scoreRule: Record<string, unknown> = {
-    enabled: Boolean(values.scoreRuleEnabled)
-  };
-  if (modelOfferingKey) {
-    scoreRule.modelOfferingKey = modelOfferingKey;
-  }
-  if (promptTemplate) {
-    scoreRule.promptTemplate = promptTemplate;
-  }
-  if (hasTemperature) {
-    scoreRule.temperature = values.scoreRuleTemperature;
-  }
-  return scoreRule;
+  return stringifyJson(value);
 }
 
-/**
- * 读取文本字段。
- *
- * @param source 源对象
- * @param key 字段名
- * @returns 文本值
- */
-function readText(source: Record<string, unknown> | undefined, key: string) {
-  const value = source?.[key];
-  return typeof value === "string" ? value : undefined;
+function readJudgeScore(judgeResult: unknown) {
+  const score = isJsonObject(judgeResult) ? judgeResult.score : undefined;
+  return typeof score === "number" && Number.isFinite(score) ? score : undefined;
 }
 
-/**
- * 读取数字字段。
- *
- * @param source 源对象
- * @param key 字段名
- * @returns 数字值
- */
-function readNumber(source: Record<string, unknown> | undefined, key: string) {
-  const value = source?.[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-/**
- * 读取布尔字段。
- *
- * @param source 源对象
- * @param key 字段名
- * @returns 布尔值
- */
-function readBoolean(source: Record<string, unknown> | undefined, key: string) {
-  const value = source?.[key];
-  return typeof value === "boolean" ? value : undefined;
-}
-
-/**
- * 空字符串转 undefined。
- *
- * @param value 输入值
- * @returns 转换结果
- */
-function emptyToUndefined(value?: string) {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : undefined;
-}
-
-/**
- * 判断是否普通 JSON 对象。
- *
- * @param value 待判断值
- * @returns 普通对象返回 true
- */
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

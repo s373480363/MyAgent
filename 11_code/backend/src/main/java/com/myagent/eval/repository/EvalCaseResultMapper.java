@@ -29,8 +29,11 @@ public interface EvalCaseResultMapper {
             @Arg(column = "eval_run_id", javaType = long.class),
             @Arg(column = "eval_case_id", javaType = long.class),
             @Arg(column = "output_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertion_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "hard_check_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_raw_text", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_prompt_version", javaType = String.class),
             @Arg(column = "passed", javaType = boolean.class),
             @Arg(column = "error_message", javaType = String.class),
             @Arg(column = "duration_ms", javaType = Long.class),
@@ -38,21 +41,25 @@ public interface EvalCaseResultMapper {
     })
     @Select("""
             insert into eval_case_result(
-              eval_run_id, eval_case_id, output_json, assertion_result_json, score_result_json,
-              passed, error_message, duration_ms
+              eval_run_id, eval_case_id, output_json, hard_check_result_json, judge_result_json,
+              judge_raw_text, judge_model_offering_key, judge_prompt_version, passed, error_message, duration_ms
             )
             values (
               #{record.evalRunId},
               #{record.evalCaseId},
               #{record.outputJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-              #{record.assertionResultJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
-              #{record.scoreResultJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+              #{record.hardCheckResultJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+              #{record.judgeResultJson, typeHandler=com.myagent.common.repository.JsonNodeTypeHandler},
+              #{record.judgeRawText},
+              #{record.judgeModelOfferingKey},
+              #{record.judgePromptVersion},
               #{record.passed},
               #{record.errorMessage},
               #{record.durationMs}
             )
-            returning id, eval_run_id, eval_case_id, output_json, assertion_result_json, score_result_json,
-                      passed, error_message, duration_ms, created_at
+            returning id, eval_run_id, eval_case_id, output_json, hard_check_result_json, judge_result_json,
+                      judge_raw_text, judge_model_offering_key, judge_prompt_version, passed, error_message,
+                      duration_ms, created_at
             """)
     EvalCaseResultRecord insert(@Param("record") EvalCaseResultRecord record);
 
@@ -72,24 +79,29 @@ public interface EvalCaseResultMapper {
             @Arg(column = "eval_run_id", javaType = long.class),
             @Arg(column = "eval_case_id", javaType = long.class),
             @Arg(column = "output_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertion_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "hard_check_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_raw_text", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_prompt_version", javaType = String.class),
             @Arg(column = "passed", javaType = boolean.class),
             @Arg(column = "error_message", javaType = String.class),
             @Arg(column = "duration_ms", javaType = Long.class),
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class)
     })
     @Select({
             "<script>",
             "select r.id as result_id, r.eval_run_id, r.eval_case_id, r.output_json,",
-            "       r.assertion_result_json, r.score_result_json, r.passed, r.error_message, r.duration_ms,",
-            "       c.case_no, c.title, c.input_json, c.reference_answer_json, c.assertions_json,",
+            "       r.hard_check_result_json, r.judge_result_json, r.judge_raw_text,",
+            "       r.judge_model_offering_key, r.judge_prompt_version, r.passed, r.error_message, r.duration_ms,",
+            "       c.case_no, c.title, c.input_json, c.reference_sample_json, c.judge_rule_text, c.hard_checks_json,",
             "       c.critical, c.confirm_status",
             "from eval_case_result r",
             "join eval_case c on c.id = r.eval_case_id",
@@ -156,23 +168,28 @@ public interface EvalCaseResultMapper {
             @Arg(column = "eval_run_id", javaType = long.class),
             @Arg(column = "eval_case_id", javaType = long.class),
             @Arg(column = "output_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertion_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "score_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "hard_check_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_result_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_raw_text", javaType = String.class),
+            @Arg(column = "judge_model_offering_key", javaType = String.class),
+            @Arg(column = "judge_prompt_version", javaType = String.class),
             @Arg(column = "passed", javaType = boolean.class),
             @Arg(column = "error_message", javaType = String.class),
             @Arg(column = "duration_ms", javaType = Long.class),
             @Arg(column = "case_no", javaType = String.class),
             @Arg(column = "title", javaType = String.class),
             @Arg(column = "input_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "reference_answer_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
-            @Arg(column = "assertions_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "reference_sample_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
+            @Arg(column = "judge_rule_text", javaType = String.class),
+            @Arg(column = "hard_checks_json", javaType = JsonNode.class, typeHandler = JsonNodeTypeHandler.class),
             @Arg(column = "critical", javaType = boolean.class),
             @Arg(column = "confirm_status", javaType = EvalCaseConfirmStatus.class)
     })
     @Select("""
             select r.id as result_id, r.eval_run_id, r.eval_case_id, r.output_json,
-                   r.assertion_result_json, r.score_result_json, r.passed, r.error_message, r.duration_ms,
-                   c.case_no, c.title, c.input_json, c.reference_answer_json, c.assertions_json,
+                   r.hard_check_result_json, r.judge_result_json, r.judge_raw_text,
+                   r.judge_model_offering_key, r.judge_prompt_version, r.passed, r.error_message, r.duration_ms,
+                   c.case_no, c.title, c.input_json, c.reference_sample_json, c.judge_rule_text, c.hard_checks_json,
                    c.critical, c.confirm_status
             from eval_case_result r
             join eval_case c on c.id = r.eval_case_id

@@ -12,14 +12,19 @@ import java.util.List;
  * @param caseNo 用例编号
  * @param title 用例标题
  * @param confirmStatus 确认状态
- * @param critical 是否关键用例
+ * @param critical 是否为关键用例
  * @param passed 是否通过
- * @param input 输入 JSON
- * @param referenceAnswer 参考答案
- * @param output 输出 JSON
- * @param assertionResults 断言结果
- * @param scoreResult 评分结果
- * @param errorMessage 错误消息
+ * @param input 用例输入 JSON
+ * @param referenceSample 参考样例 JSON
+ * @param judgeRule 自然语言验收规则
+ * @param hardChecks 硬约束配置数组
+ * @param output 节点输出 JSON
+ * @param hardCheckResults 硬约束执行结果
+ * @param judgeResult judge 结构化结果
+ * @param judgeRawText judge 原始文本输出
+ * @param judgeModelOfferingKey judge 模型供应项标识
+ * @param judgePromptVersion judge 提示词版本
+ * @param errorMessage 失败摘要
  * @param durationMs 耗时毫秒
  */
 public record EvalRunResultItemResult(
@@ -30,10 +35,15 @@ public record EvalRunResultItemResult(
         boolean critical,
         boolean passed,
         JsonNode input,
-        JsonNode referenceAnswer,
+        JsonNode referenceSample,
+        String judgeRule,
+        JsonNode hardChecks,
         JsonNode output,
-        List<EvalAssertionResultItem> assertionResults,
-        JsonNode scoreResult,
+        List<EvalHardCheckResultItem> hardCheckResults,
+        JsonNode judgeResult,
+        String judgeRawText,
+        String judgeModelOfferingKey,
+        String judgePromptVersion,
         String errorMessage,
         Long durationMs
 ) {

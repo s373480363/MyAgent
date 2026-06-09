@@ -71,7 +71,7 @@ Trace 是平台核心能力。每次运行必须能回答：
 | TOOL_CALL | 工具标识、参数、返回值、耗时、错误摘要 |
 | EXTERNAL_AGENT_CALL | 外部 Agent 适配器、调用方式、退出码或 HTTP 状态、结果摘要 |
 | AGENT_CALL | 目标 Agent、子运行编号、调用深度、结果状态 |
-| EVAL_CASE_RESULT | 验收用例输出、断言结果、评分结果、失败原因 |
+| EVAL_CASE_RESULT | 验收用例输出、hardChecks 结果、judge 结果、失败摘要 |
 | NODE_ERROR | 节点失败事件 |
 | RUN_FINISHED | 整次运行完成事件 |
 

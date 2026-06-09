@@ -11,7 +11,7 @@ Docker 环境不可用时，本变更不能判定为完整通过。
 ### 2.1 当前正式范围旧名检查
 
 ```powershell
-rg -n "MYAGENT|myagent-backend|myagent-frontend|myagent-openapi|jdbc:postgresql://.*myagent|myagent\\.(openai|runtime|trace)" README.md 3_product_design 4_arch_design 6_schema_design 7_interface_design 13_release 14_user_manual compose.yaml 11_code/backend/src/main/resources 11_code/frontend/package.json 11_code/frontend/package-lock.json 11_code/frontend/openapi 11_code/frontend/scripts
+rg -n "MYAGENT|myagent-backend|myagent-frontend|myagent-openapi|jdbc:postgresql://.*myagent|myagent\\.(openai|runtime|trace)" README.md 3_product_design 4_arch_design 6_schema_design 7_interface_design 13_release 14_user_manual 11_code/compose.yaml 11_code/backend/src/main/resources 11_code/frontend/package.json 11_code/frontend/package-lock.json 11_code/frontend/openapi 11_code/frontend/scripts
 ```
 
 验收口径：
@@ -25,7 +25,7 @@ rg -n "MYAGENT|myagent-backend|myagent-frontend|myagent-openapi|jdbc:postgresql:
 ### 2.2 新命名检查
 
 ```powershell
-rg -n "Agent Studio|智能体工作台|agent-studio|agent_studio|AGENT_STUDIO|agent\\.studio" README.md 3_product_design 4_arch_design 6_schema_design 7_interface_design 11_code 13_release 14_user_manual compose.yaml
+rg -n "Agent Studio|智能体工作台|agent-studio|agent_studio|AGENT_STUDIO|agent\\.studio" README.md 3_product_design 4_arch_design 6_schema_design 7_interface_design 11_code 13_release 14_user_manual 11_code/compose.yaml
 ```
 
 验收口径：
@@ -35,7 +35,7 @@ rg -n "Agent Studio|智能体工作台|agent-studio|agent_studio|AGENT_STUDIO|ag
 ## 3. OpenAI 环境变量验收
 
 ```powershell
-rg -n "\bOPENAI_API_KEY\b|\bSPRING_AI_OPENAI_BASE_URL\b|\bMYAGENT_OPENAI_DEFAULT_MODEL\b" README.md 13_release compose.yaml 11_code/backend/src/main/resources 11_code/frontend
+rg -n "\bOPENAI_API_KEY\b|\bSPRING_AI_OPENAI_BASE_URL\b|\bMYAGENT_OPENAI_DEFAULT_MODEL\b" README.md 13_release 11_code/compose.yaml 11_code/backend/src/main/resources 11_code/frontend
 ```
 
 验收口径：
@@ -150,7 +150,7 @@ curl.exe -sS http://127.0.0.1:18080/v3/api-docs
 ## 7. Docker Compose 配置验收
 
 ```powershell
-cd D:\myproject\MyAgent
+cd D:\myproject\MyAgent\11_code
 docker compose config
 ```
 
@@ -178,7 +178,7 @@ docker compose config | Select-String -Pattern '^name: agent-studio$'
 ## 8. Docker Compose 启动验收
 
 ```powershell
-cd D:\myproject\MyAgent
+cd D:\myproject\MyAgent\11_code
 $env:AGENT_STUDIO_POSTGRES_PASSWORD='agent_studio_dev_password'
 docker compose up -d --build
 ```

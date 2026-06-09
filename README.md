@@ -5,12 +5,11 @@ Agent Studio 是面向本机或内网单用户场景的智能体工作台。
 唯一正式部署入口：
 
 ```powershell
-cd D:\myproject\MyAgent
-$env:AGENT_STUDIO_POSTGRES_PASSWORD='agent_studio_dev_password'
-$env:AGENT_STUDIO_SECRET_KEY='<base64-32-byte-secret>'
-$env:AGENT_STUDIO_OPENAI_API_KEY='<your-openai-api-key>'
+cd D:\myproject\MyAgent\11_code
 docker compose up -d --build
 ```
+
+正式部署文件位于 `11_code/compose.yaml` 和 `11_code/.env`。
 
 唯一正式访问入口：
 

@@ -27,7 +27,7 @@
 - 正式环境变量前缀统一为 `AGENT_STUDIO_*`。
 - Compose 默认数据库名和用户名统一为 `agent_studio`。
 - 正式 Web 访问入口固定为 `http://127.0.0.1:18080`。
-- 正式发布入口固定为 `docker compose up -d --build`。
+- 正式发布入口固定为在 `D:\myproject\MyAgent\11_code` 下执行 `docker compose up -d --build`。
 - Docker Compose 默认编排 `postgres`、`api`、`web` 三个服务。
 
 ## 3. 本次不做的事情
@@ -45,6 +45,6 @@
 - Compose PostgreSQL 的数据库名和用户名固定为 `agent_studio`，密码由 `AGENT_STUDIO_POSTGRES_PASSWORD` 提供。
 - Web 容器宿主机端口固定为 `18080`，API 不直接暴露宿主机端口。
 - 浏览器通过 `http://127.0.0.1:18080` 同源访问前端静态资源和 `/api`。
-- `compose.yaml` 顶层 `name` 固定为 `agent-studio`。
+- `11_code/compose.yaml` 顶层 `name` 固定为 `agent-studio`。
 - Flyway 在 Compose PostgreSQL 中完成数据库迁移。
 - 开发态脚本可以保留，但只能作为开发辅助，不再作为正式部署入口。

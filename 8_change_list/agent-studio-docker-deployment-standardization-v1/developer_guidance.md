@@ -45,8 +45,8 @@
 
 开发应如何解决：
 
-- `compose.yaml` 中固定 `POSTGRES_DB=agent_studio` 和 `POSTGRES_USER=agent_studio`。
-- `compose.yaml` 中通过 `AGENT_STUDIO_POSTGRES_PASSWORD` 同时设置 PostgreSQL 密码和 API 数据源密码。
+- `11_code/compose.yaml` 中固定 `POSTGRES_DB=agent_studio` 和 `POSTGRES_USER=agent_studio`。
+- `11_code/compose.yaml` 中通过 `AGENT_STUDIO_POSTGRES_PASSWORD` 同时设置 PostgreSQL 密码和 API 数据源密码。
 - 文档和验收命令全部使用 `psql -U agent_studio -d agent_studio`。
 - 不要在本次默认 Compose 中开放 `POSTGRES_USER`、`POSTGRES_DB`、`AGENT_STUDIO_DATASOURCE_URL` 作为正式覆盖项。
 
@@ -84,7 +84,7 @@
 - `11_code`
 - `13_release`
 - `14_user_manual`
-- `compose.yaml`
+- `11_code/compose.yaml`
 
 为什么这样设计：
 
@@ -124,16 +124,16 @@
 
 预期方案：
 
-- `compose.yaml` 顶层必须写 `name: agent-studio`。
+- `11_code/compose.yaml` 顶层必须写 `name: agent-studio`。
 - 不能只依赖当前目录名生成 Compose project。
 
 为什么这样设计：
 
-Compose project 名会影响 Docker 网络、volume 和容器前缀。只把 `agent-studio` 写在命名表里，而不写进 `compose.yaml`，运行态仍可能按仓库目录生成另一套名字。
+Compose project 名会影响 Docker 网络、volume 和容器前缀。只把 `agent-studio` 写在命名表里，而不写进 `11_code/compose.yaml`，运行态仍可能按仓库目录生成另一套名字。
 
 开发应如何解决：
 
-- 在 `compose.yaml` 顶层增加 `name: agent-studio`。
+- 在 `11_code/compose.yaml` 顶层增加 `name: agent-studio`。
 - 验收执行 `docker compose config | Select-String -Pattern '^name: agent-studio$'`。
 - 网络和 volume 命名应以 `agent-studio` 为前缀。
 
@@ -149,7 +149,7 @@ Compose project 名会影响 Docker 网络、volume 和容器前缀。只把 `ag
 
 这次变更的目标不是“页面能打开”，而是“正式部署入口唯一且含义明确”。如果 Compose 默认塞一个 `dummy-key`，系统会表现为：
 
-- `docker compose up -d --build` 成功；
+- 在 `D:\myproject\MyAgent\11_code` 下执行 `docker compose up -d --build` 成功；
 - `/actuator/health` 返回 `UP`；
 - `/api/settings` 返回正常；
 - 但任何真实 LLM 调用在运行时才失败。
@@ -158,7 +158,7 @@ Compose project 名会影响 Docker 网络、volume 和容器前缀。只把 `ag
 
 开发应如何解决：
 
-- `compose.yaml` 中把 `AGENT_STUDIO_OPENAI_API_KEY` 改为必填插值，而不是 `dummy-key` 默认值。
+- `11_code/compose.yaml` 中把 `AGENT_STUDIO_OPENAI_API_KEY` 改为必填插值，而不是 `dummy-key` 默认值。
 - `application.yml` 中移除主配置级的 `dummy-key` 默认值。
 - 如测试需要占位值，把占位值放到测试专用配置中，不要放到正式启动路径。
 - 缺失 Key 时只校验“缺失/空白”，不要校验格式，不要在启动期调用外部模型接口探活。
@@ -214,5 +214,5 @@ OpenAPI 不是内部调试输出，而是对外契约。只要 `servers.url` 丢
 - `6_schema_design` 或 `7_interface_design` 仍把旧名作为当前契约。
 - OpenAPI JSON、`schema.ts` 或 Swagger 示例仍出现 `com.myagent` / `myagent-backend`。
 - 通过正式入口输出的 OpenAPI `servers.url` 不是 `http://127.0.0.1:18080`。
-- `compose.yaml` 未设置顶层 `name: agent-studio`。
+- `11_code/compose.yaml` 未设置顶层 `name: agent-studio`。
 - 开发顺手做了 Java 根包迁移并导致本次 Docker 交付被扩大。

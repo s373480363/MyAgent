@@ -135,9 +135,10 @@ Web 容器负责：
 
 ## 7. Docker 部署设计
 
-正式部署入口为仓库根目录：
+正式部署入口为 `D:\myproject\MyAgent\11_code`：
 
 ```powershell
+cd D:\myproject\MyAgent\11_code
 docker compose up -d --build
 ```
 
@@ -151,7 +152,7 @@ Compose 包含三个服务：
 
 后端 Dockerfile 继续使用 `11_code/backend` 作为构建上下文。前端 Dockerfile 继续使用 `11_code/frontend` 作为构建上下文。源码目录重命名不在本次变更中执行。
 
-`compose.yaml` 必须写入顶层项目名：
+`11_code/compose.yaml` 必须写入顶层项目名：
 
 ```yaml
 name: agent-studio

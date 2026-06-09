@@ -4,9 +4,9 @@
 
 ## 1. 本轮已完成事项
 
-- 正式部署入口固定为仓库根目录 `docker compose up -d --build`。
+- 正式部署入口固定为在 `D:\myproject\MyAgent\11_code` 下执行 `docker compose up -d --build`。
 - 正式访问入口固定为 [http://127.0.0.1:18080](http://127.0.0.1:18080)。
-- `compose.yaml` 顶层固定为 `name: agent-studio`。
+- `11_code/compose.yaml` 顶层固定为 `name: agent-studio`。
 - PostgreSQL 正式契约固定为 `agent_studio` / `agent_studio`。
 - 正式 OpenAI 变量只保留 `AGENT_STUDIO_OPENAI_*`。
 - `AGENT_STUDIO_OPENAI_API_KEY` 已改为正式部署必填，缺失时 `docker compose config` 直接失败。
@@ -23,7 +23,7 @@
 - 前端 `npm run openapi:refresh` 和 `npm run openapi:check` 通过。
 - Docker 真实部署验收通过：
   - 缺失 `AGENT_STUDIO_OPENAI_API_KEY` 时，`docker compose config` 失败。
-  - 设置正式 Key 后，`docker compose up -d --build` 可启动 `postgres`、`api`、`web`。
+  - 设置正式 Key 后，在 `D:\myproject\MyAgent\11_code` 下执行 `docker compose up -d --build` 可启动 `postgres`、`api`、`web`。
   - `/actuator/health` 返回 `UP`。
   - `/api/settings` 返回 7 个白名单设置项。
   - `/v3/api-docs` 返回的 `servers[0].url` 为 `http://127.0.0.1:18080`。

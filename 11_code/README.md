@@ -16,12 +16,14 @@
 唯一正式部署入口：
 
 ```powershell
-cd D:\myproject\MyAgent
-$env:AGENT_STUDIO_POSTGRES_PASSWORD='agent_studio_dev_password'
-$env:AGENT_STUDIO_SECRET_KEY='<base64-32-byte-secret>'
-$env:AGENT_STUDIO_OPENAI_API_KEY='<your-openai-api-key>'
+cd D:\myproject\MyAgent\11_code
 docker compose up -d --build
 ```
+
+正式部署文件：
+
+- `compose.yaml`
+- `.env`
 
 唯一正式浏览器入口：
 
@@ -40,10 +42,8 @@ docker compose up -d --build
 后端开发脚本：
 
 ```powershell
-cd D:\myproject\MyAgent
-$env:AGENT_STUDIO_SECRET_KEY='<base64-32-byte-secret>'
-$env:AGENT_STUDIO_OPENAI_API_KEY='<your-openai-api-key>'
-powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-backend-local.ps1
+cd D:\myproject\MyAgent\11_code
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-backend-local.ps1
 ```
 
 后端开发态可选覆盖项：
@@ -59,8 +59,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-back
 前端开发脚本：
 
 ```powershell
-cd D:\myproject\MyAgent
-powershell -NoProfile -ExecutionPolicy Bypass -File .\11_code\scripts\start-frontend-dev.ps1
+cd D:\myproject\MyAgent\11_code
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-frontend-dev.ps1
 ```
 
 默认开发入口：

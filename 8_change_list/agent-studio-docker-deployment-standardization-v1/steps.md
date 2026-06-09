@@ -60,8 +60,8 @@
 
 ### 步骤 06：Docker Compose 正式部署
 
-1. 新增根目录 `compose.yaml`。
-2. `compose.yaml` 顶层写入 `name: agent-studio`。
+1. 新增 `11_code/compose.yaml`。
+2. `11_code/compose.yaml` 顶层写入 `name: agent-studio`。
 3. 新增 `11_code/backend/Dockerfile`。
 4. 新增 `11_code/frontend/Dockerfile`。
 5. 新增 `11_code/frontend/nginx.conf`。
@@ -95,7 +95,7 @@
 4. 执行 OpenAPI 刷新和一致性检查。
 5. 验证 OpenAPI 示例不包含 `com.myagent` 或 `myagent-backend`。
 6. 执行 `docker compose config` 并确认 `name: agent-studio`。
-7. 执行 `docker compose up -d --build`。
+7. 在 `D:\myproject\MyAgent\11_code` 下执行 `docker compose up -d --build`。
 8. 访问 `http://127.0.0.1:18080/actuator/health`。
 9. 访问 `http://127.0.0.1:18080/api/settings`。
 10. 访问 `http://127.0.0.1:18080/v3/api-docs`。
@@ -108,7 +108,7 @@
 - 禁止继续使用 `OPENAI_API_KEY` 或 `SPRING_AI_OPENAI_BASE_URL` 作为正式入口。
 - 禁止通过 `dummy-key`、`test-key` 等伪值让正式部署在缺失真实 OpenAI Key 时继续启动。
 - 禁止 OpenAPI 外显示例继续出现 `com.myagent` 或 `myagent-backend`。
-- 禁止省略 `compose.yaml` 顶层 `name: agent-studio`。
+- 禁止省略 `11_code/compose.yaml` 顶层 `name: agent-studio`。
 - 禁止靠手工修改 `agent-studio-openapi.json` 或 `schema.ts` 修补 `servers.url`。
 - 禁止把 Vite dev server 写成正式部署入口。
 - 禁止本次变更顺手迁移 Java 根包或源码目录。

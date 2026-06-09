@@ -43,7 +43,14 @@ public final class ModelCatalogBootstrapDefaults {
         if (rawBaseUrl == null || rawBaseUrl.isBlank()) {
             return DEFAULT_BASE_URL;
         }
-        return rawBaseUrl.trim();
+        String normalized = rawBaseUrl.trim();
+        // Poe 的 OpenAI-compatible 文档可直接展示 /v1/chat/completions，但当前 Spring AI
+        // 会基于 baseUrl 自行拼接版本路径，因此默认供应商初始化时需要把 Poe 根地址收口到 /v1 之前。
+        if (normalized.equalsIgnoreCase("https://api.poe.com/v1")
+                || normalized.equalsIgnoreCase("https://api.poe.com/v1/")) {
+            return "https://api.poe.com";
+        }
+        return normalized;
     }
 
     /**

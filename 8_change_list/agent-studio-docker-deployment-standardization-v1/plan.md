@@ -46,7 +46,7 @@
 ### 阶段一：冻结正式契约
 
 1. 确认正式产品名为 `Agent Studio`，中文名为 `智能体工作台`。
-2. 确认正式部署入口为 `docker compose up -d --build`。
+2. 确认正式部署入口为在 `D:\myproject\MyAgent\11_code` 下执行 `docker compose up -d --build`。
 3. 确认正式浏览器入口为 `http://127.0.0.1:18080`。
 4. 确认 API 和 PostgreSQL 不暴露宿主机端口。
 5. 确认数据库名和用户名固定为 `agent_studio`。
@@ -86,8 +86,8 @@
 
 ### 阶段五：Docker 正式部署落地
 
-1. 新增根目录 `compose.yaml`。
-2. `compose.yaml` 顶层写入 `name: agent-studio`。
+1. 新增 `11_code/compose.yaml`。
+2. `11_code/compose.yaml` 顶层写入 `name: agent-studio`。
 3. 新增 `11_code/backend/Dockerfile`。
 4. 新增 `11_code/frontend/Dockerfile`。
 5. 新增 `11_code/frontend/nginx.conf`。

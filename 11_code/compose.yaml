@@ -17,7 +17,7 @@ services:
 
   api:
     build:
-      context: ./11_code/backend
+      context: ./backend
       dockerfile: Dockerfile
     image: agent-studio-api
     depends_on:
@@ -35,7 +35,7 @@ services:
 
   web:
     build:
-      context: ./11_code/frontend
+      context: ./frontend
       dockerfile: Dockerfile
     image: agent-studio-web
     depends_on:

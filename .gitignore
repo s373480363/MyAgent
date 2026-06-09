@@ -45,6 +45,9 @@ openapi/
 .idea/
 .vscode/
 
+# Local runtime secrets and Docker env files
+/11_code/.env
+
 # Local tool cache
 9_dependency/tools/
 .codex-temp/

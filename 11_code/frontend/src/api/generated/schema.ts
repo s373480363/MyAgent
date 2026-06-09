@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * 查询系统设置
-         * @description 只返回 V1 白名单中的 7 个系统设置项。
+         * @description 只返回 V1 白名单中的 6 个系统设置项。
          */
         get: operations["getSettings"];
         /**

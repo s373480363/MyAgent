@@ -12,26 +12,48 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 
 /**
- * Judge evaluator.
+ * 默认 judge 执行器。
  */
 @Component
 public class DefaultEvalJudgeEvaluator implements EvalJudgeEvaluator {
 
+    /**
+     * judge 提示词版本号。
+     */
     static final String JUDGE_PROMPT_VERSION = "JUDGE_RULE_V1";
 
+    /**
+     * JSON 对象映射器。
+     */
     private final ObjectMapper objectMapper;
+
+    /**
+     * 模型调用网关。
+     */
     private final OpenAiModelGateway modelGateway;
 
+    /**
+     * 构造 judge 执行器。
+     *
+     * @param objectMapper JSON 对象映射器
+     * @param modelGateway 模型调用网关
+     */
     public DefaultEvalJudgeEvaluator(ObjectMapper objectMapper, OpenAiModelGateway modelGateway) {
         this.objectMapper = objectMapper;
         this.modelGateway = modelGateway;
     }
 
+    /**
+     * 调用 judge LLM 并校验返回结果结构。
+     *
+     * @param request judge 请求
+     * @return judge 执行结果
+     */
     @Override
     public EvalJudgeEvaluation evaluate(EvalJudgeRequest request) {
         String judgeModelOfferingKey = request.judgeModelOfferingKey();
         if (judgeModelOfferingKey == null || judgeModelOfferingKey.isBlank()) {
-            return new EvalJudgeEvaluation(null, null, null, null, "judge \u6a21\u578b\u4f9b\u5e94\u9879\u672a\u914d\u7f6e\u3002");
+            return new EvalJudgeEvaluation(null, null, null, null, "judge 模型供应项未配置。");
         }
 
         ObjectNode promptPayload = objectMapper.createObjectNode();
@@ -61,6 +83,7 @@ public class DefaultEvalJudgeEvaluator implements EvalJudgeEvaluator {
                 """.replace("{payload}", promptPayload.toString());
 
         try {
+            // 先把 V1 契约需要的上下文拼进 payload，再把 payload 原样传给模型调用网关与 Trace。
             ModelInvocationResult result = modelGateway.invoke(new ModelInvocationRequest(
                     judgeModelOfferingKey,
                     "You are an eval judge. Follow judgeRule, referenceSample, actual output and hardCheckResults. Return JSON only.",
@@ -76,12 +99,13 @@ public class DefaultEvalJudgeEvaluator implements EvalJudgeEvaluator {
                         result.rawText(),
                         judgeModelOfferingKey,
                         JUDGE_PROMPT_VERSION,
-                        "judge LLM \u8f93\u51fa\u4e0d\u662f\u5408\u6cd5\u7684\u7ed3\u6784\u5316\u7ed3\u679c\u3002"
+                        "judge LLM 输出不是合法的结构化结果。"
                 );
             }
+            // 顶层失败摘要统一落到 errorMessage，具体原因继续保留在 judgeResult.reason。
             String errorMessage = judgeResult.path("passed").asBoolean(false)
                     ? ""
-                    : judgeResult.path("reason").asText("judge \u5224\u5b9a\u672a\u901a\u8fc7\u3002");
+                    : judgeResult.path("reason").asText("judge 判定未通过。");
             return new EvalJudgeEvaluation(
                     judgeResult,
                     result.rawText(),
@@ -95,7 +119,7 @@ public class DefaultEvalJudgeEvaluator implements EvalJudgeEvaluator {
                     null,
                     judgeModelOfferingKey,
                     JUDGE_PROMPT_VERSION,
-                    "judge LLM \u8c03\u7528\u5931\u8d25\uff1a" + exception.getMessage()
+                    "judge LLM 调用失败：" + exception.getMessage()
             );
         } catch (RuntimeException exception) {
             return new EvalJudgeEvaluation(
@@ -103,11 +127,17 @@ public class DefaultEvalJudgeEvaluator implements EvalJudgeEvaluator {
                     null,
                     judgeModelOfferingKey,
                     JUDGE_PROMPT_VERSION,
-                    "judge LLM \u8c03\u7528\u5931\u8d25\uff1a" + exception.getMessage()
+                    "judge LLM 调用失败：" + exception.getMessage()
             );
         }
     }
 
+    /**
+     * 校验 judge LLM 返回的结构化结果是否符合 V1 最小契约。
+     *
+     * @param judgeResult judge LLM 输出
+     * @return 合法结果；不合法时返回 null
+     */
     private JsonNode validateJudgeResult(JsonNode judgeResult) {
         if (judgeResult == null || !judgeResult.isObject()) {
             return null;
@@ -131,10 +161,22 @@ public class DefaultEvalJudgeEvaluator implements EvalJudgeEvaluator {
         return judgeResult;
     }
 
+    /**
+     * 规范化 judge 温度值。
+     *
+     * @param temperature 原始温度值
+     * @return 规范化后的温度值
+     */
     private BigDecimal normalizeTemperature(BigDecimal temperature) {
         return temperature == null ? BigDecimal.ZERO : temperature;
     }
 
+    /**
+     * 将空 JSON 值转换为显式 null 节点。
+     *
+     * @param value 原始 JSON 值
+     * @return 非空 JSON 节点
+     */
     private JsonNode nullToJsonNull(JsonNode value) {
         return value == null ? objectMapper.nullNode() : value;
     }

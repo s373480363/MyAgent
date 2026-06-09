@@ -14,17 +14,33 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Hard check evaluator.
+ * 默认 hardChecks 执行器。
  */
 @Component
 class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
 
+    /**
+     * JSON 对象映射器。
+     */
     private final ObjectMapper objectMapper;
 
+    /**
+     * 构造 hardChecks 执行器。
+     *
+     * @param objectMapper JSON 对象映射器
+     */
     DefaultEvalHardCheckEvaluator(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 逐条执行 hardChecks，并汇总首个失败原因。
+     *
+     * @param output 节点输出
+     * @param hardChecks hardChecks 配置数组
+     * @param schemaValidationResultJson Schema 校验结果
+     * @return hardChecks 执行结果
+     */
     @Override
     public EvalHardCheckEvaluation evaluate(JsonNode output, JsonNode hardChecks, JsonNode schemaValidationResultJson) {
         ArrayNode resultArray = objectMapper.createArrayNode();
@@ -32,31 +48,41 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
             return new EvalHardCheckEvaluation(true, resultArray, "");
         }
         if (!hardChecks.isArray()) {
-            resultArray.add(invalidHardChecksResult("hardChecks \u914d\u7f6e\u5fc5\u987b\u662f\u6570\u7ec4\u3002"));
-            return new EvalHardCheckEvaluation(false, resultArray, "hardChecks \u914d\u7f6e\u5fc5\u987b\u662f\u6570\u7ec4\u3002");
+            resultArray.add(invalidHardChecksResult("hardChecks 配置必须是数组。"));
+            return new EvalHardCheckEvaluation(false, resultArray, "hardChecks 配置必须是数组。");
         }
 
         boolean passed = true;
         String firstFailure = "";
+        // V1 hardChecks 结果顺序必须与输入配置保持一致，便于前端和排障直接对位。
         for (JsonNode hardCheck : hardChecks) {
             ObjectNode result = evaluateOne(output, hardCheck, schemaValidationResultJson);
             resultArray.add(result);
             if (!result.path("passed").asBoolean(false)) {
                 passed = false;
                 if (firstFailure.isBlank()) {
-                    firstFailure = result.path("message").asText("hardChecks \u672a\u901a\u8fc7\u3002");
+                    firstFailure = result.path("message").asText("hardChecks 未通过。");
                 }
             }
         }
         return new EvalHardCheckEvaluation(passed, resultArray, firstFailure);
     }
 
+    /**
+     * 执行单条 hardCheck。
+     *
+     * @param output 节点输出
+     * @param hardCheck 单条 hardCheck 配置
+     * @param schemaValidationResultJson Schema 校验结果
+     * @return 单条 hardCheck 执行结果
+     */
     private ObjectNode evaluateOne(JsonNode output, JsonNode hardCheck, JsonNode schemaValidationResultJson) {
         if (hardCheck == null || !hardCheck.isObject()) {
-            return invalidHardChecksResult("hardChecks \u914d\u7f6e\u9879\u5fc5\u987b\u662f\u5bf9\u8c61\u3002");
+            return invalidHardChecksResult("hardChecks 配置项必须是对象。");
         }
         String type = hardCheck.path("type").asText("");
         String path = hardCheck.path("path").asText(null);
+        // V1 只允许执行已冻结的 7 种 hardCheck 类型，禁止兼容旧 assertions 语义。
         return switch (type) {
             case "SCHEMA_VALIDATION" -> schemaValidationResult(schemaValidationResultJson);
             case "JSON_PATH_EXISTS" -> existsResult(path, read(output, path));
@@ -69,23 +95,35 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         };
     }
 
+    /**
+     * 构造 hardChecks 配置非法时的统一结果。
+     *
+     * @param message 错误消息
+     * @return 统一结果节点
+     */
     private ObjectNode invalidHardChecksResult(String message) {
         return result(
                 "INVALID_HARD_CHECKS",
                 false,
                 message,
                 null,
-                textNode("\u6570\u7ec4"),
+                textNode("数组"),
                 null,
                 objectMapper.createObjectNode()
         );
     }
 
+    /**
+     * 构造不支持类型时的统一结果。
+     *
+     * @param type 当前类型
+     * @return 统一结果节点
+     */
     private ObjectNode invalidTypeResult(String type) {
         return result(
                 type == null || type.isBlank() ? "UNKNOWN" : type,
                 false,
-                "\u4e0d\u652f\u6301\u7684 hardCheck \u7c7b\u578b\uff1a" + type,
+                "不支持的 hardCheck 类型：" + type,
                 null,
                 null,
                 null,
@@ -93,6 +131,12 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         );
     }
 
+    /**
+     * 读取节点输出的 Schema 校验结果，并转换为 hardCheck 结果。
+     *
+     * @param schemaValidationResultJson Schema 校验结果
+     * @return Schema 校验对应的 hardCheck 结果
+     */
     private ObjectNode schemaValidationResult(JsonNode schemaValidationResultJson) {
         if (schemaValidationResultJson == null
                 || schemaValidationResultJson.isNull()
@@ -100,9 +144,9 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
             return result(
                     "SCHEMA_VALIDATION",
                     false,
-                    "\u672a\u6267\u884c\u8282\u70b9\u8f93\u51fa Schema \u6821\u9a8c\u3002",
+                    "未执行节点输出 Schema 校验。",
                     null,
-                    textNode("\u8282\u70b9\u8f93\u51fa\u901a\u8fc7 Schema \u6821\u9a8c"),
+                    textNode("节点输出通过 Schema 校验"),
                     null,
                     objectMapper.createObjectNode()
             );
@@ -113,14 +157,15 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
             return result(
                     "SCHEMA_VALIDATION",
                     false,
-                    "\u672a\u6267\u884c\u8282\u70b9\u8f93\u51fa Schema \u6821\u9a8c\u3002",
+                    "未执行节点输出 Schema 校验。",
                     null,
-                    textNode("\u8282\u70b9\u8f93\u51fa\u901a\u8fc7 Schema \u6821\u9a8c"),
+                    textNode("节点输出通过 Schema 校验"),
                     null,
                     objectMapper.createObjectNode()
             );
         }
 
+        // 只读取节点输出阶段的校验结果，其他阶段不参与 V1 hardChecks 判定。
         for (JsonNode schemaResult : results) {
             if ("NODE_OUTPUT".equals(schemaResult.path("stage").asText())) {
                 boolean passed = schemaResult.path("valid").asBoolean(false);
@@ -128,10 +173,10 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
                         "SCHEMA_VALIDATION",
                         passed,
                         passed
-                                ? "\u8282\u70b9\u8f93\u51fa Schema \u6821\u9a8c\u901a\u8fc7\u3002"
-                                : "\u8282\u70b9\u8f93\u51fa Schema \u6821\u9a8c\u672a\u901a\u8fc7\u3002",
+                                ? "节点输出 Schema 校验通过。"
+                                : "节点输出 Schema 校验未通过。",
                         null,
-                        textNode("\u8282\u70b9\u8f93\u51fa\u901a\u8fc7 Schema \u6821\u9a8c"),
+                        textNode("节点输出通过 Schema 校验"),
                         boolNode(passed),
                         schemaResult
                 );
@@ -141,33 +186,48 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return result(
                 "SCHEMA_VALIDATION",
                 false,
-                "\u672a\u6267\u884c\u8282\u70b9\u8f93\u51fa Schema \u6821\u9a8c\u3002",
+                "未执行节点输出 Schema 校验。",
                 null,
-                textNode("\u8282\u70b9\u8f93\u51fa\u901a\u8fc7 Schema \u6821\u9a8c"),
+                textNode("节点输出通过 Schema 校验"),
                 null,
                 objectMapper.createObjectNode()
         );
     }
 
+    /**
+     * 执行 JSON_PATH_EXISTS 检查。
+     *
+     * @param path JSONPath
+     * @param actual 实际值
+     * @return 执行结果
+     */
     private ObjectNode existsResult(String path, JsonNode actual) {
         boolean passed = actual != null && !(actual instanceof MissingNode);
         return result(
                 "JSON_PATH_EXISTS",
                 passed,
-                passed ? path + " \u5b57\u6bb5\u5b58\u5728\u3002" : path + " \u5b57\u6bb5\u7f3a\u5931\u3002",
+                passed ? path + " 字段存在。" : path + " 字段缺失。",
                 path,
-                textNode("\u5b57\u6bb5\u5b58\u5728"),
+                textNode("字段存在"),
                 actualNode(actual),
                 objectMapper.createObjectNode()
         );
     }
 
+    /**
+     * 执行 JSON_PATH_IN 检查。
+     *
+     * @param path JSONPath
+     * @param actual 实际值
+     * @param values 允许值数组
+     * @return 执行结果
+     */
     private ObjectNode inValuesResult(String path, JsonNode actual, JsonNode values) {
         if (values == null || !values.isArray() || values.isEmpty()) {
             return result(
                     "JSON_PATH_IN",
                     false,
-                    "hardCheck values \u914d\u7f6e\u4e0d\u5408\u6cd5\u3002",
+                    "hardCheck values 配置不合法。",
                     path,
                     values == null ? objectMapper.nullNode() : values,
                     actualNode(actual),
@@ -179,7 +239,7 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
                 return result(
                         "JSON_PATH_IN",
                         true,
-                        "\u679a\u4e3e\u68c0\u67e5\u901a\u8fc7\u3002",
+                        "枚举检查通过。",
                         path,
                         values,
                         actualNode(actual),
@@ -190,7 +250,7 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return result(
                 "JSON_PATH_IN",
                 false,
-                path + " \u4e0d\u5728\u5141\u8bb8\u679a\u4e3e\u503c\u5185\u3002",
+                path + " 不在允许枚举值内。",
                 path,
                 values,
                 actualNode(actual),
@@ -198,6 +258,14 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         );
     }
 
+    /**
+     * 执行 JSON_PATH_NUMBER_RANGE 检查。
+     *
+     * @param path JSONPath
+     * @param actual 实际值
+     * @param hardCheck hardCheck 配置
+     * @return 执行结果
+     */
     private ObjectNode numberRangeResult(String path, JsonNode actual, JsonNode hardCheck) {
         ObjectNode expected = objectMapper.createObjectNode();
         JsonNode minNode = hardCheck.get("min");
@@ -212,7 +280,7 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
             return result(
                     "JSON_PATH_NUMBER_RANGE",
                     false,
-                    path + " \u4e0d\u662f\u6570\u503c\u3002",
+                    path + " 不是数值。",
                     path,
                     expected,
                     actualNode(actual),
@@ -226,7 +294,7 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return result(
                 "JSON_PATH_NUMBER_RANGE",
                 passed,
-                passed ? "\u6570\u503c\u8303\u56f4\u68c0\u67e5\u901a\u8fc7\u3002" : path + " \u4e0d\u5728\u5141\u8bb8\u8303\u56f4\u5185\u3002",
+                passed ? "数值范围检查通过。" : path + " 不在允许范围内。",
                 path,
                 expected,
                 actual,
@@ -234,12 +302,20 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         );
     }
 
+    /**
+     * 执行 JSON_PATH_REGEX 检查。
+     *
+     * @param path JSONPath
+     * @param actual 实际值
+     * @param pattern 正则表达式
+     * @return 执行结果
+     */
     private ObjectNode regexResult(String path, JsonNode actual, String pattern) {
         if (actual == null || !actual.isTextual()) {
             return result(
                     "JSON_PATH_REGEX",
                     false,
-                    path + " \u4e0d\u662f\u5b57\u7b26\u4e32\u3002",
+                    path + " 不是字符串。",
                     path,
                     textNode(pattern),
                     actualNode(actual),
@@ -250,7 +326,7 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return result(
                 "JSON_PATH_REGEX",
                 passed,
-                passed ? "\u6b63\u5219\u68c0\u67e5\u901a\u8fc7\u3002" : path + " \u672a\u5339\u914d\u6b63\u5219\u8868\u8fbe\u5f0f\u3002",
+                passed ? "正则检查通过。" : path + " 未匹配正则表达式。",
                 path,
                 textNode(pattern),
                 actual,
@@ -258,12 +334,21 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         );
     }
 
+    /**
+     * 执行 JSON_PATH_CONTAINS 或 JSON_PATH_NOT_CONTAINS 检查。
+     *
+     * @param path JSONPath
+     * @param actual 实际值
+     * @param expected 目标文本
+     * @param shouldContain 是否要求包含
+     * @return 执行结果
+     */
     private ObjectNode containsResult(String path, JsonNode actual, String expected, boolean shouldContain) {
         if (actual == null || !actual.isTextual()) {
             return result(
                     shouldContain ? "JSON_PATH_CONTAINS" : "JSON_PATH_NOT_CONTAINS",
                     false,
-                    path + " \u4e0d\u662f\u5b57\u7b26\u4e32\u3002",
+                    path + " 不是字符串。",
                     path,
                     textNode(expected),
                     actualNode(actual),
@@ -274,9 +359,9 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         boolean passed = shouldContain == contains;
         String message;
         if (passed) {
-            message = shouldContain ? "\u5305\u542b\u68c0\u67e5\u901a\u8fc7\u3002" : "\u6392\u9664\u68c0\u67e5\u901a\u8fc7\u3002";
+            message = shouldContain ? "包含检查通过。" : "排除检查通过。";
         } else {
-            message = shouldContain ? path + " \u672a\u5305\u542b\u671f\u671b\u6587\u672c\u3002" : path + " \u5305\u542b\u4e86\u7981\u6b62\u6587\u672c\u3002";
+            message = shouldContain ? path + " 未包含期望文本。" : path + " 包含了禁止文本。";
         }
         return result(
                 shouldContain ? "JSON_PATH_CONTAINS" : "JSON_PATH_NOT_CONTAINS",
@@ -289,6 +374,18 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         );
     }
 
+    /**
+     * 构造统一 hardCheck 结果节点。
+     *
+     * @param type hardCheck 类型
+     * @param passed 是否通过
+     * @param message 结果摘要
+     * @param path JSONPath
+     * @param expected 期望值
+     * @param actual 实际值
+     * @param details 额外细节
+     * @return 结果节点
+     */
     private ObjectNode result(
             String type,
             boolean passed,
@@ -317,11 +414,19 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return node;
     }
 
+    /**
+     * 按受控 JSONPath 读取节点输出值。
+     *
+     * @param root 根节点
+     * @param path JSONPath
+     * @return 读取到的值；找不到时返回 MissingNode
+     */
     private JsonNode read(JsonNode root, String path) {
         if (root == null || path == null || path.isBlank() || path.charAt(0) != '$') {
             return MissingNode.getInstance();
         }
         JsonNode current = root;
+        // 这里只支持 $.field 和 [index] 的受控子集，避免引入完整 JSONPath 解释器复杂度。
         for (PathToken token : parse(path)) {
             if (token.fieldName() != null) {
                 if (current == null || !current.isObject() || !current.has(token.fieldName())) {
@@ -338,9 +443,16 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return current == null ? MissingNode.getInstance() : current;
     }
 
+    /**
+     * 解析受控 JSONPath。
+     *
+     * @param path JSONPath
+     * @return 解析后的路径令牌列表
+     */
     private List<PathToken> parse(String path) {
         List<PathToken> tokens = new ArrayList<>();
         int index = 1;
+        // 一旦路径格式不满足 V1 支持子集，立即返回非法占位令牌，让读取逻辑统一失败。
         while (index < path.length()) {
             char current = path.charAt(index);
             if (current == '.') {
@@ -374,6 +486,12 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return tokens;
     }
 
+    /**
+     * 将读取结果规范化为可回写的 actual 节点。
+     *
+     * @param actual 原始读取结果
+     * @return 规范化后的 actual 节点
+     */
     private JsonNode actualNode(JsonNode actual) {
         if (actual == null || actual.isMissingNode()) {
             return objectMapper.nullNode();
@@ -381,14 +499,32 @@ class DefaultEvalHardCheckEvaluator implements EvalHardCheckEvaluator {
         return actual;
     }
 
+    /**
+     * 构造文本节点。
+     *
+     * @param text 文本值
+     * @return 文本节点
+     */
     private JsonNode textNode(String text) {
         return JsonNodeFactory.instance.textNode(text);
     }
 
+    /**
+     * 构造布尔节点。
+     *
+     * @param value 布尔值
+     * @return 布尔节点
+     */
     private JsonNode boolNode(boolean value) {
         return JsonNodeFactory.instance.booleanNode(value);
     }
 
+    /**
+     * 受控 JSONPath 解析后的单个路径令牌。
+     *
+     * @param fieldName 对象字段名
+     * @param arrayIndex 数组下标
+     */
     private record PathToken(String fieldName, Integer arrayIndex) {
     }
 }
